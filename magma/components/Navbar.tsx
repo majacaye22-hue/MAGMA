@@ -85,7 +85,8 @@ export default function Navbar() {
 
       {/* Auth buttons */}
       <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
-        <button
+        <Link
+          href="/login"
           style={{
             fontFamily: "Space Mono",
             fontSize: "12px",
@@ -94,22 +95,21 @@ export default function Navbar() {
             border: "1px solid #2a2a28",
             backgroundColor: "transparent",
             color: "#e8e4dc",
-            cursor: "pointer",
             letterSpacing: "0.05em",
-            transition: "border-color 0.15s ease",
+            display: "inline-flex",
+            alignItems: "center",
           }}
           onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.borderColor =
-              "#888780";
+            (e.currentTarget as HTMLAnchorElement).style.borderColor = "#888780";
           }}
           onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.borderColor =
-              "#2a2a28";
+            (e.currentTarget as HTMLAnchorElement).style.borderColor = "#2a2a28";
           }}
         >
           entrar
-        </button>
-        <button
+        </Link>
+        <Link
+          href="/join"
           style={{
             fontFamily: "Space Mono",
             fontSize: "12px",
@@ -118,20 +118,20 @@ export default function Navbar() {
             border: "1px solid #D85A30",
             backgroundColor: "#D85A30",
             color: "#0c0c0b",
-            cursor: "pointer",
             fontWeight: 700,
             letterSpacing: "0.05em",
-            transition: "opacity 0.15s ease",
+            display: "inline-flex",
+            alignItems: "center",
           }}
           onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.opacity = "0.85";
+            (e.currentTarget as HTMLAnchorElement).style.opacity = "0.85";
           }}
           onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.opacity = "1";
+            (e.currentTarget as HTMLAnchorElement).style.opacity = "1";
           }}
         >
           únete
-        </button>
+        </Link>
       </div>
     </nav>
   );
