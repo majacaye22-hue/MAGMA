@@ -1,86 +1,114 @@
-import MediaCard, { CardData } from "@/components/MediaCard";
+import FeedGrid from "@/components/FeedGrid";
+import type { FeedCard } from "@/components/cards/types";
 
-const cards: CardData[] = [
+const FEED: FeedCard[] = [
+  // Row 1: wide arte + música
   {
     id: "1",
     type: "arte",
+    wide: true,
     title: "Fragmentos del Pacífico",
     author: "lunamorales",
     authorInitials: "LM",
     upvotes: 142,
-    svgSeed: 7,
+    seed: 7,
   },
   {
     id: "2",
     type: "música",
+    wide: false,
     title: "Cumbia Sintética Vol. II",
     author: "ruidoverde",
     authorInitials: "RV",
     upvotes: 89,
-    svgSeed: 13,
+    seed: 13,
   },
+  // Row 2: foto + evento + arte
   {
     id: "3",
     type: "fotografía",
+    wide: false,
     title: "Mercado Tepito 4AM",
     author: "ojoscrudos",
     authorInitials: "OC",
     upvotes: 203,
-    svgSeed: 29,
+    seed: 29,
   },
   {
     id: "4",
     type: "evento",
+    wide: false,
     title: "Exposición Colectiva: Borde",
     author: "espaciobruto",
     authorInitials: "EB",
     upvotes: 67,
-    svgSeed: 41,
+    seed: 41,
+    date: "12 abr",
+    venue: "La Tallera, CDMX",
   },
   {
     id: "5",
     type: "arte",
+    wide: false,
     title: "Sin título #8",
     author: "piedrasuelta",
     authorInitials: "PS",
     upvotes: 314,
-    svgSeed: 53,
+    seed: 53,
   },
+  // Row 3: música + wide foto
   {
     id: "6",
-    type: "fotografía",
-    title: "Retrato de mi abuela",
-    author: "clarooscuro",
-    authorInitials: "CO",
-    upvotes: 178,
-    svgSeed: 67,
-  },
-  {
-    id: "7",
     type: "música",
+    wide: false,
     title: "Ruido Blanco / Ciudad Gris",
     author: "fmclandestino",
     authorInitials: "FC",
     upvotes: 55,
-    svgSeed: 79,
+    seed: 67,
   },
+  {
+    id: "7",
+    type: "fotografía",
+    wide: true,
+    title: "Retrato de mi abuela en domingo",
+    author: "clarooscuro",
+    authorInitials: "CO",
+    upvotes: 178,
+    seed: 79,
+  },
+  // Row 4: evento + arte + foto
   {
     id: "8",
-    type: "arte",
-    title: "Geometría del Olvido",
-    author: "trazolibre",
-    authorInitials: "TL",
-    upvotes: 231,
-    svgSeed: 91,
-  },
-  {
-    id: "9",
     type: "evento",
+    wide: false,
     title: "Taller de Serigrafía Nocturna",
     author: "tintataller",
     authorInitials: "TT",
     upvotes: 44,
-    svgSeed: 103,
+    seed: 91,
+    date: "19 abr",
+    venue: "Oaxaca, OAX",
+  },
+  {
+    id: "9",
+    type: "arte",
+    wide: false,
+    title: "Geometría del Olvido",
+    author: "trazolibre",
+    authorInitials: "TL",
+    upvotes: 231,
+    seed: 103,
+  },
+  {
+    id: "10",
+    type: "fotografía",
+    wide: false,
+    title: "Periferia en Azul",
+    author: "margenlibre",
+    authorInitials: "ML",
+    upvotes: 119,
+    seed: 117,
   },
 ];
 
@@ -90,53 +118,32 @@ export default function HomePage() {
       style={{
         maxWidth: "1200px",
         margin: "0 auto",
-        padding: "32px 24px",
+        padding: "32px 24px 48px",
       }}
     >
-      {/* Section header */}
+      {/* Page heading */}
       <div
         style={{
-          display: "flex",
-          alignItems: "baseline",
-          justifyContent: "space-between",
-          marginBottom: "24px",
+          marginBottom: "28px",
+          paddingBottom: "20px",
+          borderBottom: "1px solid #2a2a28",
         }}
       >
         <h1
           style={{
             fontFamily: "Syne",
             fontWeight: 800,
-            fontSize: "22px",
-            color: "#e8e4dc",
-            letterSpacing: "0.02em",
-          }}
-        >
-          Reciente
-        </h1>
-        <span
-          style={{
-            fontFamily: "Space Mono",
-            fontSize: "11px",
+            fontSize: "13px",
             color: "#888780",
-            letterSpacing: "0.05em",
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
           }}
         >
-          {cards.length} obras
-        </span>
+          Feed
+        </h1>
       </div>
 
-      {/* 3-column grid */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
-          gap: "12px",
-        }}
-      >
-        {cards.map((card) => (
-          <MediaCard key={card.id} card={card} />
-        ))}
-      </div>
+      <FeedGrid cards={FEED} />
     </div>
   );
 }
