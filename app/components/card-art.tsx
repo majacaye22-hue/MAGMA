@@ -2,6 +2,27 @@ import Link from "next/link";
 
 export type CardType = "arte" | "música" | "foto" | "evento";
 
+// ─── Supabase post shape ─────────────────────────────────────────────────────
+
+export interface Post {
+  id: string;
+  title: string;
+  body: string | null;
+  type: string;
+  media_url: string | null;
+  media_type: string | null;
+  tags: string[] | null;
+  upvotes: number;
+  created_at: string;
+  author_id: string | null;
+  profiles: { username: string; display_name: string | null } | null;
+  event_date: string | null;
+  venue: string | null;
+  address: string | null;
+  is_free: boolean | null;
+  price: string | null;
+}
+
 export interface CardData {
   id: number;
   title: string;
@@ -156,6 +177,205 @@ export function CardArt({ card }: { card: CardData }) {
     case "foto":   return <FotoArt location={card.location ?? "CDMX · NOCHE"} />;
     case "evento": return <EventoArt />;
   }
+}
+
+// ─── Post card (real Supabase data) ──────────────────────────────────────────
+
+const SPAN_PATTERNS: Array<[1 | 2, 1 | 2]> = [
+  [2, 2], [1, 1], [1, 2], [1, 1], [2, 1], [1, 1], [1, 2], [2, 1],
+];
+
+function postCardType(type: string): CardType {
+  if (type === "fotografía") return "foto";
+  if (type === "arte" || type === "música" || type === "evento") return type as CardType;
+  return "arte";
+}
+
+// Evento-specific no-image placeholder
+function EventoPlaceholder({ post }: { post: Post }) {
+  const dateStr = post.event_date
+    ? new Date(post.event_date).toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short" })
+    : null;
+
+  return (
+    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6" style={{ backgroundColor: "#141412" }}>
+      {/* Subtle grid line background */}
+      <svg className="absolute inset-0" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+            <path d="M 32 0 L 0 0 0 32" fill="none" stroke="#2a2a28" strokeWidth="0.5" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#grid)" />
+      </svg>
+      <p
+        className="relative text-center leading-tight"
+        style={{ fontSize: "24px", color: "#e8e4dc", fontFamily: "var(--font-syne), sans-serif", fontWeight: 800 }}
+      >
+        {post.title}
+      </p>
+      {dateStr && (
+        <p className="relative text-xs tracking-widest uppercase" style={{ color: "#D85A30", fontFamily: "var(--font-space-mono), monospace" }}>
+          {dateStr}
+        </p>
+      )}
+      {post.venue && (
+        <p className="relative text-xs" style={{ color: "#888780", fontFamily: "var(--font-space-mono), monospace" }}>
+          {post.venue}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function PostCardArt({ post, cardType }: { post: Post; cardType: CardType }) {
+  switch (cardType) {
+    case "arte":   return <ArteArt />;
+    case "música": return <MusicaArt title={post.title} artist="artista" />;
+    case "foto":   return <FotoArt location="CDMX" />;
+    case "evento": return <EventoPlaceholder post={post} />;
+  }
+}
+
+function EventoHoverOverlay({ post }: { post: Post }) {
+  const dateStr = post.event_date
+    ? new Date(post.event_date).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" })
+    : null;
+  const timeStr = post.event_date
+    ? new Date(post.event_date).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", hour12: false })
+    : null;
+
+  return (
+    <div
+      className="absolute inset-0 z-20 flex flex-col justify-between p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+      style={{ background: "rgba(12,12,11,0.88)" }}
+    >
+      <div /> {/* spacer */}
+      <div className="flex flex-col gap-1.5">
+        <p className="leading-snug" style={{ fontSize: "16px", color: "#e8e4dc", fontFamily: "var(--font-syne), sans-serif", fontWeight: 800 }}>
+          {post.title}
+        </p>
+        {dateStr && (
+          <p className="text-[10px] tracking-wide" style={{ color: "#D85A30", fontFamily: "var(--font-space-mono), monospace" }}>
+            {dateStr}{timeStr ? ` · ${timeStr}` : ""}
+          </p>
+        )}
+        {(post.venue || post.address) && (
+          <p className="text-[10px]" style={{ color: "#888780", fontFamily: "var(--font-space-mono), monospace" }}>
+            {[post.venue, post.address].filter(Boolean).join(" — ")}
+          </p>
+        )}
+        <Link
+          href={`/post/${post.id}`}
+          className="text-[9px] tracking-widest uppercase mt-1 self-start"
+          style={{ color: "#EF9F27", fontFamily: "var(--font-space-mono), monospace", textDecoration: "underline" }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          ver evento →
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+export function PostCard({ post, index, total }: { post: Post; index: number; total: number }) {
+  // Single-card view: always render 1×1 so it sits in the top-left cell.
+  // Otherwise cycle through the span pattern as normal.
+  const [colSpan, baseRowSpan] = total === 1 ? [1, 1] as const : SPAN_PATTERNS[index % SPAN_PATTERNS.length];
+  const cardType = postCardType(post.type);
+  const isEvento = post.type === "evento";
+  const showImage =
+    !!post.media_url &&
+    (post.type === "arte" || post.type === "fotografía" || isEvento);
+  const isGif = post.media_url?.toLowerCase().endsWith(".gif") ?? false;
+
+  // Evento cards and image cards always span 2 rows so portrait content isn't tiny.
+  const rowSpan = (isEvento || (showImage && baseRowSpan < 2)) ? 2 as const : baseRowSpan;
+
+  const authorDisplay =
+    post.profiles?.display_name ?? post.profiles?.username
+      ? `@${post.profiles!.username}`
+      : null;
+
+  return (
+    // min-w-0 / min-h-0 prevent the grid item from ever growing to fit
+    // the image's intrinsic dimensions — the grid row/column sizes win.
+    <div
+      className="group relative overflow-hidden cursor-pointer"
+      style={{
+        backgroundColor: "#141412",
+        border: "0.5px solid #2a2a28",
+        gridColumn: `span ${colSpan}`,
+        gridRow: `span ${rowSpan}`,
+        minWidth: 0,
+        minHeight: 0,
+      }}
+    >
+      {/* Media layer — absolutely positioned so it never inflates the cell */}
+      {showImage ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={post.media_url!}
+          alt={post.title}
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            display: "block",
+          }}
+          {...(!isGif && { loading: "lazy" as const })}
+        />
+      ) : (
+        <div className="absolute inset-0">
+          <PostCardArt post={post} cardType={cardType} />
+        </div>
+      )}
+
+      {/* Type badge */}
+      <span
+        className="absolute top-3 left-3 z-10 px-2 py-0.5 text-[10px] uppercase tracking-widest border"
+        style={{
+          background: "rgba(20,20,18,0.88)",
+          color: "#888780",
+          borderColor: "#2a2a28",
+          fontFamily: "var(--font-space-mono), monospace",
+        }}
+      >
+        {TYPE_LABEL[cardType]}
+      </span>
+
+      {/* Hover overlay — evento gets a specialized one */}
+      {isEvento ? (
+        <EventoHoverOverlay post={post} />
+      ) : (
+        <div
+          className="absolute inset-0 z-20 flex flex-col justify-between p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+          style={{ background: "rgba(12,12,11,0.85)" }}
+        >
+          <div className="flex justify-end">
+            <span className="text-xs tabular-nums" style={{ color: "#D85A30", fontFamily: "var(--font-space-mono), monospace" }}>
+              ↑ {post.upvotes.toLocaleString()}
+            </span>
+          </div>
+          <div>
+            <p
+              className="leading-snug mb-2"
+              style={{ fontSize: "16px", color: "#e8e4dc", fontFamily: "var(--font-syne), sans-serif", fontWeight: 700 }}
+            >
+              {post.title}
+            </p>
+            {authorDisplay && (
+              <span className="text-xs" style={{ color: "#888780", fontFamily: "var(--font-space-mono), monospace" }}>
+                {authorDisplay}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ─── Card tile ───────────────────────────────────────────────────────────────

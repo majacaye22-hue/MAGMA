@@ -2,6 +2,8 @@
 
 import { useState, useRef } from "react";
 import Link from "next/link";
+import { supabase } from "@/lib/supabase";
+import { Navbar } from "@/app/components/navbar";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -46,25 +48,6 @@ const TYPE_OPTIONS: TypeOption[] = [
   },
 ];
 
-// ─── Logo ────────────────────────────────────────────────────────────────────
-
-function MagmaLogo() {
-  return (
-    <span
-      style={{ fontFamily: "var(--font-syne), sans-serif", fontWeight: 800 }}
-      className="text-2xl tracking-tight select-none"
-    >
-      {"MAGMA".split("").map((l, i) =>
-        l === "A" ? (
-          <span key={i} style={{ color: "#D85A30" }}>{l}</span>
-        ) : (
-          <span key={i} style={{ color: "#e8e4dc" }}>{l}</span>
-        )
-      )}
-    </span>
-  );
-}
-
 // ─── Input styles ─────────────────────────────────────────────────────────────
 
 const inputStyle: React.CSSProperties = {
@@ -94,11 +77,38 @@ export default function UploadPage() {
   const [selectedType, setSelectedType] = useState<WorkType | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [tags, setTags] = useState("");
+  const [location, setLocation] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [storageError, setStorageError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
+  // Event-specific fields
+  const [eventDate, setEventDate] = useState("");
+  const [eventTime, setEventTime] = useState("");
+  const [venue, setVenue] = useState("");
+  const [address, setAddress] = useState("");
+  const [isFree, setIsFree] = useState(true);
+  const [price, setPrice] = useState("");
 
   const activeOption = TYPE_OPTIONS.find((t) => t.id === selectedType);
 
   function handleFile(file: File) {
+    setStorageError(null);
+    setError(null);
+    if (file.size > MAX_FILE_SIZE) {
+      setError(`el archivo pesa ${(file.size / 1024 / 1024).toFixed(1)} MB — el máximo es 10 MB`);
+      return;
+    }
+    setSelectedFile(file);
     setFileName(file.name);
   }
 
@@ -114,45 +124,85 @@ export default function UploadPage() {
     if (file) handleFile(file);
   }
 
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedType || !title.trim()) return;
+
+    setSubmitting(true);
+    setError(null);
+    setStorageError(null);
+
+    try {
+      let media_url: string | null = null;
+      let media_type: string | null = null;
+
+      if (selectedFile) {
+        const ext = selectedFile.name.split(".").pop();
+        const path = `${crypto.randomUUID()}.${ext}`;
+
+        setUploading(true);
+        const uploadPromise = supabase.storage.from("media").upload(path, selectedFile);
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("timeout")), 30_000)
+        );
+
+        const result = await Promise.race([uploadPromise, timeoutPromise]);
+        setUploading(false);
+
+        if (result.error) {
+          setStorageError(`storage: ${result.error.message} (status ${result.error.status ?? "—"})`);
+          throw new Error("error al subir el archivo — intenta con un archivo más pequeño");
+        }
+
+        const { data: urlData } = supabase.storage.from("media").getPublicUrl(path);
+        media_url = urlData.publicUrl;
+        media_type = selectedFile.type;
+      }
+
+      const { data: { user } } = await supabase.auth.getUser();
+
+      // Build event_date timestamp from separate date + time inputs
+      let event_date: string | null = null;
+      if (selectedType === "evento" && eventDate) {
+        event_date = eventTime
+          ? new Date(`${eventDate}T${eventTime}`).toISOString()
+          : new Date(eventDate).toISOString();
+      }
+
+      const { error: insertError } = await supabase.from("posts").insert({
+        title: title.trim(),
+        body: description.trim() || null,
+        type: selectedType,
+        media_url,
+        media_type,
+        tags: tags ? tags.split(",").map((t) => t.trim()).filter(Boolean) : null,
+        author_id: user?.id ?? null,
+        ...(selectedType === "evento" && {
+          event_date,
+          venue: venue.trim() || null,
+          address: address.trim() || null,
+          is_free: isFree,
+          price: !isFree && price.trim() ? price.trim() : null,
+        }),
+      });
+      if (insertError) throw insertError;
+
+      setSuccess(true);
+    } catch (err) {
+      setUploading(false);
+      if (err instanceof Error && err.message === "timeout") {
+        setError("error al subir el archivo — intenta con un archivo más pequeño");
+      } else {
+        setError(err instanceof Error ? err.message : "error al publicar");
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#0c0c0b" }}>
-      {/* Navbar */}
-      <header
-        className="sticky top-0 z-50 border-b"
-        style={{
-          backgroundColor: "rgba(12,12,11,0.92)",
-          borderColor: "#2a2a28",
-          backdropFilter: "blur(12px)",
-        }}
-      >
-        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link href="/">
-            <MagmaLogo />
-          </Link>
-          <div className="flex items-center gap-6">
-            <Link
-              href="/upload"
-              className="text-xs cursor-pointer"
-              style={{ color: "#D85A30", fontFamily: "var(--font-space-mono), monospace" }}
-            >
-              subir obra
-            </Link>
-            <div
-              className="flex items-center justify-center text-xs font-bold cursor-pointer"
-              style={{
-                width: "28px",
-                height: "28px",
-                borderRadius: "2px",
-                backgroundColor: "#D85A30",
-                color: "#0c0c0b",
-                fontFamily: "var(--font-syne), sans-serif",
-              }}
-            >
-              M
-            </div>
-          </div>
-        </div>
-      </header>
+      <Navbar active="upload" />
 
       <main className="max-w-2xl mx-auto px-6 pb-24">
         {/* Page header */}
@@ -240,7 +290,7 @@ export default function UploadPage() {
 
         {/* Form */}
         <form
-          onSubmit={(e) => e.preventDefault()}
+          onSubmit={handleSubmit}
           className="flex flex-col gap-6"
         >
           {/* Título */}
@@ -249,6 +299,9 @@ export default function UploadPage() {
             <input
               type="text"
               placeholder="nombre de la obra"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
               style={inputStyle}
               className="focus:outline-none"
             />
@@ -260,6 +313,8 @@ export default function UploadPage() {
             <textarea
               rows={3}
               placeholder="describe el proceso, la intención, el contexto..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
               style={{ ...inputStyle, resize: "vertical", lineHeight: 1.6 }}
               className="focus:outline-none"
             />
@@ -336,6 +391,8 @@ export default function UploadPage() {
             <input
               type="text"
               placeholder="grabado, tepito, linóleo, político..."
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
               style={inputStyle}
               className="focus:outline-none"
             />
@@ -347,15 +404,161 @@ export default function UploadPage() {
             <input
               type="text"
               placeholder="ej. Tepito, CDMX"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
               style={inputStyle}
               className="focus:outline-none"
             />
           </div>
 
+          {/* Evento-specific fields */}
+          {selectedType === "evento" && (
+            <>
+              <div
+                style={{
+                  borderTop: "0.5px solid #2a2a28",
+                  paddingTop: "24px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "24px",
+                }}
+              >
+                <p style={{ ...labelStyle, marginBottom: 0, color: "#EF9F27" }}>
+                  detalles del evento
+                </p>
+
+                {/* Fecha + Hora */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                  <div>
+                    <label style={labelStyle}>Fecha del evento</label>
+                    <input
+                      type="date"
+                      value={eventDate}
+                      onChange={(e) => setEventDate(e.target.value)}
+                      style={{ ...inputStyle, colorScheme: "dark" }}
+                      className="focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Hora</label>
+                    <input
+                      type="time"
+                      value={eventTime}
+                      onChange={(e) => setEventTime(e.target.value)}
+                      style={{ ...inputStyle, colorScheme: "dark" }}
+                      className="focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Venue */}
+                <div>
+                  <label style={labelStyle}>Lugar / venue</label>
+                  <input
+                    type="text"
+                    placeholder="ej. Foro Indie Rocks!"
+                    value={venue}
+                    onChange={(e) => setVenue(e.target.value)}
+                    style={inputStyle}
+                    className="focus:outline-none"
+                  />
+                </div>
+
+                {/* Dirección */}
+                <div>
+                  <label style={labelStyle}>Dirección</label>
+                  <input
+                    type="text"
+                    placeholder="ej. Av. Álvaro Obregón 65, Roma Norte"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    style={inputStyle}
+                    className="focus:outline-none"
+                  />
+                </div>
+
+                {/* Entrada libre toggle */}
+                <div>
+                  <label style={labelStyle}>Entrada</label>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    {[true, false].map((val) => (
+                      <button
+                        key={String(val)}
+                        type="button"
+                        onClick={() => setIsFree(val)}
+                        className="px-4 py-2 text-xs tracking-widest uppercase cursor-pointer transition-colors duration-150"
+                        style={{
+                          border: `0.5px solid ${isFree === val ? "#EF9F27" : "#2a2a28"}`,
+                          backgroundColor: isFree === val ? "#EF9F270d" : "#141412",
+                          color: isFree === val ? "#EF9F27" : "#888780",
+                          fontFamily: "var(--font-space-mono), monospace",
+                        }}
+                      >
+                        {val ? "libre" : "de paga"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Precio — only if not free */}
+                {!isFree && (
+                  <div>
+                    <label style={labelStyle}>Precio</label>
+                    <input
+                      type="text"
+                      placeholder="ej. 150"
+                      value={price}
+                      onChange={(e) => setPrice(e.target.value)}
+                      style={inputStyle}
+                      className="focus:outline-none"
+                    />
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Upload progress */}
+          {uploading && (
+            <div>
+              <p style={{ fontSize: "11px", color: "#5DCAA5", fontFamily: "var(--font-space-mono), monospace", marginBottom: "8px" }}>
+                subiendo archivo...
+              </p>
+              <div style={{ height: "2px", backgroundColor: "#2a2a28", width: "100%" }}>
+                <div
+                  style={{ height: "2px", backgroundColor: "#5DCAA5", width: "100%", opacity: 0.7 }}
+                  className="animate-pulse"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Error */}
+          {error && (
+            <p style={{ fontSize: "11px", color: "#D85A30", fontFamily: "var(--font-space-mono), monospace" }}>
+              {error}
+            </p>
+          )}
+
+          {/* Storage debug error */}
+          {storageError && (
+            <p style={{ fontSize: "10px", color: "#444441", fontFamily: "var(--font-space-mono), monospace", wordBreak: "break-all" }}>
+              {storageError}
+            </p>
+          )}
+
+          {/* Success */}
+          {success && (
+            <p style={{ fontSize: "11px", color: "#5DCAA5", fontFamily: "var(--font-space-mono), monospace" }}>
+              obra publicada con éxito
+            </p>
+          )}
+
           {/* Submit */}
           <button
             type="submit"
-            className="w-full py-3 text-sm tracking-widest uppercase cursor-pointer transition-opacity duration-150 hover:opacity-80"
+            disabled={submitting || !selectedType || !title.trim()}
+            className="w-full py-3 text-sm tracking-widest uppercase cursor-pointer transition-opacity duration-150 hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
               backgroundColor: "#D85A30",
               color: "#0c0c0b",
@@ -363,7 +566,7 @@ export default function UploadPage() {
               marginTop: "4px",
             }}
           >
-            publicar obra
+            {submitting ? "publicando..." : "publicar obra"}
           </button>
         </form>
       </main>
