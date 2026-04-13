@@ -39,7 +39,7 @@ function MagmaLogo() {
   );
 }
 
-export function Navbar({ active }: { active?: "upload" | "eventos" }) {
+export function Navbar({ active }: { active?: "upload" | "eventos" | "radio" }) {
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -111,6 +111,16 @@ export function Navbar({ active }: { active?: "upload" | "eventos" }) {
 
         <div className="flex items-center gap-5">
           <Link
+            href="/radio"
+            className="text-xs"
+            style={{
+              color: active === "radio" ? "#D85A30" : "#888780",
+              fontFamily: "var(--font-space-mono), monospace",
+            }}
+          >
+            radio
+          </Link>
+          <Link
             href="/eventos"
             className="text-xs"
             style={{
@@ -134,7 +144,21 @@ export function Navbar({ active }: { active?: "upload" | "eventos" }) {
           {/* Auth area — hidden until session resolves to avoid flash */}
           {!loading && (
             profile ? (
-              /* Logged in — avatar with dropdown */
+              /* Logged in — ir en vivo + avatar with dropdown */
+              <>
+              <Link
+                href="/radio/solicitar"
+                className="text-xs"
+                style={{
+                  color: "#5DCAA5",
+                  fontFamily: "var(--font-space-mono), monospace",
+                  border: "0.5px solid #5DCAA5",
+                  padding: "4px 10px",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                ir en vivo
+              </Link>
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setDropdownOpen((o) => !o)}
@@ -187,6 +211,7 @@ export function Navbar({ active }: { active?: "upload" | "eventos" }) {
                   </div>
                 )}
               </div>
+              </>
             ) : (
               /* Logged out */
               <div className="flex items-center gap-4">
