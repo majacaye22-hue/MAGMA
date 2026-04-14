@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
+const supabase = getSupabaseClient();
 
 interface Profile {
   username: string;
@@ -39,7 +41,7 @@ function MagmaLogo() {
   );
 }
 
-export function Navbar({ active }: { active?: "upload" | "eventos" | "radio" }) {
+export function Navbar({ active }: { active?: "upload" | "eventos" | "radio" | "manifiestos" }) {
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,7 +49,8 @@ export function Navbar({ active }: { active?: "upload" | "eventos" | "radio" }) 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
+    void (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data } = await supabase
           .from("profiles")
@@ -57,10 +60,10 @@ export function Navbar({ active }: { active?: "upload" | "eventos" | "radio" }) 
         setProfile(data);
       }
       setLoading(false);
-    });
+    })();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (_event: AuthChangeEvent, session: Session | null) => {
         if (session?.user) {
           const { data } = await supabase
             .from("profiles")

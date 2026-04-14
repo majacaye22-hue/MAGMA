@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase"
+const supabase = getSupabaseClient();
 
 const inputStyle: React.CSSProperties = {
   backgroundColor: "#141412",

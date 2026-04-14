@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase"
+const supabase = getSupabaseClient();
+import { ReportModal } from "./ReportModal";
 
 export interface Comment {
   id: string;
@@ -37,17 +39,22 @@ function initials(p: Comment["profiles"]): string {
 function CommentRow({
   comment,
   isOwn,
+  currentUserId,
+  postId,
   onSave,
   onDelete,
 }: {
   comment: Comment;
   isOwn: boolean;
+  currentUserId: string | null;
+  postId: string;
   onSave: (id: string, newBody: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }) {
   const [mode, setMode] = useState<"view" | "edit" | "confirm-delete">("view");
   const [editBody, setEditBody] = useState(comment.body);
   const [saving, setSaving] = useState(false);
+  const [reporting, setReporting] = useState(false);
 
   async function handleSave() {
     const trimmed = editBody.trim();
@@ -65,6 +72,7 @@ function CommentRow({
   }
 
   return (
+    <>
     <div className="group flex gap-3">
       {/* Avatar */}
       <div
@@ -91,23 +99,37 @@ function CommentRow({
             </span>
           </div>
 
-          {/* Action buttons — only for comment author, visible on group hover */}
-          {isOwn && mode === "view" && (
+          {/* Action buttons — visible on group hover */}
+          {mode === "view" && (
             <div className="flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-              <button
-                onClick={() => { setEditBody(comment.body); setMode("edit"); }}
-                className="cursor-pointer hover:opacity-70"
-                style={{ fontSize: "10px", color: "#5F5E5A", fontFamily: mono, background: "none", border: "none", padding: 0 }}
-              >
-                editar
-              </button>
-              <button
-                onClick={() => setMode("confirm-delete")}
-                className="cursor-pointer hover:opacity-70"
-                style={{ fontSize: "10px", color: "#5F5E5A", fontFamily: mono, background: "none", border: "none", padding: 0 }}
-              >
-                eliminar
-              </button>
+              {isOwn ? (
+                <>
+                  <button
+                    onClick={() => { setEditBody(comment.body); setMode("edit"); }}
+                    className="cursor-pointer hover:opacity-70"
+                    style={{ fontSize: "10px", color: "#5F5E5A", fontFamily: mono, background: "none", border: "none", padding: 0 }}
+                  >
+                    editar
+                  </button>
+                  <button
+                    onClick={() => setMode("confirm-delete")}
+                    className="cursor-pointer hover:opacity-70"
+                    style={{ fontSize: "10px", color: "#5F5E5A", fontFamily: mono, background: "none", border: "none", padding: 0 }}
+                  >
+                    eliminar
+                  </button>
+                </>
+              ) : (
+                currentUserId && (
+                  <button
+                    onClick={() => setReporting(true)}
+                    className="cursor-pointer hover:opacity-70"
+                    style={{ fontSize: "10px", color: "#5F5E5A", fontFamily: mono, background: "none", border: "none", padding: 0 }}
+                  >
+                    reportar
+                  </button>
+                )
+              )}
             </div>
           )}
         </div>
@@ -185,6 +207,16 @@ function CommentRow({
         )}
       </div>
     </div>
+
+    {reporting && currentUserId && (
+      <ReportModal
+        commentId={comment.id}
+        postId={postId}
+        currentUserId={currentUserId}
+        onClose={() => setReporting(false)}
+      />
+    )}
+    </>
   );
 }
 
@@ -277,6 +309,8 @@ export function CommentsSection({
               key={c.id}
               comment={c}
               isOwn={c.author_id === currentUserId}
+              currentUserId={currentUserId}
+              postId={postId}
               onSave={handleSave}
               onDelete={handleDelete}
             />

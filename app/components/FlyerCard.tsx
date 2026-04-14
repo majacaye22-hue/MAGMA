@@ -41,7 +41,7 @@ export function FlyerCard({ post }: { post: Post }) {
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={post.media_url}
-          alt={post.title}
+          alt={post.title ?? ""}
           style={{ width: "100%", display: "block", objectFit: "contain" }}
           loading="lazy"
         />

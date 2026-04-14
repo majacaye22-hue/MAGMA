@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PostCard, type Post } from "./card-art";
+import { getSupabaseClient } from "@/lib/supabase"
+const supabase = getSupabaseClient();
 
-const FILTERS = ["todo", "arte", "música", "fotografía", "eventos"] as const;
+const FILTERS = ["todo", "arte", "música", "fotografía", "eventos", "manifiestos"] as const;
 type Filter = (typeof FILTERS)[number];
 
 const TYPE_MAP: Record<Filter, string | null> = {
@@ -12,10 +14,28 @@ const TYPE_MAP: Record<Filter, string | null> = {
   música: "música",
   fotografía: "fotografía",
   eventos: "evento",
+  manifiestos: "escrito",
+};
+
+const PILL_ACCENT: Record<Filter, string> = {
+  todo: "#D85A30",
+  arte: "#D85A30",
+  música: "#D85A30",
+  fotografía: "#D85A30",
+  eventos: "#D85A30",
+  manifiestos: "#7F77DD",
 };
 
 export function Feed({ posts }: { posts: Post[] }) {
   const [active, setActive] = useState<Filter>("todo");
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id ?? null);
+    })();
+  }, []);
 
   const visible = posts.filter((p) => {
     const mapped = TYPE_MAP[active];
@@ -28,6 +48,7 @@ export function Feed({ posts }: { posts: Post[] }) {
       <div className="flex flex-wrap gap-2 py-6">
         {FILTERS.map((f) => {
           const isActive = f === active;
+          const accent = PILL_ACCENT[f];
           return (
             <button
               key={f}
@@ -35,9 +56,9 @@ export function Feed({ posts }: { posts: Post[] }) {
               className="px-4 py-1.5 text-xs tracking-widest uppercase border transition-colors duration-150 cursor-pointer"
               style={{
                 fontFamily: "var(--font-space-mono), monospace",
-                borderColor: isActive ? "#D85A30" : "#2a2a28",
+                borderColor: isActive ? accent : "#2a2a28",
                 color: isActive ? "#0c0c0b" : "#888780",
-                backgroundColor: isActive ? "#D85A30" : "transparent",
+                backgroundColor: isActive ? accent : "transparent",
               }}
             >
               {f}
@@ -62,7 +83,7 @@ export function Feed({ posts }: { posts: Post[] }) {
           style={{ gridAutoRows: "280px", gridAutoFlow: "dense" }}
         >
           {visible.map((post, i) => (
-            <PostCard key={post.id} post={post} index={i} total={visible.length} />
+            <PostCard key={post.id} post={post} index={i} total={visible.length} currentUserId={currentUserId} />
           ))}
         </div>
       )}

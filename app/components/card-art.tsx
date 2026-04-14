@@ -1,4 +1,8 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
+import { ReportModal } from "./ReportModal";
 
 export type CardType = "arte" | "música" | "foto" | "evento";
 
@@ -6,10 +10,12 @@ export type CardType = "arte" | "música" | "foto" | "evento";
 
 export interface Post {
   id: string;
-  title: string;
+  title: string | null;
   body: string | null;
+  content: string | null;
   type: string;
   media_url: string | null;
+  media_base64: string | null;
   media_type: string | null;
   tags: string[] | null;
   upvotes: number;
@@ -41,6 +47,21 @@ export const TYPE_LABEL: Record<CardType, string> = {
   foto: "foto",
   evento: "evento",
 };
+
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+// ─── Flag icon ───────────────────────────────────────────────────────────────
+
+function FlagIcon() {
+  return (
+    <svg width="11" height="12" viewBox="0 0 11 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <line x1="1.5" y1="0.5" x2="1.5" y2="11.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M1.5 1.5 L9.5 3.5 L1.5 6" fill="currentColor" />
+    </svg>
+  );
+}
 
 // ─── SVG placeholder art ────────────────────────────────────────────────────
 
@@ -231,13 +252,13 @@ function EventoPlaceholder({ post }: { post: Post }) {
 function PostCardArt({ post, cardType }: { post: Post; cardType: CardType }) {
   switch (cardType) {
     case "arte":   return <ArteArt />;
-    case "música": return <MusicaArt title={post.title} artist="artista" />;
+    case "música": return <MusicaArt title={post.title ?? ""} artist="artista" />;
     case "foto":   return <FotoArt location="CDMX" />;
     case "evento": return <EventoPlaceholder post={post} />;
   }
 }
 
-function EventoHoverOverlay({ post }: { post: Post }) {
+function EventoHoverOverlay({ post, showFlag, onFlag }: { post: Post; showFlag: boolean; onFlag: () => void }) {
   const dateStr = post.event_date
     ? new Date(post.event_date).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" })
     : null;
@@ -250,7 +271,18 @@ function EventoHoverOverlay({ post }: { post: Post }) {
       className="absolute inset-0 z-20 flex flex-col justify-between p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
       style={{ background: "rgba(12,12,11,0.88)" }}
     >
-      <div /> {/* spacer */}
+      <div className="flex justify-end">
+        {showFlag && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onFlag(); }}
+            className="cursor-pointer hover:opacity-70"
+            style={{ color: "#5F5E5A", background: "none", border: "none", padding: "2px", lineHeight: 0 }}
+            title="reportar"
+          >
+            <FlagIcon />
+          </button>
+        )}
+      </div>
       <div className="flex flex-col gap-1.5">
         <p className="leading-snug" style={{ fontSize: "16px", color: "#e8e4dc", fontFamily: "var(--font-syne), sans-serif", fontWeight: 800 }}>
           {post.title}
@@ -278,14 +310,100 @@ function EventoHoverOverlay({ post }: { post: Post }) {
   );
 }
 
-export function PostCard({ post, index, total }: { post: Post; index: number; total: number }) {
+// ─── Escrito card (text-only) ────────────────────────────────────────────────
+
+function EscritoCardInner({ post, currentUserId }: { post: Post; currentUserId?: string | null }) {
+  const [reporting, setReporting] = useState(false);
+  const [colSpan] = useState<1 | 2>(1);
+  const [rowSpan] = useState<1 | 2>(1);
+
+  const preview = post.content
+    ? stripHtml(post.content).slice(0, 80)
+    : (post.body?.slice(0, 80) ?? "");
+
+  return (
+    <>
+    <Link href={`/post/${post.id}`} style={{ textDecoration: "none", display: "contents" }}>
+      <div
+        className="group relative overflow-hidden cursor-pointer flex flex-col justify-between"
+        style={{
+          backgroundColor: "#141412",
+          border: "0.5px solid #2a2a28",
+          gridColumn: `span ${colSpan}`,
+          gridRow: `span ${rowSpan}`,
+          minWidth: 0,
+          minHeight: 0,
+          padding: "16px",
+        }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <span style={{
+            fontSize: "9px",
+            color: "#7F77DD",
+            fontFamily: "var(--font-space-mono), monospace",
+            textTransform: "uppercase",
+            letterSpacing: "0.14em",
+            border: "0.5px solid #7F77DD",
+            padding: "2px 7px",
+          }}>
+            manifiesto
+          </span>
+          {currentUserId && (
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setReporting(true); }}
+              className="opacity-0 group-hover:opacity-100 cursor-pointer hover:opacity-70 transition-opacity"
+              style={{ color: "#5F5E5A", background: "none", border: "none", padding: "2px", lineHeight: 0 }}
+              title="reportar"
+            >
+              <FlagIcon />
+            </button>
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="flex flex-col gap-1.5 flex-1" style={{ padding: "12px 0 8px" }}>
+          {post.title && (
+            <p style={{ fontSize: "14px", color: "#e8e4dc", fontFamily: "var(--font-syne), sans-serif", fontWeight: 700, lineHeight: 1.2 }}>
+              {post.title}
+            </p>
+          )}
+          {preview && (
+            <p style={{ fontSize: "11px", color: "#5F5E5A", fontFamily: "var(--font-space-mono), monospace", lineHeight: 1.6 }}>
+              {preview}{preview.length >= 80 ? "…" : ""}
+            </p>
+          )}
+        </div>
+
+        {/* Footer */}
+        <span style={{ fontSize: "10px", color: "#444441", fontFamily: "var(--font-space-mono), monospace" }}>
+          @{post.profiles?.username ?? "anon"}
+        </span>
+      </div>
+    </Link>
+    {reporting && currentUserId && (
+      <ReportModal postId={post.id} currentUserId={currentUserId} onClose={() => setReporting(false)} />
+    )}
+    </>
+  );
+}
+
+export function PostCard({ post, index, total, currentUserId }: { post: Post; index: number; total: number; currentUserId?: string | null }) {
+  const [reporting, setReporting] = useState(false);
+
+  // Escrito posts use their own card layout
+  if (post.type === "escrito") {
+    return <EscritoCardInner post={post} currentUserId={currentUserId} />;
+  }
+
   // Single-card view: always render 1×1 so it sits in the top-left cell.
   // Otherwise cycle through the span pattern as normal.
   const [colSpan, baseRowSpan] = total === 1 ? [1, 1] as const : SPAN_PATTERNS[index % SPAN_PATTERNS.length];
   const cardType = postCardType(post.type);
   const isEvento = post.type === "evento";
+  const mediaSrc = post.media_url ?? post.media_base64 ?? null;
   const showImage =
-    !!post.media_url &&
+    !!mediaSrc &&
     (post.type === "arte" || post.type === "fotografía" || isEvento);
   const isGif = post.media_url?.toLowerCase().endsWith(".gif") ?? false;
 
@@ -298,8 +416,9 @@ export function PostCard({ post, index, total }: { post: Post; index: number; to
       : null;
 
   return (
-    // min-w-0 / min-h-0 prevent the grid item from ever growing to fit
-    // the image's intrinsic dimensions — the grid row/column sizes win.
+    <>
+    {/* min-w-0 / min-h-0 prevent the grid item from ever growing to fit
+        the image's intrinsic dimensions — the grid row/column sizes win. */}
     <div
       className="group relative overflow-hidden cursor-pointer"
       style={{
@@ -315,8 +434,8 @@ export function PostCard({ post, index, total }: { post: Post; index: number; to
       {showImage ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={post.media_url!}
-          alt={post.title}
+          src={mediaSrc!}
+          alt={post.title ?? ""}
           style={{
             position: "absolute",
             inset: 0,
@@ -348,16 +467,30 @@ export function PostCard({ post, index, total }: { post: Post; index: number; to
 
       {/* Hover overlay — evento gets a specialized one */}
       {isEvento ? (
-        <EventoHoverOverlay post={post} />
+        <EventoHoverOverlay
+          post={post}
+          showFlag={!!currentUserId}
+          onFlag={() => setReporting(true)}
+        />
       ) : (
         <div
           className="absolute inset-0 z-20 flex flex-col justify-between p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
           style={{ background: "rgba(12,12,11,0.85)" }}
         >
-          <div className="flex justify-end">
+          <div className="flex items-center justify-between">
             <span className="text-xs tabular-nums" style={{ color: "#D85A30", fontFamily: "var(--font-space-mono), monospace" }}>
               ↑ {post.upvotes.toLocaleString()}
             </span>
+            {currentUserId && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setReporting(true); }}
+                className="cursor-pointer hover:opacity-70"
+                style={{ color: "#5F5E5A", background: "none", border: "none", padding: "2px", lineHeight: 0 }}
+                title="reportar"
+              >
+                <FlagIcon />
+              </button>
+            )}
           </div>
           <div>
             <p
@@ -375,6 +508,15 @@ export function PostCard({ post, index, total }: { post: Post; index: number; to
         </div>
       )}
     </div>
+
+    {reporting && currentUserId && (
+      <ReportModal
+        postId={post.id}
+        currentUserId={currentUserId}
+        onClose={() => setReporting(false)}
+      />
+    )}
+    </>
   );
 }
 

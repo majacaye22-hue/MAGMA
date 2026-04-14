@@ -113,11 +113,11 @@ function EventoView({ post, comments, currentUserId, currentProfile }: { post: P
       <AuthorHeader post={post} />
 
       {/* Flyer */}
-      {post.media_url && (
+      {(post.media_url ?? post.media_base64) && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={post.media_url}
-          alt={post.title}
+          src={(post.media_url ?? post.media_base64)!}
+          alt={post.title ?? ""}
           style={{ width: "100%", maxWidth: "600px", display: "block", margin: "0 auto 32px", border: "0.5px solid #2a2a28" }}
         />
       )}
@@ -182,6 +182,123 @@ function EventoView({ post, comments, currentUserId, currentProfile }: { post: P
   );
 }
 
+// ─── Escrito view ─────────────────────────────────────────────────────────────
+
+function EscritoView({ post, comments, currentUserId, currentProfile }: { post: Post; comments: Comment[]; currentUserId: string | null; currentProfile: CurrentProfile }) {
+  return (
+    <div className="max-w-2xl mx-auto px-6 pb-24" style={{ maxWidth: "680px" }}>
+      {/* Back */}
+      <div className="pt-8 pb-6">
+        <Link href="/manifiestos" className="text-xs tracking-widest uppercase" style={{ color: "#5F5E5A", fontFamily: mono }}>
+          ← manifiestos
+        </Link>
+      </div>
+
+      {/* Author */}
+      <AuthorHeader post={post} />
+
+      {/* Title */}
+      {post.title && (
+        <h1 style={{ fontSize: "36px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800, lineHeight: 1.1, marginBottom: "28px", letterSpacing: "-0.02em" }}>
+          {post.title}
+        </h1>
+      )}
+
+      {/* Type badge */}
+      <div style={{ marginBottom: "32px" }}>
+        <span style={{
+          fontSize: "9px",
+          color: "#7F77DD",
+          fontFamily: mono,
+          textTransform: "uppercase",
+          letterSpacing: "0.14em",
+          border: "0.5px solid #7F77DD",
+          padding: "3px 8px",
+        }}>
+          manifiesto
+        </span>
+      </div>
+
+      <div style={{ height: "0.5px", backgroundColor: "#2a2a28", marginBottom: "36px" }} />
+
+      {/* Rich content */}
+      {post.content ? (
+        <div
+          className="escrito-body"
+          dangerouslySetInnerHTML={{ __html: post.content }}
+        />
+      ) : post.body ? (
+        <p style={{ color: "#888780", fontFamily: mono, fontSize: "15px", lineHeight: 1.9, marginBottom: "24px", whiteSpace: "pre-wrap" }}>
+          {post.body}
+        </p>
+      ) : null}
+
+      <style>{`
+        .escrito-body {
+          font-family: var(--font-space-mono), monospace;
+          font-size: 15px;
+          color: #888780;
+          line-height: 1.9;
+          margin-bottom: 40px;
+          word-break: break-word;
+        }
+        .escrito-body p { margin: 0 0 16px; }
+        .escrito-body p:last-child { margin-bottom: 0; }
+        .escrito-body h2 {
+          font-family: var(--font-syne), sans-serif;
+          font-size: 22px;
+          font-weight: 800;
+          color: #e8e4dc;
+          margin: 32px 0 12px;
+          line-height: 1.2;
+          letter-spacing: -0.01em;
+        }
+        .escrito-body h3 {
+          font-family: var(--font-syne), sans-serif;
+          font-size: 17px;
+          font-weight: 700;
+          color: #e8e4dc;
+          margin: 24px 0 8px;
+          line-height: 1.2;
+        }
+        .escrito-body strong { color: #c8c4bc; font-weight: 700; }
+        .escrito-body em { color: #7a7672; }
+        .escrito-body blockquote {
+          border-left: 2px solid #7F77DD;
+          padding-left: 16px;
+          margin: 20px 0;
+          color: #5F5E5A;
+          font-style: italic;
+        }
+        .escrito-body ul {
+          padding-left: 20px;
+          list-style-type: disc;
+          margin: 12px 0;
+          color: #888780;
+        }
+        .escrito-body li { margin: 6px 0; }
+        .escrito-body hr {
+          border: none;
+          border-top: 0.5px solid #2a2a28;
+          margin: 32px 0;
+        }
+      `}</style>
+
+      {post.tags && post.tags.length > 0 && (
+        <div className="flex flex-wrap gap-2" style={{ marginBottom: "0" }}>
+          {post.tags.map((tag) => (
+            <span key={tag} style={{ padding: "2px 8px", border: "0.5px solid #2a2a28", color: "#5F5E5A", fontFamily: mono, fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <CommentsSection postId={post.id} initialComments={comments} currentUserId={currentUserId} currentProfile={currentProfile} />
+    </div>
+  );
+}
+
 // ─── Arte / foto / música view ────────────────────────────────────────────────
 
 const TYPE_ACCENT: Record<string, string> = {
@@ -207,7 +324,7 @@ function WorkView({ post, comments, currentUserId, currentProfile }: { post: Pos
       <AuthorHeader post={post} />
 
       {/* Media */}
-      {post.media_url && (
+      {(post.media_url ?? post.media_base64) && (
         <div style={{ marginBottom: "32px", border: "0.5px solid #2a2a28" }}>
           {isAudio ? (
             <div style={{ backgroundColor: "#141412", padding: "40px 24px", display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -215,11 +332,11 @@ function WorkView({ post, comments, currentUserId, currentProfile }: { post: Pos
                 {post.title}
               </p>
               {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-              <audio controls src={post.media_url} style={{ width: "100%", accentColor: "#5DCAA5" }} />
+              <audio controls src={(post.media_url ?? post.media_base64)!} style={{ width: "100%", accentColor: "#5DCAA5" }} />
             </div>
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={post.media_url} alt={post.title} style={{ width: "100%", display: "block" }} />
+            <img src={(post.media_url ?? post.media_base64)!} alt={post.title ?? ""} style={{ width: "100%", display: "block" }} />
           )}
         </div>
       )}
@@ -266,7 +383,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   const [{ data: postData }, { data: commentsData }, { data: { user } }] = await Promise.all([
     supabase
       .from("posts")
-      .select("*, profiles(username, display_name)")
+      .select("*, profiles(username, display_name), content")
       .eq("id", id)
       .single(),
     supabase
@@ -299,6 +416,8 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
       <Navbar />
       {post.type === "evento" ? (
         <EventoView post={post} comments={comments} currentUserId={currentUserId} currentProfile={currentProfile} />
+      ) : post.type === "escrito" ? (
+        <EscritoView post={post} comments={comments} currentUserId={currentUserId} currentProfile={currentProfile} />
       ) : (
         <WorkView post={post} comments={comments} currentUserId={currentUserId} currentProfile={currentProfile} />
       )}

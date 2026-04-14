@@ -1,54 +1,38 @@
 "use client";
 
 import { useState, useRef } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
+import { getSupabaseClient } from "@/lib/supabase";
 import { Navbar } from "@/app/components/navbar";
+
+const RichEditor = dynamic(
+  () => import("@/app/components/editor/RichEditor").then((m) => m.RichEditor),
+  { ssr: false, loading: () => <div style={{ minHeight: "320px", backgroundColor: "#141412", border: "0.5px solid #2a2a28" }} /> }
+);
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type WorkType = "arte" | "música" | "fotografía" | "evento";
+type WorkType = "arte" | "música" | "fotografía" | "evento" | "escrito";
 
 interface TypeOption {
   id: WorkType;
   label: string;
   description: string;
   accent: string;
-  accept: string;
+  accept: string | null;
 }
 
 const TYPE_OPTIONS: TypeOption[] = [
-  {
-    id: "arte",
-    label: "Arte visual",
-    description: "Pintura, grabado, escultura, técnica mixta",
-    accent: "#D85A30",
-    accept: "image/*",
-  },
-  {
-    id: "música",
-    label: "Música",
-    description: "Track, EP, álbum, composición, sesión",
-    accent: "#5DCAA5",
-    accept: "audio/*",
-  },
-  {
-    id: "fotografía",
-    label: "Fotografía",
-    description: "Análogo, digital, documental, retrato",
-    accent: "#378ADD",
-    accept: "image/*",
-  },
-  {
-    id: "evento",
-    label: "Evento",
-    description: "Exposición, concierto, taller, performance",
-    accent: "#EF9F27",
-    accept: "image/*",
-  },
+  { id: "arte",       label: "Arte visual",  description: "Pintura, grabado, escultura, técnica mixta",  accent: "#D85A30", accept: "image/*" },
+  { id: "música",     label: "Música",       description: "Track, EP, álbum, composición, sesión",       accent: "#5DCAA5", accept: "audio/*" },
+  { id: "fotografía", label: "Fotografía",   description: "Análogo, digital, documental, retrato",       accent: "#378ADD", accept: "image/*" },
+  { id: "evento",     label: "Evento",       description: "Exposición, concierto, taller, performance",  accent: "#EF9F27", accept: "image/*" },
+  { id: "escrito",    label: "Manifiesto",   description: "poema, ensayo, manifiesto, pensamiento",      accent: "#7F77DD", accept: null },
 ];
 
-// ─── Input styles ─────────────────────────────────────────────────────────────
+// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const inputStyle: React.CSSProperties = {
   backgroundColor: "#141412",
@@ -74,22 +58,20 @@ const labelStyle: React.CSSProperties = {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function UploadPage() {
+  const router = useRouter();
+
   const [selectedType, setSelectedType] = useState<WorkType | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [richContent, setRichContent] = useState("");
   const [tags, setTags] = useState("");
   const [location, setLocation] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [storageError, setStorageError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
   // Event-specific fields
   const [eventDate, setEventDate] = useState("");
@@ -100,137 +82,120 @@ export default function UploadPage() {
   const [price, setPrice] = useState("");
 
   const activeOption = TYPE_OPTIONS.find((t) => t.id === selectedType);
+  const isEscrito = selectedType === "escrito";
 
-  function handleFile(file: File) {
-    setStorageError(null);
+  // ── File handling ─────────────────────────────────────────────────────────
+
+  function handleFile(f: File) {
     setError(null);
-    if (file.size > MAX_FILE_SIZE) {
-      setError(`el archivo pesa ${(file.size / 1024 / 1024).toFixed(1)} MB — el máximo es 10 MB`);
-      return;
-    }
-    setSelectedFile(file);
-    setFileName(file.name);
+    setFile(f);
+    setFileName(f.name);
   }
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
     setDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleFile(file);
+    const f = e.dataTransfer.files[0];
+    if (f) handleFile(f);
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (file) handleFile(file);
+    const f = e.target.files?.[0];
+    if (f) handleFile(f);
   }
+
+  function isSubmittable() {
+    if (!selectedType) return false;
+    if (isEscrito) return richContent.trim().length > 0 && richContent !== "<p></p>";
+    return title.trim().length > 0;
+  }
+
+  // ── Submit ────────────────────────────────────────────────────────────────
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!selectedType || !title.trim()) return;
-
-    setSubmitting(true);
-    setError(null);
-    setStorageError(null);
+    e.preventDefault()
+    setSubmitting(true)
+    setError(null)
 
     try {
-      let media_url: string | null = null;
-      let media_type: string | null = null;
+      const supabase = getSupabaseClient()
 
-      if (selectedFile) {
-        const ext = selectedFile.name.split(".").pop();
-        const path = `${crypto.randomUUID()}.${ext}`;
-
-        setUploading(true);
-        const uploadPromise = supabase.storage.from("media").upload(path, selectedFile);
-        const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("timeout")), 30_000)
-        );
-
-        const result = await Promise.race([uploadPromise, timeoutPromise]);
-        setUploading(false);
-
-        if (result.error) {
-          setStorageError(`storage: ${result.error.message} (status ${result.error.status ?? "—"})`);
-          throw new Error("error al subir el archivo — intenta con un archivo más pequeño");
-        }
-
-        const { data: urlData } = supabase.storage.from("media").getPublicUrl(path);
-        media_url = urlData.publicUrl;
-        media_type = selectedFile.type;
+      // Get session
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        setError('debes iniciar sesión')
+        setSubmitting(false)
+        return
       }
 
-      const { data: { user } } = await supabase.auth.getUser();
+      let mediaUrl = null
 
-      // Build event_date timestamp from separate date + time inputs
-      let event_date: string | null = null;
-      if (selectedType === "evento" && eventDate) {
-        event_date = eventTime
-          ? new Date(`${eventDate}T${eventTime}`).toISOString()
-          : new Date(eventDate).toISOString();
+      // Only upload file if one is selected
+      if (file) {
+        const formData = new FormData()
+        formData.append('file', file)
+
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData
+        })
+
+        const { url, error: uploadError } = await response.json()
+        if (uploadError) throw new Error(uploadError)
+        mediaUrl = url
       }
 
-      const { error: insertError } = await supabase.from("posts").insert({
-        title: title.trim(),
-        body: description.trim() || null,
-        type: selectedType,
-        media_url,
-        media_type,
-        tags: tags ? tags.split(",").map((t) => t.trim()).filter(Boolean) : null,
-        author_id: user?.id ?? null,
-        ...(selectedType === "evento" && {
-          event_date,
-          venue: venue.trim() || null,
-          address: address.trim() || null,
-          is_free: isFree,
-          price: !isFree && price.trim() ? price.trim() : null,
-        }),
-      });
-      if (insertError) throw insertError;
+      // Insert post
+      const { error: insertError } = await supabase
+        .from('posts')
+        .insert({
+          title: title || null,
+          body: description || null,
+          type: selectedType,
+          media_url: mediaUrl,
+          tags: tags ? tags.split(',').map(t => t.trim()) : [],
+          author_id: session.user.id,
+          event_date: eventDate && eventTime ? `${eventDate}T${eventTime}` : null,
+          venue: venue || null,
+          address: address || null,
+          is_free: isFree
+        })
 
-      setSuccess(true);
-    } catch (err) {
-      setUploading(false);
-      if (err instanceof Error && err.message === "timeout") {
-        setError("error al subir el archivo — intenta con un archivo más pequeño");
-      } else {
-        setError(err instanceof Error ? err.message : "error al publicar");
+      if (insertError) {
+        setError(`insert error: ${insertError.message}`)
+        setSubmitting(false)
+        return
       }
-    } finally {
-      setSubmitting(false);
+
+      // Success
+      router.push('/')
+
+    } catch (err: unknown) {
+      setError(`error: ${err instanceof Error ? err.message : String(err)}`)
+      setSubmitting(false)
     }
   }
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#0c0c0b" }}>
       <Navbar active="upload" />
 
       <main className="max-w-2xl mx-auto px-6 pb-24">
-        {/* Page header */}
+        {/* Header */}
         <div className="pt-10 pb-8 flex items-center gap-4">
           <Link
             href="/"
             className="flex items-center justify-center shrink-0"
-            style={{
-              width: "28px",
-              height: "28px",
-              border: "0.5px solid #2a2a28",
-              color: "#888780",
-            }}
+            style={{ width: "28px", height: "28px", border: "0.5px solid #2a2a28", color: "#888780" }}
             aria-label="Volver al feed"
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M7.5 2L3.5 6L7.5 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="square" />
             </svg>
           </Link>
-          <h1
-            style={{
-              fontSize: "22px",
-              color: "#e8e4dc",
-              fontFamily: "var(--font-syne), sans-serif",
-              fontWeight: 800,
-              lineHeight: 1,
-            }}
-          >
+          <h1 style={{ fontSize: "22px", color: "#e8e4dc", fontFamily: "var(--font-syne), sans-serif", fontWeight: 800, lineHeight: 1 }}>
             subir obra
           </h1>
         </div>
@@ -238,7 +203,7 @@ export default function UploadPage() {
         {/* Type selector */}
         <section className="mb-8">
           <p style={{ ...labelStyle, marginBottom: "12px" }}>tipo de obra</p>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(5, 1fr)" }}>
             {TYPE_OPTIONS.map((opt) => {
               const isSelected = selectedType === opt.id;
               return (
@@ -247,39 +212,15 @@ export default function UploadPage() {
                   onClick={() => setSelectedType(opt.id)}
                   className="flex flex-col items-start gap-2 p-4 text-left cursor-pointer transition-colors duration-150"
                   style={{
-                    backgroundColor: isSelected ? `${opt.accent}0d` : "#141412",
+                    backgroundColor: isSelected ? `${opt.accent}12` : "#141412",
                     border: `0.5px solid ${isSelected ? opt.accent : "#2a2a28"}`,
                   }}
                 >
-                  {/* Accent dot */}
-                  <div
-                    style={{
-                      width: "8px",
-                      height: "8px",
-                      borderRadius: "50%",
-                      backgroundColor: opt.accent,
-                      opacity: isSelected ? 1 : 0.35,
-                    }}
-                  />
-                  <span
-                    style={{
-                      fontSize: "13px",
-                      fontFamily: "var(--font-syne), sans-serif",
-                      fontWeight: 700,
-                      color: isSelected ? opt.accent : "#e8e4dc",
-                      lineHeight: 1.1,
-                    }}
-                  >
+                  <div style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: opt.accent, opacity: isSelected ? 1 : 0.35 }} />
+                  <span style={{ fontSize: "13px", fontFamily: "var(--font-syne), sans-serif", fontWeight: 700, color: isSelected ? opt.accent : "#e8e4dc", lineHeight: 1.1 }}>
                     {opt.label}
                   </span>
-                  <span
-                    style={{
-                      fontSize: "9.5px",
-                      fontFamily: "var(--font-space-mono), monospace",
-                      color: "#5F5E5A",
-                      lineHeight: 1.4,
-                    }}
-                  >
+                  <span style={{ fontSize: "9.5px", fontFamily: "var(--font-space-mono), monospace", color: "#5F5E5A", lineHeight: 1.4 }}>
                     {opt.description}
                   </span>
                 </button>
@@ -289,108 +230,111 @@ export default function UploadPage() {
         </section>
 
         {/* Form */}
-        <form
-          onSubmit={handleSubmit}
-          className="flex flex-col gap-6"
-        >
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+
           {/* Título */}
           <div>
-            <label style={labelStyle}>Título</label>
+            <label style={labelStyle}>
+              Título{isEscrito && <span style={{ color: "#444441" }}> — opcional</span>}
+            </label>
             <input
               type="text"
-              placeholder="nombre de la obra"
+              placeholder={isEscrito ? "sin título" : "nombre de la obra"}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              required
+              required={!isEscrito}
               style={inputStyle}
               className="focus:outline-none"
             />
           </div>
 
-          {/* Descripción */}
-          <div>
-            <label style={labelStyle}>Descripción</label>
-            <textarea
-              rows={3}
-              placeholder="describe el proceso, la intención, el contexto..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              style={{ ...inputStyle, resize: "vertical", lineHeight: 1.6 }}
-              className="focus:outline-none"
-            />
-          </div>
-
-          {/* Archivo */}
-          <div>
-            <label style={labelStyle}>
-              Archivo
-              {selectedType && (
-                <span style={{ color: "#444441" }}>
-                  {" "}—{" "}
-                  {activeOption?.accept === "audio/*" ? "audio (mp3, wav, flac)" : "imagen (jpg, png, gif, webp)"}
-                </span>
-              )}
-            </label>
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={() => fileInputRef.current?.click()}
-              onKeyDown={(e) => e.key === "Enter" && fileInputRef.current?.click()}
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={handleDrop}
-              className="flex flex-col items-center justify-center gap-3 cursor-pointer transition-colors duration-150"
-              style={{
-                minHeight: "140px",
-                border: `1px dashed ${dragOver ? (activeOption?.accent ?? "#D85A30") : "#2a2a28"}`,
-                backgroundColor: dragOver ? "rgba(255,255,255,0.02)" : "#141412",
-              }}
-            >
-              {fileName ? (
-                <>
-                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M3 9.5L7 13.5L15 5.5" stroke="#5DCAA5" strokeWidth="1.5" strokeLinecap="square" />
-                  </svg>
-                  <span style={{ fontSize: "11px", color: "#888780", fontFamily: "var(--font-space-mono), monospace" }}>
-                    {fileName}
-                  </span>
-                  <span
-                    style={{ fontSize: "9px", color: "#444441", fontFamily: "var(--font-space-mono), monospace", textDecoration: "underline" }}
-                  >
-                    cambiar archivo
-                  </span>
-                </>
-              ) : (
-                <>
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M10 13V4M10 4L6.5 7.5M10 4L13.5 7.5" stroke="#444441" strokeWidth="1.2" strokeLinecap="square" />
-                    <path d="M3 14V16.5H17V14" stroke="#444441" strokeWidth="1.2" strokeLinecap="square" />
-                  </svg>
-                  <span style={{ fontSize: "11px", color: "#5F5E5A", fontFamily: "var(--font-space-mono), monospace" }}>
-                    arrastra o haz clic para subir
-                  </span>
-                </>
-              )}
+          {/* Rich text — escrito only */}
+          {isEscrito && (
+            <div>
+              <label style={labelStyle}>Contenido</label>
+              <RichEditor value={richContent} onChange={setRichContent} minHeight={360} />
             </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept={activeOption?.accept ?? "image/*,audio/*"}
-              onChange={handleFileChange}
-              className="hidden"
-              aria-hidden
-            />
-          </div>
+          )}
+
+          {/* Descripción */}
+          {!isEscrito && (
+            <div>
+              <label style={labelStyle}>Descripción</label>
+              <textarea
+                rows={3}
+                placeholder="describe el proceso, la intención, el contexto..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                style={{ ...inputStyle, resize: "vertical", lineHeight: 1.6 }}
+                className="focus:outline-none"
+              />
+            </div>
+          )}
+
+          {/* File upload */}
+          {!isEscrito && (
+            <div>
+              <label style={labelStyle}>
+                Archivo
+                {selectedType && (
+                  <span style={{ color: "#444441" }}>
+                    {" "}—{" "}
+                    {activeOption?.accept === "audio/*" ? "audio (mp3, wav, flac)" : "imagen (jpg, png, gif, webp)"}
+                  </span>
+                )}
+              </label>
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => fileInputRef.current?.click()}
+                onKeyDown={(e) => e.key === "Enter" && fileInputRef.current?.click()}
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+                className="flex flex-col items-center justify-center gap-3 cursor-pointer transition-colors duration-150"
+                style={{
+                  minHeight: "140px",
+                  border: `1px dashed ${dragOver ? (activeOption?.accent ?? "#D85A30") : "#2a2a28"}`,
+                  backgroundColor: dragOver ? "rgba(255,255,255,0.02)" : "#141412",
+                }}
+              >
+                {fileName ? (
+                  <>
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M3 9.5L7 13.5L15 5.5" stroke="#5DCAA5" strokeWidth="1.5" strokeLinecap="square" />
+                    </svg>
+                    <span style={{ fontSize: "11px", color: "#888780", fontFamily: "var(--font-space-mono), monospace" }}>{fileName}</span>
+                    <span style={{ fontSize: "9px", color: "#444441", fontFamily: "var(--font-space-mono), monospace", textDecoration: "underline" }}>cambiar archivo</span>
+                  </>
+                ) : (
+                  <>
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M10 13V4M10 4L6.5 7.5M10 4L13.5 7.5" stroke="#444441" strokeWidth="1.2" strokeLinecap="square" />
+                      <path d="M3 14V16.5H17V14" stroke="#444441" strokeWidth="1.2" strokeLinecap="square" />
+                    </svg>
+                    <span style={{ fontSize: "11px", color: "#5F5E5A", fontFamily: "var(--font-space-mono), monospace" }}>
+                      arrastra o haz clic para subir
+                    </span>
+                  </>
+                )}
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={activeOption?.accept ?? "image/*,audio/*"}
+                onChange={handleFileChange}
+                className="hidden"
+                aria-hidden
+              />
+            </div>
+          )}
 
           {/* Tags */}
           <div>
-            <label style={labelStyle}>
-              Tags{" "}
-              <span style={{ color: "#444441" }}>separados por coma</span>
-            </label>
+            <label style={labelStyle}>Tags <span style={{ color: "#444441" }}>separados por coma</span></label>
             <input
               type="text"
-              placeholder="grabado, tepito, linóleo, político..."
+              placeholder={isEscrito ? "poema, ciudad, noche, amor..." : "grabado, tepito, linóleo, político..."}
               value={tags}
               onChange={(e) => setTags(e.target.value)}
               style={inputStyle}
@@ -399,174 +343,92 @@ export default function UploadPage() {
           </div>
 
           {/* Colonia */}
-          <div>
-            <label style={labelStyle}>Colonia / ubicación</label>
-            <input
-              type="text"
-              placeholder="ej. Tepito, CDMX"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              style={inputStyle}
-              className="focus:outline-none"
-            />
-          </div>
-
-          {/* Evento-specific fields */}
-          {selectedType === "evento" && (
-            <>
-              <div
-                style={{
-                  borderTop: "0.5px solid #2a2a28",
-                  paddingTop: "24px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "24px",
-                }}
-              >
-                <p style={{ ...labelStyle, marginBottom: 0, color: "#EF9F27" }}>
-                  detalles del evento
-                </p>
-
-                {/* Fecha + Hora */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                  <div>
-                    <label style={labelStyle}>Fecha del evento</label>
-                    <input
-                      type="date"
-                      value={eventDate}
-                      onChange={(e) => setEventDate(e.target.value)}
-                      style={{ ...inputStyle, colorScheme: "dark" }}
-                      className="focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Hora</label>
-                    <input
-                      type="time"
-                      value={eventTime}
-                      onChange={(e) => setEventTime(e.target.value)}
-                      style={{ ...inputStyle, colorScheme: "dark" }}
-                      className="focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Venue */}
-                <div>
-                  <label style={labelStyle}>Lugar / venue</label>
-                  <input
-                    type="text"
-                    placeholder="ej. Foro Indie Rocks!"
-                    value={venue}
-                    onChange={(e) => setVenue(e.target.value)}
-                    style={inputStyle}
-                    className="focus:outline-none"
-                  />
-                </div>
-
-                {/* Dirección */}
-                <div>
-                  <label style={labelStyle}>Dirección</label>
-                  <input
-                    type="text"
-                    placeholder="ej. Av. Álvaro Obregón 65, Roma Norte"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    style={inputStyle}
-                    className="focus:outline-none"
-                  />
-                </div>
-
-                {/* Entrada libre toggle */}
-                <div>
-                  <label style={labelStyle}>Entrada</label>
-                  <div style={{ display: "flex", gap: "8px" }}>
-                    {[true, false].map((val) => (
-                      <button
-                        key={String(val)}
-                        type="button"
-                        onClick={() => setIsFree(val)}
-                        className="px-4 py-2 text-xs tracking-widest uppercase cursor-pointer transition-colors duration-150"
-                        style={{
-                          border: `0.5px solid ${isFree === val ? "#EF9F27" : "#2a2a28"}`,
-                          backgroundColor: isFree === val ? "#EF9F270d" : "#141412",
-                          color: isFree === val ? "#EF9F27" : "#888780",
-                          fontFamily: "var(--font-space-mono), monospace",
-                        }}
-                      >
-                        {val ? "libre" : "de paga"}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Precio — only if not free */}
-                {!isFree && (
-                  <div>
-                    <label style={labelStyle}>Precio</label>
-                    <input
-                      type="text"
-                      placeholder="ej. 150"
-                      value={price}
-                      onChange={(e) => setPrice(e.target.value)}
-                      style={inputStyle}
-                      className="focus:outline-none"
-                    />
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-
-          {/* Upload progress */}
-          {uploading && (
+          {!isEscrito && (
             <div>
-              <p style={{ fontSize: "11px", color: "#5DCAA5", fontFamily: "var(--font-space-mono), monospace", marginBottom: "8px" }}>
-                subiendo archivo...
-              </p>
-              <div style={{ height: "2px", backgroundColor: "#2a2a28", width: "100%" }}>
-                <div
-                  style={{ height: "2px", backgroundColor: "#5DCAA5", width: "100%", opacity: 0.7 }}
-                  className="animate-pulse"
-                />
-              </div>
+              <label style={labelStyle}>Colonia / ubicación</label>
+              <input
+                type="text"
+                placeholder="ej. Tepito, CDMX"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                style={inputStyle}
+                className="focus:outline-none"
+              />
             </div>
           )}
 
-          {/* Error */}
+          {/* Evento fields */}
+          {selectedType === "evento" && (
+            <div style={{ borderTop: "0.5px solid #2a2a28", paddingTop: "24px", display: "flex", flexDirection: "column", gap: "24px" }}>
+              <p style={{ ...labelStyle, marginBottom: 0, color: "#EF9F27" }}>detalles del evento</p>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                <div>
+                  <label style={labelStyle}>Fecha del evento</label>
+                  <input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} style={{ ...inputStyle, colorScheme: "dark" }} className="focus:outline-none" />
+                </div>
+                <div>
+                  <label style={labelStyle}>Hora</label>
+                  <input type="time" value={eventTime} onChange={(e) => setEventTime(e.target.value)} style={{ ...inputStyle, colorScheme: "dark" }} className="focus:outline-none" />
+                </div>
+              </div>
+
+              <div>
+                <label style={labelStyle}>Lugar / venue</label>
+                <input type="text" placeholder="ej. Foro Indie Rocks!" value={venue} onChange={(e) => setVenue(e.target.value)} style={inputStyle} className="focus:outline-none" />
+              </div>
+              <div>
+                <label style={labelStyle}>Dirección</label>
+                <input type="text" placeholder="ej. Av. Álvaro Obregón 65, Roma Norte" value={address} onChange={(e) => setAddress(e.target.value)} style={inputStyle} className="focus:outline-none" />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Entrada</label>
+                <div style={{ display: "flex", gap: "8px" }}>
+                  {([true, false] as const).map((val) => (
+                    <button
+                      key={String(val)} type="button" onClick={() => setIsFree(val)}
+                      className="px-4 py-2 text-xs tracking-widest uppercase cursor-pointer"
+                      style={{
+                        border: `0.5px solid ${isFree === val ? "#EF9F27" : "#2a2a28"}`,
+                        backgroundColor: isFree === val ? "#EF9F270d" : "#141412",
+                        color: isFree === val ? "#EF9F27" : "#888780",
+                        fontFamily: "var(--font-space-mono), monospace",
+                      }}
+                    >
+                      {val ? "libre" : "de paga"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {!isFree && (
+                <div>
+                  <label style={labelStyle}>Precio</label>
+                  <input type="text" placeholder="ej. 150" value={price} onChange={(e) => setPrice(e.target.value)} style={inputStyle} className="focus:outline-none" />
+                </div>
+              )}
+            </div>
+          )}
+
           {error && (
             <p style={{ fontSize: "11px", color: "#D85A30", fontFamily: "var(--font-space-mono), monospace" }}>
               {error}
             </p>
           )}
 
-          {/* Storage debug error */}
-          {storageError && (
-            <p style={{ fontSize: "10px", color: "#444441", fontFamily: "var(--font-space-mono), monospace", wordBreak: "break-all" }}>
-              {storageError}
-            </p>
-          )}
-
-          {/* Success */}
-          {success && (
-            <p style={{ fontSize: "11px", color: "#5DCAA5", fontFamily: "var(--font-space-mono), monospace" }}>
-              obra publicada con éxito
-            </p>
-          )}
-
-          {/* Submit */}
           <button
             type="submit"
-            disabled={submitting || !selectedType || !title.trim()}
+            disabled={submitting || !isSubmittable()}
             className="w-full py-3 text-sm tracking-widest uppercase cursor-pointer transition-opacity duration-150 hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
-              backgroundColor: "#D85A30",
+              backgroundColor: isEscrito ? "#7F77DD" : "#D85A30",
               color: "#0c0c0b",
               fontFamily: "var(--font-space-mono), monospace",
               marginTop: "4px",
             }}
           >
-            {submitting ? "publicando..." : "publicar obra"}
+            {submitting ? "publicando..." : isEscrito ? "publicar manifiesto" : "publicar obra"}
           </button>
         </form>
       </main>

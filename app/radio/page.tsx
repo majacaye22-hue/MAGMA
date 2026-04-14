@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase"
+const supabase = getSupabaseClient();
 import { Navbar } from "@/app/components/navbar";
 
 const mono = "var(--font-space-mono), monospace";
@@ -279,13 +280,13 @@ function Schedule({ isLive }: { isLive: boolean }) {
                   onClick={() => router.push(`/radio/solicitar?time=${encodeURIComponent(slot.time)}`)}
                   style={{
                     fontSize: "9px",
-                    color: accent,
+                    color: "#5DCAA5",
                     fontFamily: mono,
                     textTransform: "uppercase",
                     letterSpacing: "0.12em",
-                    border: `0.5px solid ${accent}`,
+                    border: "0.5px solid #0F6E56",
+                    backgroundColor: "#0d1a14",
                     padding: "3px 8px",
-                    background: "none",
                     cursor: "pointer",
                     whiteSpace: "nowrap",
                   }}
@@ -293,20 +294,37 @@ function Schedule({ isLive }: { isLive: boolean }) {
                 >
                   solicitar
                 </button>
-              ) : (
+              ) : slot.status === "en vivo" ? (
                 <span
                   style={{
                     fontSize: "9px",
-                    color: active ? accent : "#444441",
+                    color: "#D85A30",
                     fontFamily: mono,
                     textTransform: "uppercase",
                     letterSpacing: "0.12em",
-                    border: `0.5px solid ${active ? accent : "#2a2a28"}`,
+                    border: "0.5px solid #D85A30",
+                    backgroundColor: "#1a1012",
                     padding: "3px 8px",
                     whiteSpace: "nowrap",
                   }}
                 >
-                  {slot.status}
+                  en vivo
+                </span>
+              ) : (
+                <span
+                  style={{
+                    fontSize: "9px",
+                    color: "#EF9F27",
+                    fontFamily: mono,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.12em",
+                    border: "0.5px solid #854F0B",
+                    backgroundColor: "#16120e",
+                    padding: "3px 8px",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  próximo
                 </span>
               )}
             </div>
@@ -332,8 +350,8 @@ function LiveChat({ currentUserId }: { currentUserId: string | null }) {
       .select("*, profiles(username, display_name)")
       .order("created_at", { ascending: true })
       .limit(100)
-      .then(({ data }) => {
-        if (data) setMessages(data as ChatMessage[]);
+      .then((res: { data: ChatMessage[] | null }) => {
+        if (res.data) setMessages(res.data);
       });
 
     // Realtime subscription
@@ -342,7 +360,7 @@ function LiveChat({ currentUserId }: { currentUserId: string | null }) {
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "radio_chat" },
-        async (payload) => {
+        async (payload: { new: { id: string } }) => {
           const { data } = await supabase
             .from("radio_chat")
             .select("*, profiles(username, display_name)")
@@ -475,19 +493,14 @@ export default function RadioPage() {
 
   useEffect(() => {
     // Fetch radio settings
-    supabase
-      .from("radio_settings")
-      .select("*")
-      .single()
-      .then(({ data }) => {
-        if (data) setSettings(data as RadioSettings);
-        setLoadingSettings(false);
-      });
+    void (async () => {
+      const { data } = await supabase.from("radio_settings").select("*").single();
+      if (data) setSettings(data as RadioSettings);
+      setLoadingSettings(false);
 
-    // Auth
-    supabase.auth.getUser().then(({ data: { user } }) => {
+      const { data: { user } } = await supabase.auth.getUser();
       setCurrentUserId(user?.id ?? null);
-    });
+    })();
   }, []);
 
   const isLive = settings?.is_live ?? false;

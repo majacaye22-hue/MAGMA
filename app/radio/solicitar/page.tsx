@@ -3,7 +3,8 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase"
+const supabase = getSupabaseClient();
 import { Navbar } from "@/app/components/navbar";
 
 const mono = "var(--font-space-mono), monospace";
@@ -29,7 +30,8 @@ function SolicitarForm() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
+    void (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       setCurrentUserId(user.id);
       const { data } = await supabase
@@ -38,7 +40,7 @@ function SolicitarForm() {
         .eq("id", user.id)
         .single();
       if (data) setUsername(data.username);
-    });
+    })();
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
