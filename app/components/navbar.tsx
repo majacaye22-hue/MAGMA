@@ -46,6 +46,7 @@ export function Navbar({ active }: { active?: "upload" | "eventos" | "radio" | "
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -58,6 +59,7 @@ export function Navbar({ active }: { active?: "upload" | "eventos" | "radio" | "
           .eq("id", user.id)
           .single();
         setProfile(data);
+        void fetchUnread(user.id);
       }
       setLoading(false);
     })();
@@ -71,8 +73,10 @@ export function Navbar({ active }: { active?: "upload" | "eventos" | "radio" | "
             .eq("id", session.user.id)
             .single();
           setProfile(data);
+          void fetchUnread(session.user.id);
         } else {
           setProfile(null);
+          setUnreadCount(0);
         }
         setLoading(false);
       }
@@ -80,6 +84,26 @@ export function Navbar({ active }: { active?: "upload" | "eventos" | "radio" | "
 
     return () => subscription.unsubscribe();
   }, []);
+
+  async function fetchUnread(uid: string) {
+    // Get conversations for this user
+    const { data: convos } = await supabase
+      .from("conversations")
+      .select("id")
+      .or(`participant_1.eq.${uid},participant_2.eq.${uid}`);
+
+    if (!convos || convos.length === 0) return;
+
+    const ids = convos.map((c: { id: string }) => c.id);
+    const { count } = await supabase
+      .from("messages")
+      .select("id", { count: "exact", head: true })
+      .in("conversation_id", ids)
+      .eq("read", false)
+      .neq("sender_id", uid);
+
+    setUnreadCount(count ?? 0);
+  }
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -195,6 +219,22 @@ export function Navbar({ active }: { active?: "upload" | "eventos" | "radio" | "
                       style={{ color: "#e8e4dc", fontFamily: "var(--font-space-mono), monospace" }}
                     >
                       mi perfil
+                    </Link>
+                    <Link
+                      href="/mensajes"
+                      onClick={() => setDropdownOpen(false)}
+                      className="px-4 py-3 text-xs hover:bg-[#1e1e1b] transition-colors border-t flex items-center justify-between"
+                      style={{ color: "#e8e4dc", fontFamily: "var(--font-space-mono), monospace", borderColor: "#2a2a28" }}
+                    >
+                      mensajes
+                      {unreadCount > 0 && (
+                        <span
+                          className="flex items-center justify-center text-[9px] font-bold"
+                          style={{ minWidth: "16px", height: "16px", borderRadius: "2px", backgroundColor: "#D85A30", color: "#0c0c0b", padding: "0 4px" }}
+                        >
+                          {unreadCount > 99 ? "99+" : unreadCount}
+                        </span>
+                      )}
                     </Link>
                     <Link
                       href="/upload"

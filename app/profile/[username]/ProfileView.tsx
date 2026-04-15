@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { getSupabaseClient } from "@/lib/supabase";
 import type { Post } from "@/app/components/card-art";
 
 type Tab = "obras" | "eventos" | "manifiestos";
@@ -228,7 +230,41 @@ export function ProfileView({
   isOwnProfile: boolean;
   currentUserId: string | null;
 }) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("obras");
+  const [messagingLoading, setMessagingLoading] = useState(false);
+
+  async function handleMessage() {
+    if (!currentUserId) { router.push("/auth/login"); return; }
+    setMessagingLoading(true);
+    const supabase = getSupabaseClient();
+
+    // Canonical order: smaller uuid is participant_1
+    const [p1, p2] = [currentUserId, profile.id].sort();
+
+    // Find existing conversation
+    const { data: existing } = await supabase
+      .from("conversations")
+      .select("id")
+      .eq("participant_1", p1)
+      .eq("participant_2", p2)
+      .single();
+
+    if (existing) {
+      router.push(`/mensajes?c=${existing.id}`);
+      return;
+    }
+
+    // Create new conversation
+    const { data: created } = await supabase
+      .from("conversations")
+      .insert({ participant_1: p1, participant_2: p2 })
+      .select("id")
+      .single();
+
+    setMessagingLoading(false);
+    if (created) router.push(`/mensajes?c=${created.id}`);
+  }
 
   // Tab filtering — covers all post types
   const obrasPosts       = posts.filter((p) => p.type === "arte" || p.type === "música" || p.type === "fotografía");
@@ -289,10 +325,12 @@ export function ProfileView({
               ) : (
                 <>
                   <button
-                    className="px-5 py-2 text-xs tracking-widest uppercase border cursor-pointer"
+                    onClick={handleMessage}
+                    disabled={messagingLoading}
+                    className="px-5 py-2 text-xs tracking-widest uppercase border cursor-pointer hover:opacity-80 disabled:opacity-50"
                     style={{ borderColor: "#2a2a28", color: "#888780", backgroundColor: "transparent", fontFamily: mono }}
                   >
-                    mensaje
+                    {messagingLoading ? "..." : "mensaje"}
                   </button>
                   <button
                     className="px-5 py-2 text-xs tracking-widest uppercase cursor-pointer"
