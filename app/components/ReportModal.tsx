@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { getSupabaseClient } from "@/lib/supabase"
-const supabase = getSupabaseClient();
+import { getSupabaseClient } from "@/lib/supabase";
 
 const mono = "var(--font-space-mono), monospace";
 const syne = "var(--font-syne), sans-serif";
@@ -25,6 +24,7 @@ interface Props {
 }
 
 export function ReportModal({ postId, commentId, currentUserId, onClose }: Props) {
+  const supabase = getSupabaseClient();
   const [reason, setReason] = useState<Reason | null>(null);
   const [details, setDetails] = useState("");
   const [submitting, setSubmitting] = useState(false);

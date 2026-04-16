@@ -87,8 +87,8 @@ function AuthorHeader({ post }: { post: Post }) {
 
 type CurrentProfile = { username: string; display_name: string | null } | null;
 
-function EventoView({ post, comments, currentUserId, currentProfile, isAuthor }: {
-  post: Post; comments: Comment[]; currentUserId: string | null; currentProfile: CurrentProfile; isAuthor: boolean;
+function EventoView({ post, comments, currentUserId, currentProfile }: {
+  post: Post; comments: Comment[]; currentUserId: string | null; currentProfile: CurrentProfile;
 }) {
   return (
     <div className="max-w-2xl mx-auto px-6 pb-24">
@@ -99,7 +99,7 @@ function EventoView({ post, comments, currentUserId, currentProfile, isAuthor }:
       </div>
 
       <AuthorHeader post={post} />
-      {isAuthor && <PostActions postId={post.id} />}
+      <PostActions postId={post.id} postAuthorId={post.author_id} />
 
       {(post.media_url ?? post.media_base64) && (
         // eslint-disable-next-line @next/next/no-img-element
@@ -164,8 +164,8 @@ function EventoView({ post, comments, currentUserId, currentProfile, isAuthor }:
 
 // ─── Escrito view ─────────────────────────────────────────────────────────────
 
-function EscritoView({ post, comments, currentUserId, currentProfile, isAuthor }: {
-  post: Post; comments: Comment[]; currentUserId: string | null; currentProfile: CurrentProfile; isAuthor: boolean;
+function EscritoView({ post, comments, currentUserId, currentProfile }: {
+  post: Post; comments: Comment[]; currentUserId: string | null; currentProfile: CurrentProfile;
 }) {
   return (
     <div className="mx-auto px-6 pb-24" style={{ maxWidth: "680px" }}>
@@ -176,7 +176,7 @@ function EscritoView({ post, comments, currentUserId, currentProfile, isAuthor }
       </div>
 
       <AuthorHeader post={post} />
-      {isAuthor && <PostActions postId={post.id} />}
+      <PostActions postId={post.id} postAuthorId={post.author_id} />
 
       {post.title && (
         <h1 style={{ fontSize: "36px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800, lineHeight: 1.1, marginBottom: "28px", letterSpacing: "-0.02em" }}>
@@ -237,8 +237,8 @@ const TYPE_ACCENT: Record<string, string> = {
   música: "#5DCAA5",
 };
 
-function WorkView({ post, comments, currentUserId, currentProfile, isAuthor }: {
-  post: Post; comments: Comment[]; currentUserId: string | null; currentProfile: CurrentProfile; isAuthor: boolean;
+function WorkView({ post, comments, currentUserId, currentProfile }: {
+  post: Post; comments: Comment[]; currentUserId: string | null; currentProfile: CurrentProfile;
 }) {
   const isAudio = post.media_type?.startsWith("audio/");
   const accent = TYPE_ACCENT[post.type] ?? "#888780";
@@ -252,7 +252,7 @@ function WorkView({ post, comments, currentUserId, currentProfile, isAuthor }: {
       </div>
 
       <AuthorHeader post={post} />
-      {isAuthor && <PostActions postId={post.id} />}
+      <PostActions postId={post.id} postAuthorId={post.author_id} />
 
       {(post.media_url ?? post.media_base64) && (
         <div style={{ marginBottom: "32px", border: "0.5px solid #2a2a28" }}>
@@ -337,7 +337,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
     currentProfile = profileData;
   }
 
-  const viewProps = { post, comments, currentUserId, currentProfile, isAuthor };
+  const viewProps = { post, comments, currentUserId, currentProfile };
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#0c0c0b" }}>

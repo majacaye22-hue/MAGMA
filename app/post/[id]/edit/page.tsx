@@ -63,6 +63,8 @@ export default function EditPostPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [postType, setPostType] = useState<PostType>("arte");
   const [existingMediaUrl, setExistingMediaUrl] = useState<string | null>(null);
 
@@ -70,6 +72,7 @@ export default function EditPostPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [richContent, setRichContent] = useState("");
+  const richContentRef = useRef("");
   const [tags, setTags] = useState("");
   const [location, setLocation] = useState("");
   const [eventDate, setEventDate] = useState("");
@@ -89,11 +92,13 @@ export default function EditPostPage() {
     void (async () => {
       const supabase = getSupabaseClient();
 
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         router.push("/auth/login");
         return;
       }
+      setUserId(session.user.id);
+      setAccessToken(session.access_token);
 
       const { data: post } = await supabase
         .from("posts")
@@ -101,7 +106,7 @@ export default function EditPostPage() {
         .eq("id", id)
         .single();
 
-      if (!post || post.author_id !== user.id) {
+      if (!post || post.author_id !== session.user.id) {
         router.push(`/post/${id}`);
         return;
       }
@@ -111,6 +116,7 @@ export default function EditPostPage() {
       setTitle(p.title ?? "");
       setDescription(p.body ?? "");
       setRichContent(p.content ?? "");
+      richContentRef.current = p.content ?? "";
       setTags(p.tags ? p.tags.join(", ") : "");
       setExistingMediaUrl(p.media_url);
 
@@ -146,9 +152,7 @@ export default function EditPostPage() {
     setError(null);
 
     try {
-      const supabase = getSupabaseClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { setError("debes iniciar sesión"); setSaving(false); return; }
+      if (!userId || !accessToken) { setError("debes iniciar sesión"); setSaving(false); return; }
 
       let mediaUrl = existingMediaUrl;
 
@@ -173,7 +177,7 @@ export default function EditPostPage() {
       const updatePayload: Record<string, unknown> = {
         title: title.trim() || null,
         body: postType !== "escrito" ? (description.trim() || null) : null,
-        content: postType === "escrito" ? richContent : null,
+        content: postType === "escrito" ? richContentRef.current : null,
         media_url: mediaUrl,
         tags: tags ? tags.split(",").map((t) => t.trim()).filter(Boolean) : null,
       };
@@ -186,17 +190,33 @@ export default function EditPostPage() {
         updatePayload.price = !isFree && price.trim() ? price.trim() : null;
       }
 
-      const { error: updateError } = await supabase
-        .from("posts")
-        .update(updatePayload)
-        .eq("id", id)
-        .eq("author_id", session.user.id);
+      // Use direct fetch to avoid gotrue-js internal getSession() deadlock
+      const SUPABASE_URL = "https://avmztbdgyyrqccizmzsh.supabase.co";
+      const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2bXp0YmRneXlycWNjaXptenNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2NjcyNjQsImV4cCI6MjA5MTI0MzI2NH0.ELsHIm9fCTa1hGcW_GQdI_hhcwYu3VkwPTaxfilidl8";
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/posts?id=eq.${id}&author_id=eq.${userId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "apikey": SUPABASE_ANON_KEY,
+            "Authorization": `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+            "Prefer": "return=minimal",
+          },
+          body: JSON.stringify(updatePayload),
+        }
+      );
 
-      if (updateError) throw new Error(updateError.message);
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `Error ${res.status}`);
+      }
 
       router.push(`/post/${id}`);
     } catch (err) {
+      console.error("[edit] error:", err);
       setError(err instanceof Error ? err.message : "error al guardar");
+    } finally {
       setSaving(false);
     }
   }
@@ -261,7 +281,7 @@ export default function EditPostPage() {
           {isEscrito && (
             <div>
               <label style={labelStyle}>Contenido</label>
-              <RichEditor value={richContent} onChange={setRichContent} minHeight={360} />
+              <RichEditor value={richContent} onChange={(html) => { setRichContent(html); richContentRef.current = html; }} minHeight={360} />
             </div>
           )}
 

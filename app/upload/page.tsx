@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase";
 import { Navbar } from "@/app/components/navbar";
 
@@ -58,8 +58,18 @@ const labelStyle: React.CSSProperties = {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function UploadPage() {
-  const router = useRouter();
+  return (
+    <Suspense fallback={<div className="min-h-screen" style={{ backgroundColor: "#0c0c0b" }} />}>
+      <UploadPageInner />
+    </Suspense>
+  );
+}
 
+function UploadPageInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const [userId, setUserId] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<WorkType | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -80,6 +90,19 @@ export default function UploadPage() {
   const [address, setAddress] = useState("");
   const [isFree, setIsFree] = useState(true);
   const [price, setPrice] = useState("");
+
+  useEffect(() => {
+    getSupabaseClient().auth.getUser().then(({ data: { user } }) => {
+      setUserId(user?.id ?? null);
+    });
+  }, []);
+
+  useEffect(() => {
+    const type = searchParams.get("type") as WorkType | null;
+    if (type && TYPE_OPTIONS.some((o) => o.id === type)) {
+      setSelectedType(type);
+    }
+  }, [searchParams]);
 
   const activeOption = TYPE_OPTIONS.find((t) => t.id === selectedType);
   const isEscrito = selectedType === "escrito";
@@ -120,58 +143,53 @@ export default function UploadPage() {
     try {
       const supabase = getSupabaseClient()
 
-      // Get session
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
+      if (!userId) {
         setError('debes iniciar sesión')
-        setSubmitting(false)
         return
       }
 
       let mediaUrl = null
 
-      // Only upload file if one is selected
       if (file) {
+        console.log('[upload] uploading file...')
         const formData = new FormData()
         formData.append('file', file)
-
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData
-        })
-
+        const response = await fetch('/api/upload', { method: 'POST', body: formData })
         const { url, error: uploadError } = await response.json()
+        console.log('[upload] file upload done:', { url, uploadError })
         if (uploadError) throw new Error(uploadError)
         mediaUrl = url
       }
 
-      // Insert post
-      const { error: insertError } = await supabase
+      console.log('[upload] starting insert with userId:', userId)
+      const { data, error: insertError } = await supabase
         .from('posts')
         .insert({
           title: title || null,
-          body: description || null,
+          body: isEscrito ? null : (description || null),
+          content: isEscrito ? richContent : null,
           type: selectedType,
           media_url: mediaUrl,
           tags: tags ? tags.split(',').map(t => t.trim()) : [],
-          author_id: session.user.id,
+          author_id: userId,
           event_date: eventDate && eventTime ? `${eventDate}T${eventTime}` : null,
           venue: venue || null,
           address: address || null,
-          is_free: isFree
+          is_free: isFree,
+          price: !isFree && price ? price : null,
         })
+        .select()
 
-      if (insertError) {
-        setError(`insert error: ${insertError.message}`)
-        setSubmitting(false)
-        return
-      }
+      console.log('[upload] insert result:', { data, error: insertError })
+      if (insertError) throw insertError
 
-      // Success
+      console.log('[upload] success, redirecting')
       router.push('/')
 
     } catch (err: unknown) {
-      setError(`error: ${err instanceof Error ? err.message : String(err)}`)
+      console.error('[upload] error:', err)
+      setError(err instanceof Error ? err.message : 'error al publicar')
+    } finally {
       setSubmitting(false)
     }
   }

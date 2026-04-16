@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase"
-const supabase = getSupabaseClient();
 import { Navbar } from "@/app/components/navbar";
 
 const mono = "var(--font-space-mono), monospace";
@@ -338,6 +337,7 @@ function Schedule({ isLive }: { isLive: boolean }) {
 // ─── Live chat ────────────────────────────────────────────────────────────────
 
 function LiveChat({ currentUserId }: { currentUserId: string | null }) {
+  const supabase = getSupabaseClient();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -391,7 +391,7 @@ function LiveChat({ currentUserId }: { currentUserId: string | null }) {
   return (
     <div
       className="flex flex-col"
-      style={{ backgroundColor: "#0e0e0d", border: "0.5px solid #2a2a28", height: "100%", minHeight: "480px" }}
+      style={{ backgroundColor: "#0e0e0d", border: "0.5px solid #2a2a28" }}
     >
       {/* Header */}
       <div style={{ padding: "12px 16px", borderBottom: "0.5px solid #2a2a28", display: "flex", alignItems: "center", gap: "8px" }}>
@@ -411,7 +411,7 @@ function LiveChat({ currentUserId }: { currentUserId: string | null }) {
       </div>
 
       {/* Messages */}
-      <div className="flex flex-col gap-3 overflow-y-auto flex-1" style={{ padding: "16px" }}>
+      <div className="flex flex-col gap-3 overflow-y-auto" style={{ padding: "16px", height: "400px" }}>
         {messages.length === 0 && (
           <p style={{ fontSize: "11px", color: "#444441", fontFamily: mono }}>sin mensajes todavía</p>
         )}
@@ -474,7 +474,7 @@ function LiveChat({ currentUserId }: { currentUserId: string | null }) {
           </form>
         ) : (
           <p style={{ fontSize: "11px", color: "#5F5E5A", fontFamily: mono }}>
-            <Link href="/auth/login" style={{ color: "#888780", textDecoration: "underline" }}>entra</Link>
+            <Link href="/auth/login?redirectTo=/radio" style={{ color: "#888780", textDecoration: "underline" }}>entra</Link>
             {" "}para chatear
           </p>
         )}
@@ -486,6 +486,7 @@ function LiveChat({ currentUserId }: { currentUserId: string | null }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function RadioPage() {
+  const supabase = getSupabaseClient();
   const [settings, setSettings] = useState<RadioSettings | null>(null);
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [listeners] = useState(47);

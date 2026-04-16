@@ -1,21 +1,32 @@
-'use client'
-import { createBrowserClient } from '@supabase/ssr'
+import { createClient } from '@supabase/supabase-js'
 
-// Singleton — one client instance for the entire app.
-// Multiple instances fight over the auth token lock, causing
-// "Lock was released because another request stole it" errors.
-let client: ReturnType<typeof createBrowserClient> | null = null
+const SUPABASE_URL = 'https://avmztbdgyyrqccizmzsh.supabase.co'
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2bXp0YmRneXlycWNjaXptenNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2NjcyNjQsImV4cCI6MjA5MTI0MzI2NH0.ELsHIm9fCTa1hGcW_GQdI_hhcwYu3VkwPTaxfilidl8'
 
-export function getSupabaseClient(): ReturnType<typeof createBrowserClient> {
-  if (!client) {
-    client = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-  }
-  return client!
+declare global { var _supabaseClient: ReturnType<typeof createClient> | undefined }
+
+// Simple mutex: queues concurrent auth operations instead of running them in
+// parallel (which causes refresh-token rotation conflicts) or deadlocking
+// (which happened with navigator.locks under Turbopack hot-reload).
+function makeLock() {
+  let queue = Promise.resolve();
+  return (_name: string, _timeout: number, fn: () => Promise<unknown>) => {
+    const next = queue.then(() => fn());
+    queue = next.then(() => {}, () => {});
+    return next;
+  };
 }
 
-// Convenience alias so existing code can migrate incrementally.
-// Do not use in new code — call getSupabaseClient() directly.
-export const supabase = getSupabaseClient()
+export function getSupabaseClient() {
+  if (!globalThis._supabaseClient) {
+    globalThis._supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        lock: makeLock(),
+      },
+    })
+  }
+  return globalThis._supabaseClient
+}

@@ -106,6 +106,7 @@ interface Props {
 
 export function RichEditor({ value, onChange, minHeight = 320 }: Props) {
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit.configure({
         bulletList: { keepMarks: true },

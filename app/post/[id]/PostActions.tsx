@@ -1,16 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase";
 
 const mono = "var(--font-space-mono), monospace";
 
-export function PostActions({ postId }: { postId: string }) {
+export function PostActions({ postId, postAuthorId }: { postId: string; postAuthorId: string | null }) {
   const router = useRouter();
+  const [isAuthor, setIsAuthor] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    getSupabaseClient().auth.getUser().then(({ data: { user } }) => {
+      setIsAuthor(!!user && user.id === postAuthorId);
+    });
+  }, [postAuthorId]);
 
   async function handleDelete() {
     setDeleting(true);
@@ -19,6 +26,8 @@ export function PostActions({ postId }: { postId: string }) {
     router.push("/");
     router.refresh();
   }
+
+  if (!isAuthor) return null;
 
   return (
     <div className="flex items-center gap-4" style={{ marginBottom: "24px" }}>

@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { getSupabaseClient } from "@/lib/supabase"
-const supabase = getSupabaseClient();
+import { getSupabaseClient } from "@/lib/supabase";
 import { ReportModal } from "./ReportModal";
 
 export interface Comment {
@@ -233,6 +232,7 @@ export function CommentsSection({
   currentUserId: string | null;
   currentProfile: { username: string; display_name: string | null } | null;
 }) {
+  const supabase = getSupabaseClient();
   const [comments, setComments] = useState<Comment[]>(initialComments);
   const [body, setBody] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -241,14 +241,23 @@ export function CommentsSection({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = body.trim();
-    if (!trimmed || submitting || !currentUserId) return;
+    if (!trimmed || submitting) return;
 
     setSubmitting(true);
     setError(null);
 
+    // Get the client-side user to ensure the auth token is sent with the request
+    const { data: { user } } = await supabase.auth.getUser();
+    const uid = user?.id ?? currentUserId;
+    if (!uid) {
+      setError("debes iniciar sesión");
+      setSubmitting(false);
+      return;
+    }
+
     const { error: insertError } = await supabase
       .from("comments")
-      .insert({ post_id: postId, author_id: currentUserId, body: trimmed });
+      .insert({ post_id: postId, author_id: uid, body: trimmed });
 
     if (insertError) {
       setError(`${insertError.message} (code: ${insertError.code})`);
@@ -262,7 +271,7 @@ export function CommentsSection({
         id: crypto.randomUUID(),
         body: trimmed,
         created_at: new Date().toISOString(),
-        author_id: currentUserId,
+        author_id: uid,
         profiles: currentProfile,
       },
     ]);

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase"
 const supabase = getSupabaseClient();
 
@@ -44,8 +44,9 @@ function MagmaLogo() {
   );
 }
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -64,7 +65,8 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/");
+    const redirectTo = searchParams.get("redirectTo") ?? "/";
+    router.push(redirectTo);
     router.refresh();
   }
 
@@ -153,5 +155,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: "100vh", backgroundColor: "#0c0c0b" }} />}>
+      <LoginForm />
+    </Suspense>
   );
 }

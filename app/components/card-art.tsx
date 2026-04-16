@@ -314,8 +314,6 @@ function EventoHoverOverlay({ post, showFlag, onFlag }: { post: Post; showFlag: 
 
 function EscritoCardInner({ post, currentUserId }: { post: Post; currentUserId?: string | null }) {
   const [reporting, setReporting] = useState(false);
-  const [colSpan] = useState<1 | 2>(1);
-  const [rowSpan] = useState<1 | 2>(1);
 
   const preview = post.content
     ? stripHtml(post.content).slice(0, 80)
@@ -323,29 +321,23 @@ function EscritoCardInner({ post, currentUserId }: { post: Post; currentUserId?:
 
   return (
     <>
-    <Link href={`/post/${post.id}`} style={{ textDecoration: "none", display: "contents" }}>
+    <Link href={`/post/${post.id}`} style={{ textDecoration: "none", display: "block" }}>
       <div
-        className="group relative overflow-hidden cursor-pointer flex flex-col justify-between"
+        className="group relative cursor-pointer flex flex-col gap-3"
         style={{
-          backgroundColor: "#141412",
-          border: "0.5px solid #2a2a28",
-          gridColumn: `span ${colSpan}`,
-          gridRow: `span ${rowSpan}`,
-          minWidth: 0,
-          minHeight: 0,
-          padding: "16px",
+          backgroundColor: "#0e0e0d",
+          borderLeft: "2px solid #D85A30",
+          padding: "20px",
         }}
       >
-        {/* Header */}
+        {/* Tag row */}
         <div className="flex items-center justify-between">
           <span style={{
             fontSize: "9px",
-            color: "#7F77DD",
+            color: "#D85A30",
             fontFamily: "var(--font-space-mono), monospace",
             textTransform: "uppercase",
-            letterSpacing: "0.14em",
-            border: "0.5px solid #7F77DD",
-            padding: "2px 7px",
+            letterSpacing: "0.16em",
           }}>
             manifiesto
           </span>
@@ -361,22 +353,39 @@ function EscritoCardInner({ post, currentUserId }: { post: Post; currentUserId?:
           )}
         </div>
 
-        {/* Content */}
-        <div className="flex flex-col gap-1.5 flex-1" style={{ padding: "12px 0 8px" }}>
-          {post.title && (
-            <p style={{ fontSize: "14px", color: "#e8e4dc", fontFamily: "var(--font-syne), sans-serif", fontWeight: 700, lineHeight: 1.2 }}>
-              {post.title}
-            </p>
-          )}
-          {preview && (
-            <p style={{ fontSize: "11px", color: "#5F5E5A", fontFamily: "var(--font-space-mono), monospace", lineHeight: 1.6 }}>
-              {preview}{preview.length >= 80 ? "…" : ""}
-            </p>
-          )}
-        </div>
+        {/* Title */}
+        {post.title && (
+          <p style={{
+            fontSize: "17px",
+            color: "#e8e4dc",
+            fontFamily: "var(--font-syne), sans-serif",
+            fontWeight: 800,
+            lineHeight: 1.15,
+            letterSpacing: "-0.01em",
+          }}>
+            {post.title}
+          </p>
+        )}
 
-        {/* Footer */}
-        <span style={{ fontSize: "10px", color: "#444441", fontFamily: "var(--font-space-mono), monospace" }}>
+        {/* Preview */}
+        {preview && (
+          <p style={{
+            fontSize: "11px",
+            color: "#5F5E5A",
+            fontFamily: "var(--font-space-mono), monospace",
+            lineHeight: 1.7,
+          }}>
+            {preview}{preview.length >= 80 ? "…" : ""}
+          </p>
+        )}
+
+        {/* Author */}
+        <span style={{
+          fontSize: "10px",
+          color: "#2a2a28",
+          fontFamily: "var(--font-space-mono), monospace",
+          marginTop: "4px",
+        }}>
           @{post.profiles?.username ?? "anon"}
         </span>
       </div>
@@ -424,30 +433,31 @@ export function PostCard({ post, index, total, currentUserId }: { post: Post; in
       style={{
         backgroundColor: "#141412",
         border: "0.5px solid #2a2a28",
-        gridColumn: `span ${colSpan}`,
-        gridRow: `span ${rowSpan}`,
-        minWidth: 0,
-        minHeight: 0,
       }}
     >
-      {/* Media layer — absolutely positioned so it never inflates the cell */}
+      {/* Media layer */}
       {showImage ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={mediaSrc!}
-          alt={post.title ?? ""}
-          style={{
-            position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            display: "block",
-          }}
-          {...(!isGif && { loading: "lazy" as const })}
-        />
+        isEvento ? (
+          <div style={{ position: "relative", width: "100%", height: "480px", overflow: "hidden" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={mediaSrc!}
+              alt={post.title ?? ""}
+              style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" }}
+              {...(!isGif && { loading: "lazy" as const })}
+            />
+          </div>
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={mediaSrc!}
+            alt={post.title ?? ""}
+            style={{ width: "100%", height: "auto", display: "block" }}
+            {...(!isGif && { loading: "lazy" as const })}
+          />
+        )
       ) : (
-        <div className="absolute inset-0">
+        <div style={{ width: "100%", aspectRatio: "1/1" }}>
           <PostCardArt post={post} cardType={cardType} />
         </div>
       )}
