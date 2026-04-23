@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-server";
-import { Navbar } from "@/app/components/navbar";
 import { CommentsSection, type Comment } from "@/app/components/CommentsSection";
 import { PostActions } from "./PostActions";
+import { BookmarkButton } from "@/app/components/BookmarkButton";
+import { CollabProposalButton } from "./CollabProposalButton";
 import type { Post } from "@/app/components/card-art";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -53,6 +54,7 @@ const labelStyle = {
   letterSpacing: "0.12em",
 };
 
+
 // ─── Author header ────────────────────────────────────────────────────────────
 
 function AuthorHeader({ post }: { post: Post }) {
@@ -98,7 +100,10 @@ function EventoView({ post, comments, currentUserId, currentProfile }: {
         </Link>
       </div>
 
-      <AuthorHeader post={post} />
+      <div className="flex items-start justify-between">
+        <AuthorHeader post={post} />
+        <BookmarkButton postId={post.id} currentUserId={currentUserId} />
+      </div>
       <PostActions postId={post.id} postAuthorId={post.author_id} />
 
       {(post.media_url ?? post.media_base64) && (
@@ -139,6 +144,10 @@ function EventoView({ post, comments, currentUserId, currentProfile }: {
         </div>
       )}
 
+      {post.open_collab && (
+        <CollabProposalButton postId={post.id} postAuthorId={post.author_id ?? ""} currentUserId={currentUserId} description={post.collab_description} />
+      )}
+
       <div style={{ height: "0.5px", backgroundColor: "#2a2a28", marginBottom: "24px" }} />
 
       {post.body && (
@@ -175,7 +184,10 @@ function EscritoView({ post, comments, currentUserId, currentProfile }: {
         </Link>
       </div>
 
-      <AuthorHeader post={post} />
+      <div className="flex items-start justify-between">
+        <AuthorHeader post={post} />
+        <BookmarkButton postId={post.id} currentUserId={currentUserId} />
+      </div>
       <PostActions postId={post.id} postAuthorId={post.author_id} />
 
       {post.title && (
@@ -189,6 +201,10 @@ function EscritoView({ post, comments, currentUserId, currentProfile }: {
           manifiesto
         </span>
       </div>
+
+      {post.open_collab && (
+        <CollabProposalButton postId={post.id} postAuthorId={post.author_id ?? ""} currentUserId={currentUserId} description={post.collab_description} />
+      )}
 
       <div style={{ height: "0.5px", backgroundColor: "#2a2a28", marginBottom: "36px" }} />
 
@@ -240,7 +256,7 @@ const TYPE_ACCENT: Record<string, string> = {
 function WorkView({ post, comments, currentUserId, currentProfile }: {
   post: Post; comments: Comment[]; currentUserId: string | null; currentProfile: CurrentProfile;
 }) {
-  const isAudio = post.media_type?.startsWith("audio/");
+  const isAudio = post.media_type?.startsWith("audio/") || post.type === "música";
   const accent = TYPE_ACCENT[post.type] ?? "#888780";
 
   return (
@@ -251,16 +267,29 @@ function WorkView({ post, comments, currentUserId, currentProfile }: {
         </Link>
       </div>
 
-      <AuthorHeader post={post} />
+      <div className="flex items-start justify-between">
+        <AuthorHeader post={post} />
+        <BookmarkButton postId={post.id} currentUserId={currentUserId} />
+      </div>
       <PostActions postId={post.id} postAuthorId={post.author_id} />
 
       {(post.media_url ?? post.media_base64) && (
         <div style={{ marginBottom: "32px", border: "0.5px solid #2a2a28" }}>
           {isAudio ? (
-            <div style={{ backgroundColor: "#141412", padding: "40px 24px", display: "flex", flexDirection: "column", gap: "16px" }}>
-              <p style={{ fontSize: "18px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800 }}>{post.title}</p>
+            <div style={{
+              position: "relative",
+              padding: "40px 24px",
+              display: "flex", flexDirection: "column", gap: "16px",
+              ...(post.cover_url
+                ? { backgroundImage: `url(${post.cover_url})`, backgroundSize: "cover", backgroundPosition: "center" }
+                : { backgroundColor: "#141412" }),
+            }}>
+              {post.cover_url && (
+                <div style={{ position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.6)" }} />
+              )}
+              <p style={{ position: "relative", fontSize: "18px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800 }}>{post.title}</p>
               {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-              <audio controls src={(post.media_url ?? post.media_base64)!} style={{ width: "100%", accentColor: "#5DCAA5" }} />
+              <audio controls src={(post.media_url ?? post.media_base64)!} style={{ position: "relative", width: "100%", accentColor: "#5DCAA5" }} />
             </div>
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
@@ -276,6 +305,10 @@ function WorkView({ post, comments, currentUserId, currentProfile }: {
       <div className="flex items-center gap-4" style={{ marginBottom: "20px" }}>
         <span style={{ ...labelStyle, color: accent }}>{post.type}</span>
       </div>
+
+      {post.open_collab && (
+        <CollabProposalButton postId={post.id} postAuthorId={post.author_id ?? ""} currentUserId={currentUserId} description={post.collab_description} />
+      )}
 
       <div style={{ height: "0.5px", backgroundColor: "#2a2a28", marginBottom: "20px" }} />
 
@@ -325,7 +358,6 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   const post = postData as Post;
   const comments = (commentsData ?? []) as Comment[];
   const currentUserId = user?.id ?? null;
-  const isAuthor = currentUserId !== null && post.author_id === currentUserId;
 
   let currentProfile: { username: string; display_name: string | null } | null = null;
   if (currentUserId) {
@@ -341,7 +373,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#0c0c0b" }}>
-      <Navbar />
+
       {post.type === "evento" ? (
         <EventoView {...viewProps} />
       ) : post.type === "escrito" ? (

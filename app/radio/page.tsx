@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase"
-import { Navbar } from "@/app/components/navbar";
 
 const mono = "var(--font-space-mono), monospace";
 const syne = "var(--font-syne), sans-serif";
@@ -519,7 +518,7 @@ export default function RadioPage() {
         }
       `}</style>
 
-      <Navbar active="radio" />
+
 
       <main className="max-w-6xl mx-auto px-6 pb-24">
         {/* Hero — live or offline */}

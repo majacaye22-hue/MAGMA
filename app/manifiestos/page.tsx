@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-server";
-import { Navbar } from "@/app/components/navbar";
 import type { Post } from "@/app/components/card-art";
 
 const mono = "var(--font-space-mono), monospace";
@@ -156,7 +155,7 @@ export default async function ManifiestosPage({ searchParams }: PageProps) {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#0c0c0b" }}>
-      <Navbar active="manifiestos" />
+
 
       <main className="max-w-3xl mx-auto px-6 pb-24">
         {/* Header */}

@@ -5,7 +5,6 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { getSupabaseClient } from "@/lib/supabase"
 const supabase = getSupabaseClient();
-import { Navbar } from "@/app/components/navbar";
 
 const mono = "var(--font-space-mono), monospace";
 const syne = "var(--font-syne), sans-serif";
@@ -259,7 +258,7 @@ const labelStyle: React.CSSProperties = {
 export default function SolicitarPage() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#0c0c0b" }}>
-      <Navbar active="radio" />
+
       <main className="max-w-2xl mx-auto px-6 pb-24">
         <div className="pt-8 pb-2">
           <Link

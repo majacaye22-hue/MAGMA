@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PostCard, type Post } from "./card-art";
+import { EventosClient } from "@/app/eventos/EventosClient";
 import { getSupabaseClient } from "@/lib/supabase"
 const supabase = getSupabaseClient();
 
@@ -25,7 +26,7 @@ function CardWrapper({ children }: { children: React.ReactNode }) {
   );
 }
 
-const FILTERS = ["todo", "arte", "música", "fotografía", "eventos", "manifiestos"] as const;
+const FILTERS = ["todo", "arte", "música", "fotografía", "eventos", "manifiestos", "colaboración"] as const;
 type Filter = (typeof FILTERS)[number];
 
 const TYPE_MAP: Record<Filter, string | null> = {
@@ -35,6 +36,7 @@ const TYPE_MAP: Record<Filter, string | null> = {
   fotografía: "fotografía",
   eventos: "evento",
   manifiestos: "escrito",
+  colaboración: null, // handled separately via open_collab
 };
 
 const PILL_ACCENT: Record<Filter, string> = {
@@ -44,6 +46,7 @@ const PILL_ACCENT: Record<Filter, string> = {
   fotografía: "#D85A30",
   eventos: "#D85A30",
   manifiestos: "#7F77DD",
+  colaboración: "#5DCAA5",
 };
 
 // Maps filter name → upload ?type= param value
@@ -53,6 +56,7 @@ const UPLOAD_TYPE: Partial<Record<Filter, string>> = {
   fotografía: "fotografía",
   eventos: "evento",
   manifiestos: "escrito",
+  // colaboración is cross-type — no specific upload destination
 };
 
 const mono = "var(--font-space-mono), monospace";
@@ -70,6 +74,7 @@ export function Feed({ posts }: { posts: Post[] }) {
   }, []);
 
   const visible = posts.filter((p) => {
+    if (active === "colaboración") return p.open_collab === true;
     const mapped = TYPE_MAP[active];
     return mapped === null || p.type === mapped;
   });
@@ -100,7 +105,9 @@ export function Feed({ posts }: { posts: Post[] }) {
       </div>
 
       {/* Grid or empty state */}
-      {visible.length === 0 ? (
+      {active === "eventos" ? (
+        <EventosClient eventos={visible} />
+      ) : visible.length === 0 ? (
         <div
           className="py-24 text-center text-xs tracking-widest uppercase"
           style={{ color: "#888780", fontFamily: "var(--font-space-mono), monospace" }}

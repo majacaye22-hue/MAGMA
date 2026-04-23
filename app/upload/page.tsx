@@ -5,7 +5,6 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase";
-import { Navbar } from "@/app/components/navbar";
 
 const RichEditor = dynamic(
   () => import("@/app/components/editor/RichEditor").then((m) => m.RichEditor),
@@ -79,9 +78,15 @@ function UploadPageInner() {
   const [richContent, setRichContent] = useState("");
   const [tags, setTags] = useState("");
   const [location, setLocation] = useState("");
+  const [openCollab, setOpenCollab] = useState(false);
+  const [collabDescription, setCollabDescription] = useState("");
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverFileName, setCoverFileName] = useState<string | null>(null);
+  const [coverDragOver, setCoverDragOver] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
 
   // Event-specific fields
   const [eventDate, setEventDate] = useState("");
@@ -127,6 +132,24 @@ function UploadPageInner() {
     if (f) handleFile(f);
   }
 
+  function handleCoverFile(f: File) {
+    setError(null);
+    setCoverFile(f);
+    setCoverFileName(f.name);
+  }
+
+  function handleCoverDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setCoverDragOver(false);
+    const f = e.dataTransfer.files[0];
+    if (f) handleCoverFile(f);
+  }
+
+  function handleCoverChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (f) handleCoverFile(f);
+  }
+
   function isSubmittable() {
     if (!selectedType) return false;
     if (isEscrito) return richContent.trim().length > 0 && richContent !== "<p></p>";
@@ -149,20 +172,35 @@ function UploadPageInner() {
       }
 
       let mediaUrl = null
+      let coverUrl = null
 
       if (file) {
-        console.log('[upload] uploading file...')
+        console.log('[upload] uploading file:', file.name, file.type, `${(file.size / 1024 / 1024).toFixed(2)} MB`)
         const formData = new FormData()
         formData.append('file', file)
         const response = await fetch('/api/upload', { method: 'POST', body: formData })
-        const { url, error: uploadError } = await response.json()
-        console.log('[upload] file upload done:', { url, uploadError })
-        if (uploadError) throw new Error(uploadError)
-        mediaUrl = url
+        console.log('[upload] file upload response status:', response.status)
+        const json = await response.json()
+        console.log('[upload] file upload response body:', json)
+        if (!response.ok || json.error) throw new Error(json.error ?? `HTTP ${response.status}`)
+        mediaUrl = json.url
+      }
+
+      if (coverFile) {
+        console.log('[upload] uploading cover:', coverFile.name, `${(coverFile.size / 1024 / 1024).toFixed(2)} MB`)
+        const formData = new FormData()
+        formData.append('file', coverFile)
+        const response = await fetch('/api/upload', { method: 'POST', body: formData })
+        console.log('[upload] cover upload response status:', response.status)
+        const json = await response.json()
+        console.log('[upload] cover upload response body:', json)
+        if (!response.ok || json.error) throw new Error(json.error ?? `HTTP ${response.status}`)
+        coverUrl = json.url
       }
 
       console.log('[upload] starting insert with userId:', userId)
-      const { data, error: insertError } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error: insertError } = await (supabase as any)
         .from('posts')
         .insert({
           title: title || null,
@@ -170,6 +208,9 @@ function UploadPageInner() {
           content: isEscrito ? richContent : null,
           type: selectedType,
           media_url: mediaUrl,
+          cover_url: coverUrl,
+          open_collab: openCollab,
+          collab_description: openCollab && collabDescription.trim() ? collabDescription.trim() : null,
           tags: tags ? tags.split(',').map(t => t.trim()) : [],
           author_id: userId,
           event_date: eventDate && eventTime ? `${eventDate}T${eventTime}` : null,
@@ -198,7 +239,7 @@ function UploadPageInner() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#0c0c0b" }}>
-      <Navbar active="upload" />
+
 
       <main className="max-w-2xl mx-auto px-6 pb-24">
         {/* Header */}
@@ -347,6 +388,58 @@ function UploadPageInner() {
             </div>
           )}
 
+          {/* Cover image — música only */}
+          {selectedType === "música" && (
+            <div>
+              <label style={labelStyle}>
+                Imagen de portada <span style={{ color: "#444441" }}>— opcional</span>
+              </label>
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => coverInputRef.current?.click()}
+                onKeyDown={(e) => e.key === "Enter" && coverInputRef.current?.click()}
+                onDragOver={(e) => { e.preventDefault(); setCoverDragOver(true); }}
+                onDragLeave={() => setCoverDragOver(false)}
+                onDrop={handleCoverDrop}
+                className="flex flex-col items-center justify-center gap-3 cursor-pointer transition-colors duration-150"
+                style={{
+                  minHeight: "100px",
+                  border: `1px dashed ${coverDragOver ? "#5DCAA5" : "#2a2a28"}`,
+                  backgroundColor: coverDragOver ? "rgba(93,202,165,0.04)" : "#141412",
+                }}
+              >
+                {coverFileName ? (
+                  <>
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M3 9.5L7 13.5L15 5.5" stroke="#5DCAA5" strokeWidth="1.5" strokeLinecap="square" />
+                    </svg>
+                    <span style={{ fontSize: "11px", color: "#888780", fontFamily: "var(--font-space-mono), monospace" }}>{coverFileName}</span>
+                    <span style={{ fontSize: "9px", color: "#444441", fontFamily: "var(--font-space-mono), monospace", textDecoration: "underline" }}>cambiar portada</span>
+                  </>
+                ) : (
+                  <>
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M10 13V4M10 4L6.5 7.5M10 4L13.5 7.5" stroke="#444441" strokeWidth="1.2" strokeLinecap="square" />
+                      <path d="M3 14V16.5H17V14" stroke="#444441" strokeWidth="1.2" strokeLinecap="square" />
+                    </svg>
+                    <span style={{ fontSize: "11px", color: "#5F5E5A", fontFamily: "var(--font-space-mono), monospace" }}>
+                      portada del track (jpg, png, webp)
+                    </span>
+                  </>
+                )}
+              </div>
+              <input
+                ref={coverInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleCoverChange}
+                className="hidden"
+                aria-hidden
+              />
+            </div>
+          )}
+
           {/* Tags */}
           <div>
             <label style={labelStyle}>Tags <span style={{ color: "#444441" }}>separados por coma</span></label>
@@ -427,6 +520,64 @@ function UploadPageInner() {
                 </div>
               )}
             </div>
+          )}
+
+          {/* Collab toggle */}
+          <button
+            type="button"
+            onClick={() => setOpenCollab((v) => !v)}
+            className="flex items-start gap-3 cursor-pointer text-left w-full"
+            style={{ background: "none", border: "none", padding: 0 }}
+          >
+            <div
+              style={{
+                marginTop: "2px",
+                width: "16px",
+                height: "16px",
+                flexShrink: 0,
+                border: `0.5px solid ${openCollab ? "#5DCAA5" : "#2a2a28"}`,
+                backgroundColor: openCollab ? "rgba(93,202,165,0.12)" : "transparent",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {openCollab && (
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                  <path d="M1.5 5L4 7.5L8.5 2.5" stroke="#5DCAA5" strokeWidth="1.2" strokeLinecap="square" />
+                </svg>
+              )}
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <span style={{ fontSize: "11px", color: openCollab ? "#5DCAA5" : "#888780", fontFamily: "var(--font-space-mono), monospace", textTransform: "uppercase", letterSpacing: "0.12em" }}>
+                abierto a colaboración
+              </span>
+              <span style={{ fontSize: "10px", color: "#444441", fontFamily: "var(--font-space-mono), monospace", lineHeight: 1.5 }}>
+                invita a otros artistas a participar o comentar este proyecto
+              </span>
+            </div>
+          </button>
+
+          {openCollab && (
+            <textarea
+              rows={3}
+              placeholder="ej. busco beatmaker, abierto a remix, quiero co-escribir letras..."
+              value={collabDescription}
+              onChange={(e) => setCollabDescription(e.target.value)}
+              style={{
+                backgroundColor: "#141412",
+                border: "0.5px solid #5DCAA5",
+                color: "#e8e4dc",
+                fontFamily: "var(--font-space-mono), monospace",
+                fontSize: "12px",
+                outline: "none",
+                width: "100%",
+                padding: "10px 12px",
+                resize: "vertical",
+                lineHeight: 1.6,
+              }}
+              className="focus:outline-none placeholder:text-[#444441]"
+            />
           )}
 
           {error && (

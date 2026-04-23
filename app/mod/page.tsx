@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
-import { Navbar } from "@/app/components/navbar";
 import { ModDashboard, type Report } from "./ModDashboard";
 
 const mono = "var(--font-space-mono), monospace";
@@ -33,7 +32,7 @@ export default async function ModPage() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#0c0c0b" }}>
-      <Navbar />
+
       <main className="max-w-4xl mx-auto px-6 pb-24">
         <div className="pt-10 pb-8 flex items-end justify-between">
           <div className="flex flex-col gap-2">

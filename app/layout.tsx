@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Space_Mono, Syne } from "next/font/google";
 import "./globals.css";
+import { Navbar } from "@/app/components/navbar";
 
 const spaceMono = Space_Mono({
   weight: ["400", "700"],
@@ -28,7 +29,10 @@ export default function RootLayout({
       lang="es"
       className={`${spaceMono.variable} ${syne.variable} h-full`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <Navbar />
+        {children}
+      </body>
     </html>
   );
 }

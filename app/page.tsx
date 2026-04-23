@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase-server";
 import { Feed } from "./components/feed";
-import { Navbar } from "./components/navbar";
 import type { Post } from "./components/card-art";
 
 export default async function Home() {
@@ -15,7 +14,7 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#0c0c0b" }}>
-      <Navbar />
+
       <main className="max-w-6xl mx-auto px-6 pb-16">
         <Feed posts={posts} />
       </main>

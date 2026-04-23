@@ -2,10 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
-const supabase = getSupabaseClient();
 
 interface Profile {
   username: string;
@@ -41,52 +40,53 @@ function MagmaLogo() {
   );
 }
 
-export function Navbar({ active }: { active?: "upload" | "eventos" | "radio" | "manifiestos" }) {
+export function Navbar() {
   const router = useRouter();
+  const pathname = usePathname();
+  const supabaseRef = useRef(getSupabaseClient());
+  const supabase = supabaseRef.current;
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    void (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data } = await supabase
-          .from("profiles")
-          .select("username, display_name")
-          .eq("id", user.id)
-          .single();
-        setProfile(data);
-        void fetchUnread(user.id);
-      }
-      setLoading(false);
-    })();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event: AuthChangeEvent, session: Session | null) => {
+  useEffect(() => {
+    const client = supabaseRef.current;
+
+    async function loadProfile(userId: string) {
+      const { data } = await client
+        .from("profiles")
+        .select("username, display_name")
+        .eq("id", userId)
+        .maybeSingle();
+      setProfile(data ?? null);
+      void fetchUnread(userId);
+    }
+
+    // Read session immediately on mount so the avatar appears without waiting
+    // for the async onAuthStateChange event.
+    client.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => {
+      if (session?.user) void loadProfile(session.user.id);
+    });
+
+    // Keep listening for sign-in / sign-out / token refresh.
+    const { data: { subscription } } = client.auth.onAuthStateChange(
+      (_event: AuthChangeEvent, session: Session | null) => {
         if (session?.user) {
-          const { data } = await supabase
-            .from("profiles")
-            .select("username, display_name")
-            .eq("id", session.user.id)
-            .single();
-          setProfile(data);
-          void fetchUnread(session.user.id);
+          void loadProfile(session.user.id);
         } else {
           setProfile(null);
           setUnreadCount(0);
         }
-        setLoading(false);
       }
     );
 
     return () => subscription.unsubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function fetchUnread(uid: string) {
-    // Get conversations for this user
     const { data: convos } = await supabase
       .from("conversations")
       .select("id")
@@ -141,7 +141,7 @@ export function Navbar({ active }: { active?: "upload" | "eventos" | "radio" | "
             href="/radio"
             className="text-xs"
             style={{
-              color: active === "radio" ? "#D85A30" : "#888780",
+              color: pathname.startsWith("/radio") ? "#D85A30" : "#888780",
               fontFamily: "var(--font-space-mono), monospace",
             }}
           >
@@ -151,7 +151,7 @@ export function Navbar({ active }: { active?: "upload" | "eventos" | "radio" | "
             href="/eventos"
             className="text-xs"
             style={{
-              color: active === "eventos" ? "#EF9F27" : "#888780",
+              color: pathname.startsWith("/eventos") ? "#EF9F27" : "#888780",
               fontFamily: "var(--font-space-mono), monospace",
             }}
           >
@@ -161,123 +161,121 @@ export function Navbar({ active }: { active?: "upload" | "eventos" | "radio" | "
             href="/upload"
             className="text-xs"
             style={{
-              color: active === "upload" ? "#D85A30" : "#888780",
+              color: pathname.startsWith("/upload") ? "#D85A30" : "#888780",
               fontFamily: "var(--font-space-mono), monospace",
             }}
           >
             subir obra
           </Link>
 
-          {/* Auth area — hidden until session resolves to avoid flash */}
-          {!loading && (
-            profile ? (
-              /* Logged in — ir en vivo + avatar with dropdown */
-              <>
-              <Link
-                href="/radio/solicitar"
-                className="text-xs"
+          {/* Auth area — show logged-out state immediately, swap to avatar once session confirms */}
+          {profile ? (
+            /* Logged in — ir en vivo + avatar with dropdown */
+            <>
+            <Link
+              href="/radio/solicitar"
+              className="text-xs"
+              style={{
+                color: "#5DCAA5",
+                fontFamily: "var(--font-space-mono), monospace",
+                border: "0.5px solid #5DCAA5",
+                padding: "4px 10px",
+                whiteSpace: "nowrap",
+              }}
+            >
+              ir en vivo
+            </Link>
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setDropdownOpen((o) => !o)}
+                className="flex items-center justify-center text-xs font-bold cursor-pointer"
                 style={{
-                  color: "#5DCAA5",
-                  fontFamily: "var(--font-space-mono), monospace",
-                  border: "0.5px solid #5DCAA5",
-                  padding: "4px 10px",
-                  whiteSpace: "nowrap",
+                  width: "28px",
+                  height: "28px",
+                  borderRadius: "2px",
+                  backgroundColor: "#D85A30",
+                  color: "#0c0c0b",
+                  fontFamily: "var(--font-syne), sans-serif",
                 }}
               >
-                ir en vivo
-              </Link>
-              <div className="relative" ref={dropdownRef}>
-                <button
-                  onClick={() => setDropdownOpen((o) => !o)}
-                  className="flex items-center justify-center text-xs font-bold cursor-pointer"
-                  style={{
-                    width: "28px",
-                    height: "28px",
-                    borderRadius: "2px",
-                    backgroundColor: "#D85A30",
-                    color: "#0c0c0b",
-                    fontFamily: "var(--font-syne), sans-serif",
-                  }}
-                >
-                  {getInitials(profile)}
-                </button>
+                {getInitials(profile)}
+              </button>
 
-                {dropdownOpen && (
-                  <div
-                    className="absolute right-0 top-full mt-2 flex flex-col"
-                    style={{
-                      backgroundColor: "#141412",
-                      border: "0.5px solid #2a2a28",
-                      minWidth: "140px",
-                      zIndex: 100,
-                    }}
-                  >
-                    <Link
-                      href={`/profile/${profile.username}`}
-                      onClick={() => setDropdownOpen(false)}
-                      className="px-4 py-3 text-xs hover:bg-[#1e1e1b] transition-colors"
-                      style={{ color: "#e8e4dc", fontFamily: "var(--font-space-mono), monospace" }}
-                    >
-                      mi perfil
-                    </Link>
-                    <Link
-                      href="/mensajes"
-                      onClick={() => setDropdownOpen(false)}
-                      className="px-4 py-3 text-xs hover:bg-[#1e1e1b] transition-colors border-t flex items-center justify-between"
-                      style={{ color: "#e8e4dc", fontFamily: "var(--font-space-mono), monospace", borderColor: "#2a2a28" }}
-                    >
-                      mensajes
-                      {unreadCount > 0 && (
-                        <span
-                          className="flex items-center justify-center text-[9px] font-bold"
-                          style={{ minWidth: "16px", height: "16px", borderRadius: "2px", backgroundColor: "#D85A30", color: "#0c0c0b", padding: "0 4px" }}
-                        >
-                          {unreadCount > 99 ? "99+" : unreadCount}
-                        </span>
-                      )}
-                    </Link>
-                    <Link
-                      href="/upload"
-                      onClick={() => setDropdownOpen(false)}
-                      className="px-4 py-3 text-xs hover:bg-[#1e1e1b] transition-colors border-t"
-                      style={{ color: "#e8e4dc", fontFamily: "var(--font-space-mono), monospace", borderColor: "#2a2a28" }}
-                    >
-                      subir obra
-                    </Link>
-                    <button
-                      onClick={handleSignOut}
-                      className="px-4 py-3 text-xs text-left cursor-pointer hover:bg-[#1e1e1b] transition-colors border-t"
-                      style={{ color: "#5F5E5A", fontFamily: "var(--font-space-mono), monospace", borderColor: "#2a2a28" }}
-                    >
-                      salir
-                    </button>
-                  </div>
-                )}
-              </div>
-              </>
-            ) : (
-              /* Logged out */
-              <div className="flex items-center gap-4">
-                <Link
-                  href="/auth/login"
-                  className="text-xs"
-                  style={{ color: "#888780", fontFamily: "var(--font-space-mono), monospace" }}
-                >
-                  entrar
-                </Link>
-                <Link
-                  href="/auth/register"
-                  className="px-3 py-1 text-xs cursor-pointer"
+              {dropdownOpen && (
+                <div
+                  className="absolute right-0 top-full mt-2 flex flex-col"
                   style={{
-                    backgroundColor: "#D85A30",
-                    color: "#0c0c0b",
-                    fontFamily: "var(--font-space-mono), monospace",
+                    backgroundColor: "#141412",
+                    border: "0.5px solid #2a2a28",
+                    minWidth: "140px",
+                    zIndex: 100,
                   }}
                 >
-                  únete
-                </Link>
-              </div>
-            )
+                  <Link
+                    href={`/profile/${profile.username}`}
+                    onClick={() => setDropdownOpen(false)}
+                    className="px-4 py-3 text-xs hover:bg-[#1e1e1b] transition-colors"
+                    style={{ color: "#e8e4dc", fontFamily: "var(--font-space-mono), monospace" }}
+                  >
+                    mi perfil
+                  </Link>
+                  <Link
+                    href="/mensajes"
+                    onClick={() => setDropdownOpen(false)}
+                    className="px-4 py-3 text-xs hover:bg-[#1e1e1b] transition-colors border-t flex items-center justify-between"
+                    style={{ color: "#e8e4dc", fontFamily: "var(--font-space-mono), monospace", borderColor: "#2a2a28" }}
+                  >
+                    mensajes
+                    {unreadCount > 0 && (
+                      <span
+                        className="flex items-center justify-center text-[9px] font-bold"
+                        style={{ minWidth: "16px", height: "16px", borderRadius: "2px", backgroundColor: "#D85A30", color: "#0c0c0b", padding: "0 4px" }}
+                      >
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </span>
+                    )}
+                  </Link>
+                  <Link
+                    href="/upload"
+                    onClick={() => setDropdownOpen(false)}
+                    className="px-4 py-3 text-xs hover:bg-[#1e1e1b] transition-colors border-t"
+                    style={{ color: "#e8e4dc", fontFamily: "var(--font-space-mono), monospace", borderColor: "#2a2a28" }}
+                  >
+                    subir obra
+                  </Link>
+                  <button
+                    onClick={handleSignOut}
+                    className="px-4 py-3 text-xs text-left cursor-pointer hover:bg-[#1e1e1b] transition-colors border-t"
+                    style={{ color: "#5F5E5A", fontFamily: "var(--font-space-mono), monospace", borderColor: "#2a2a28" }}
+                  >
+                    salir
+                  </button>
+                </div>
+              )}
+            </div>
+            </>
+          ) : (
+            /* Logged out (also shown during loading — avoids invisible auth area) */
+            <div className="flex items-center gap-4">
+              <Link
+                href="/auth/login"
+                className="text-xs"
+                style={{ color: "#888780", fontFamily: "var(--font-space-mono), monospace" }}
+              >
+                entrar
+              </Link>
+              <Link
+                href="/auth/register"
+                className="px-3 py-1 text-xs cursor-pointer"
+                style={{
+                  backgroundColor: "#D85A30",
+                  color: "#0c0c0b",
+                  fontFamily: "var(--font-space-mono), monospace",
+                }}
+              >
+                únete
+              </Link>
+            </div>
           )}
         </div>
       </div>

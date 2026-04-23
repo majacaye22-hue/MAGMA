@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase"
 const supabase = getSupabaseClient();
 
@@ -45,9 +45,8 @@ function MagmaLogo() {
 }
 
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const [email, setEmail] = useState("");
+  const [emailOrUsername, setEmailOrUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -57,17 +56,39 @@ function LoginForm() {
     setLoading(true);
     setError(null);
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    let email = emailOrUsername.trim();
 
-    if (error) {
-      setError(error.message);
+    if (!email.includes("@")) {
+      // Resolve username → email via server-side API (uses service role, bypasses RLS)
+      const res = await fetch('/api/auth/lookup-username', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: email }),
+      })
+      const json = await res.json()
+      console.log("[login] username lookup:", { input: email, status: res.status, json })
+
+      if (!res.ok || !json.email) {
+        setError(json.error ?? "usuario no encontrado");
+        setLoading(false);
+        return;
+      }
+
+      email = json.email;
+    }
+
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (signInError) {
+      setError(signInError.message);
       setLoading(false);
       return;
     }
 
-    const redirectTo = searchParams.get("redirectTo") ?? "/";
-    router.push(redirectTo);
-    router.refresh();
+    const raw = searchParams.get("redirectTo") ?? "/";
+    // Guard against redirect loops — never send back to /auth/*
+    const redirectTo = raw.startsWith("/auth") ? "/" : raw;
+    window.location.href = redirectTo;
   }
 
   return (
@@ -86,14 +107,14 @@ function LoginForm() {
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <div>
-            <label style={labelStyle}>Email</label>
+            <label style={labelStyle}>Email o usuario</label>
             <input
-              type="email"
-              autoComplete="email"
+              type="text"
+              autoComplete="username"
               required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="tu@email.com"
+              value={emailOrUsername}
+              onChange={(e) => setEmailOrUsername(e.target.value)}
+              placeholder="tu@email.com o @usuario"
               style={inputStyle}
               className="focus:outline-none"
             />

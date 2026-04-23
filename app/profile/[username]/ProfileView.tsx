@@ -1,12 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase";
 import type { Post } from "@/app/components/card-art";
 
-type Tab = "obras" | "eventos" | "manifiestos";
+type PostThumb = { id: string; media_url: string | null; cover_url: string | null; type: string };
+
+type CollectionPost = {
+  posts: PostThumb | PostThumb[] | null;
+};
+
+type Collection = {
+  id: string;
+  name: string;
+  is_public: boolean;
+  collection_posts: CollectionPost[];
+};
+
+type Tab = "obras" | "eventos" | "manifiestos" | "colecciones";
 
 export interface ProfileData {
   id: string;
@@ -64,7 +77,9 @@ const TYPE_ACCENT: Record<string, string> = {
 // Falls back to a minimal type-branded placeholder.
 
 function ProfilePostCard({ post }: { post: Post }) {
-  const mediaSrc = post.media_url ?? post.media_base64 ?? null;
+  const mediaSrc = post.type === "música"
+    ? (post.cover_url ?? null)
+    : (post.media_url ?? post.media_base64 ?? null);
   const accent   = TYPE_ACCENT[post.type] ?? "#888780";
   const typeLabel = post.type === "fotografía" ? "foto" : post.type;
 
@@ -215,7 +230,7 @@ function BannerSVG() {
   );
 }
 
-const TABS: Tab[] = ["obras", "eventos", "manifiestos"];
+const TABS: Tab[] = ["obras", "eventos", "manifiestos", "colecciones"];
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
@@ -233,6 +248,23 @@ export function ProfileView({
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("obras");
   const [messagingLoading, setMessagingLoading] = useState(false);
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [collectionsLoaded, setCollectionsLoaded] = useState(false);
+
+  useEffect(() => {
+    if (activeTab !== "colecciones" || collectionsLoaded) return;
+    const supabase = getSupabaseClient();
+    supabase
+      .from("collections")
+      .select("id, name, is_public, collection_posts(posts(id, media_url, cover_url, type))")
+      .eq("user_id", profile.id)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setCollections((data ?? []) as unknown as Collection[]);
+        setCollectionsLoaded(true);
+      });
+  }, [activeTab, collectionsLoaded, profile.id]);
 
   async function handleMessage() {
     if (!currentUserId) { router.push("/auth/login"); return; }
@@ -371,25 +403,24 @@ export function ProfileView({
             )}
 
             {/* Stats — real counts per tab */}
-            <div className="flex gap-8 mt-6 pb-6 border-b" style={{ borderColor: "#2a2a28" }}>
+            <div style={{ display: "flex", gap: "32px", marginTop: "24px", paddingBottom: "24px", borderBottom: "0.5px solid #2a2a28" }}>
               {[
                 { value: formatStat(obrasPosts.length),       label: "obras"      },
                 { value: formatStat(eventosPosts.length),     label: "eventos"    },
                 { value: formatStat(manifiestosPosts.length), label: "manifiestos" },
               ].map(({ value, label }) => (
-                <button
+                <div
                   key={label}
                   onClick={() => setActiveTab(label as Tab)}
-                  className="flex flex-col gap-0.5 cursor-pointer text-left"
-                  style={{ background: "none", border: "none", padding: 0 }}
+                  style={{ cursor: "pointer" }}
                 >
-                  <span className="tabular-nums" style={{ fontSize: "18px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800, lineHeight: 1 }}>
+                  <p style={{ margin: 0, fontSize: "18px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800, lineHeight: 1 }}>
                     {value}
-                  </span>
-                  <span className="text-[10px] uppercase tracking-widest" style={{ color: activeTab === label ? "#D85A30" : "#444441", fontFamily: mono }}>
+                  </p>
+                  <p style={{ margin: "3px 0 0 0", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.1em", color: activeTab === label ? "#D85A30" : "#444441", fontFamily: mono }}>
                     {label}
-                  </span>
-                </button>
+                  </p>
+                </div>
               ))}
             </div>
           </div>
@@ -421,7 +452,52 @@ export function ProfileView({
             })}
           </div>
 
-          {visiblePosts.length === 0 ? (
+          {activeTab === "colecciones" ? (
+            collections.length === 0 && collectionsLoaded ? (
+              <div className="py-24 text-center text-xs tracking-widest uppercase" style={{ color: "#444441", fontFamily: mono }}>
+                sin colecciones
+              </div>
+            ) : !collectionsLoaded ? (
+              <div className="py-24 text-center text-xs tracking-widest uppercase" style={{ color: "#444441", fontFamily: mono }}>
+                cargando...
+              </div>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "2px" }}>
+                {collections.map((col) => {
+                  const thumbs = col.collection_posts
+                    .map((cp) => Array.isArray(cp.posts) ? cp.posts[0] : cp.posts)
+                    .filter(Boolean)
+                    .slice(0, 4) as PostThumb[];
+                  if (thumbs.length === 0) return null;
+                  return (
+                    <Link key={col.id} href={`/colecciones/${profile.username}/${col.id}`} style={{ textDecoration: "none", display: "block", border: "0.5px solid #2a2a28" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", height: "180px", gap: "1px", backgroundColor: "#2a2a28" }}>
+                        {Array.from({ length: 4 }).map((_, i) => {
+                          const p = thumbs[i];
+                          const src = p ? (p.type === "música" ? p.cover_url : p.media_url) ?? null : null;
+                          return (
+                            <div key={i} style={{ backgroundColor: "#1a1a18", position: "relative", overflow: "hidden" }}>
+                              {src && (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={src} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div style={{ padding: "12px 14px" }}>
+                        <p style={{ fontSize: "13px", color: "#e8e4dc", fontFamily: syne, fontWeight: 700, marginBottom: "3px" }}>{col.name}</p>
+                        <p style={{ fontSize: "10px", color: "#5F5E5A", fontFamily: mono }}>
+                          {col.collection_posts.length} {col.collection_posts.length === 1 ? "obra" : "obras"}
+                          {!col.is_public && <span style={{ marginLeft: "8px", color: "#2a2a28" }}>privada</span>}
+                        </p>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )
+          ) : visiblePosts.length === 0 ? (
             <div className="py-24 text-center text-xs tracking-widest uppercase" style={{ color: "#444441", fontFamily: mono }}>
               sin publicaciones
             </div>

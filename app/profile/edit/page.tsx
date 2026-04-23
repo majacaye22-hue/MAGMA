@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getSupabaseClient } from "@/lib/supabase";
-import { Navbar } from "@/app/components/navbar";
 
 const mono = "var(--font-space-mono), monospace";
 const syne = "var(--font-syne), sans-serif";
@@ -131,7 +130,7 @@ export default function EditProfilePage() {
   if (loading) {
     return (
       <div className="min-h-screen" style={{ backgroundColor: "#0c0c0b" }}>
-        <Navbar />
+
       </div>
     );
   }
@@ -140,7 +139,7 @@ export default function EditProfilePage() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#0c0c0b" }}>
-      <Navbar />
+
 
       <main className="max-w-2xl mx-auto px-6 pb-24">
         {/* Header */}

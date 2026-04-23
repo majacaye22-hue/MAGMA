@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ReportModal } from "./ReportModal";
+import { BookmarkButton } from "./BookmarkButton";
 
 export type CardType = "arte" | "música" | "foto" | "evento";
 
@@ -17,6 +18,7 @@ export interface Post {
   media_url: string | null;
   media_base64: string | null;
   media_type: string | null;
+  cover_url: string | null;
   tags: string[] | null;
   upvotes: number;
   created_at: string;
@@ -27,6 +29,8 @@ export interface Post {
   address: string | null;
   is_free: boolean | null;
   price: string | null;
+  open_collab: boolean | null;
+  collab_description: string | null;
 }
 
 export interface CardData {
@@ -101,34 +105,29 @@ export function MusicaArt({ title, artist }: { title: string; artist: string }) 
   const barW = 3;
   const barGap = 2;
   const step = barW + barGap;
-  const startX = 20;
-  const centerY = 370;
-  const maxHalf = 21;
+  const startX = 8;
+  const centerY = 40;
+  const maxHalf = 32;
 
   return (
     <svg
       width="100%" height="100%"
-      viewBox="0 0 400 400"
-      preserveAspectRatio="xMidYMid slice"
+      viewBox="0 0 400 80"
+      preserveAspectRatio="xMidYMid meet"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <text x="20" y="95" fontSize="12" fontWeight="700" fill="#e8e4dc" fillOpacity="0.52" fontFamily="ui-monospace, monospace" letterSpacing="0.3">
-        {title}
-      </text>
-      <text x="20" y="114" fontSize="9.5" fill="#5DCAA5" fillOpacity="0.48" fontFamily="ui-monospace, monospace" letterSpacing="1">
-        {artist}
-      </text>
-      <line x1={startX} y1={centerY} x2={startX + heights.length * step - barGap} y2={centerY} stroke="#5DCAA5" strokeOpacity="0.07" strokeWidth="0.5" />
+      <line x1={startX} y1={centerY} x2={startX + heights.length * step - barGap} y2={centerY} stroke="#5DCAA5" strokeOpacity="0.15" strokeWidth="0.5" />
       {heights.map((h, i) => {
         const half = (h / 100) * maxHalf;
         const x = startX + i * step;
         return (
-          <rect key={i} x={x} y={centerY - half} width={barW} height={half * 2} fill="#5DCAA5" fillOpacity={0.12 + (h / 100) * 0.32} rx="0.5" />
+          <rect key={i} x={x} y={centerY - half} width={barW} height={half * 2} fill="#5DCAA5" fillOpacity={0.3 + (h / 100) * 0.6} rx="0.5" />
         );
       })}
     </svg>
   );
 }
+
 
 export function FotoArt({ location }: { location: string }) {
   return (
@@ -258,7 +257,7 @@ function PostCardArt({ post, cardType }: { post: Post; cardType: CardType }) {
   }
 }
 
-function EventoHoverOverlay({ post, showFlag, onFlag }: { post: Post; showFlag: boolean; onFlag: () => void }) {
+function EventoHoverOverlay({ post, showFlag, onFlag, currentUserId }: { post: Post; showFlag: boolean; onFlag: () => void; currentUserId?: string | null }) {
   const dateStr = post.event_date
     ? new Date(post.event_date).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" })
     : null;
@@ -271,7 +270,8 @@ function EventoHoverOverlay({ post, showFlag, onFlag }: { post: Post; showFlag: 
       className="absolute inset-0 z-20 flex flex-col justify-between p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
       style={{ background: "rgba(12,12,11,0.88)" }}
     >
-      <div className="flex justify-end">
+      <div className="flex justify-end items-center gap-1">
+        <BookmarkButton postId={post.id} currentUserId={currentUserId ?? null} size={12} />
         {showFlag && (
           <button
             onClick={(e) => { e.stopPropagation(); onFlag(); }}
@@ -316,8 +316,8 @@ function EscritoCardInner({ post, currentUserId }: { post: Post; currentUserId?:
   const [reporting, setReporting] = useState(false);
 
   const preview = post.content
-    ? stripHtml(post.content).slice(0, 80)
-    : (post.body?.slice(0, 80) ?? "");
+    ? stripHtml(post.content).slice(0, 300)
+    : (post.body?.slice(0, 300) ?? "");
 
   return (
     <>
@@ -328,6 +328,7 @@ function EscritoCardInner({ post, currentUserId }: { post: Post; currentUserId?:
           backgroundColor: "#0e0e0d",
           borderLeft: "2px solid #D85A30",
           padding: "20px",
+          breakInside: "avoid",
         }}
       >
         {/* Tag row */}
@@ -341,16 +342,19 @@ function EscritoCardInner({ post, currentUserId }: { post: Post; currentUserId?:
           }}>
             manifiesto
           </span>
-          {currentUserId && (
-            <button
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setReporting(true); }}
-              className="opacity-0 group-hover:opacity-100 cursor-pointer hover:opacity-70 transition-opacity"
-              style={{ color: "#5F5E5A", background: "none", border: "none", padding: "2px", lineHeight: 0 }}
-              title="reportar"
-            >
-              <FlagIcon />
-            </button>
-          )}
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <BookmarkButton postId={post.id} currentUserId={currentUserId ?? null} size={12} />
+            {currentUserId && (
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setReporting(true); }}
+                className="cursor-pointer hover:opacity-70"
+                style={{ color: "#5F5E5A", background: "none", border: "none", padding: "2px", lineHeight: 0 }}
+                title="reportar"
+              >
+                <FlagIcon />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Title */}
@@ -374,8 +378,12 @@ function EscritoCardInner({ post, currentUserId }: { post: Post; currentUserId?:
             color: "#5F5E5A",
             fontFamily: "var(--font-space-mono), monospace",
             lineHeight: 1.7,
+            display: "-webkit-box",
+            WebkitLineClamp: 6,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
           }}>
-            {preview}{preview.length >= 80 ? "…" : ""}
+            {preview}{preview.length >= 300 ? "…" : ""}
           </p>
         )}
 
@@ -410,9 +418,12 @@ export function PostCard({ post, index, total, currentUserId }: { post: Post; in
   const [colSpan, baseRowSpan] = total === 1 ? [1, 1] as const : SPAN_PATTERNS[index % SPAN_PATTERNS.length];
   const cardType = postCardType(post.type);
   const isEvento = post.type === "evento";
+  const isMusica = post.type === "música";
   const mediaSrc = post.media_url ?? post.media_base64 ?? null;
+  const isAudio = !!mediaSrc && (post.media_type?.startsWith("audio/") || isMusica);
   const showImage =
     !!mediaSrc &&
+    !isAudio &&
     (post.type === "arte" || post.type === "fotografía" || isEvento);
   const isGif = post.media_url?.toLowerCase().endsWith(".gif") ?? false;
 
@@ -434,9 +445,34 @@ export function PostCard({ post, index, total, currentUserId }: { post: Post; in
         backgroundColor: "#141412",
         border: "0.5px solid #2a2a28",
       }}
+      onClick={() => { window.location.href = `/post/${post.id}`; }}
     >
       {/* Media layer */}
-      {showImage ? (
+      {isAudio && mediaSrc ? (
+        <div style={{ position: "relative", height: "200px", backgroundColor: "#141412" }}>
+          {/* Cover image — fills full card area */}
+          {post.cover_url && (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={post.cover_url}
+                alt=""
+                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              />
+              {/* Gradient overlay for audio control readability */}
+              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(12,12,11,0.95) 0%, rgba(12,12,11,0.4) 50%, transparent 100%)" }} />
+            </>
+          )}
+          {/* Audio controls pinned to bottom via absolute positioning */}
+          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+          <audio
+            controls
+            src={mediaSrc}
+            style={{ position: "absolute", bottom: 0, left: 0, width: "100%", accentColor: "#5DCAA5", height: "28px" }}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      ) : showImage ? (
         isEvento ? (
           <div style={{ position: "relative", width: "100%", height: "480px", overflow: "hidden" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -462,18 +498,33 @@ export function PostCard({ post, index, total, currentUserId }: { post: Post; in
         </div>
       )}
 
-      {/* Type badge */}
-      <span
-        className="absolute top-3 left-3 z-10 px-2 py-0.5 text-[10px] uppercase tracking-widest border"
-        style={{
-          background: "rgba(20,20,18,0.88)",
-          color: "#888780",
-          borderColor: "#2a2a28",
-          fontFamily: "var(--font-space-mono), monospace",
-        }}
-      >
-        {TYPE_LABEL[cardType]}
-      </span>
+      {/* Type badge + collab badge */}
+      <div className="absolute top-3 left-3 z-10 flex gap-1.5">
+        <span
+          className="px-2 py-0.5 text-[10px] uppercase tracking-widest border"
+          style={{
+            background: "rgba(20,20,18,0.88)",
+            color: "#888780",
+            borderColor: "#2a2a28",
+            fontFamily: "var(--font-space-mono), monospace",
+          }}
+        >
+          {TYPE_LABEL[cardType]}
+        </span>
+        {post.open_collab && (
+          <span
+            className="px-2 py-0.5 text-[10px] uppercase tracking-widest border"
+            style={{
+              background: "rgba(20,20,18,0.88)",
+              color: "#5DCAA5",
+              borderColor: "#5DCAA5",
+              fontFamily: "var(--font-space-mono), monospace",
+            }}
+          >
+            ✦ collab
+          </span>
+        )}
+      </div>
 
       {/* Hover overlay — evento gets a specialized one */}
       {isEvento ? (
@@ -481,6 +532,7 @@ export function PostCard({ post, index, total, currentUserId }: { post: Post; in
           post={post}
           showFlag={!!currentUserId}
           onFlag={() => setReporting(true)}
+          currentUserId={currentUserId}
         />
       ) : (
         <div
@@ -491,16 +543,19 @@ export function PostCard({ post, index, total, currentUserId }: { post: Post; in
             <span className="text-xs tabular-nums" style={{ color: "#D85A30", fontFamily: "var(--font-space-mono), monospace" }}>
               ↑ {post.upvotes.toLocaleString()}
             </span>
-            {currentUserId && (
-              <button
-                onClick={(e) => { e.stopPropagation(); setReporting(true); }}
-                className="cursor-pointer hover:opacity-70"
-                style={{ color: "#5F5E5A", background: "none", border: "none", padding: "2px", lineHeight: 0 }}
-                title="reportar"
-              >
-                <FlagIcon />
-              </button>
-            )}
+            <div className="flex items-center gap-1">
+              <BookmarkButton postId={post.id} currentUserId={currentUserId ?? null} size={12} />
+              {currentUserId && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setReporting(true); }}
+                  className="cursor-pointer hover:opacity-70"
+                  style={{ color: "#5F5E5A", background: "none", border: "none", padding: "2px", lineHeight: 0 }}
+                  title="reportar"
+                >
+                  <FlagIcon />
+                </button>
+              )}
+            </div>
           </div>
           <div>
             <p

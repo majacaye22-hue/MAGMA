@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase-server";
-import { Navbar } from "@/app/components/navbar";
-import { FlyerCard } from "@/app/components/FlyerCard";
+import { EventosClient } from "./EventosClient";
 import type { Post } from "@/app/components/card-art";
 
 export default async function EventosPage() {
@@ -13,10 +12,11 @@ export default async function EventosPage() {
     .order("event_date", { ascending: true });
 
   const eventos: Post[] = data ?? [];
+  console.log("[EventosPage] eventos.length:", eventos.length, "sample:", eventos[0]?.id ?? "none");
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#0c0c0b" }}>
-      <Navbar active="eventos" />
+
 
       <main className="max-w-6xl mx-auto px-6 pb-20">
         {/* Page header */}
@@ -38,23 +38,7 @@ export default async function EventosPage() {
           </p>
         </div>
 
-        {eventos.length === 0 ? (
-          <div
-            className="py-24 text-center text-xs tracking-widest uppercase"
-            style={{ color: "#888780", fontFamily: "var(--font-space-mono), monospace" }}
-          >
-            sin eventos próximos — sé el primero en publicar
-          </div>
-        ) : (
-          <div
-            style={{ columnGap: "8px" }}
-            className="[column-count:1] sm:[column-count:2] lg:[column-count:3]"
-          >
-            {eventos.map((post) => (
-              <FlyerCard key={post.id} post={post} />
-            ))}
-          </div>
-        )}
+        <EventosClient eventos={eventos} />
       </main>
     </div>
   );

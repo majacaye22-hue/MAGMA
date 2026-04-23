@@ -5,7 +5,6 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase";
-import { Navbar } from "@/app/components/navbar";
 
 const RichEditor = dynamic(
   () => import("@/app/components/editor/RichEditor").then((m) => m.RichEditor),
@@ -53,6 +52,7 @@ interface PostData {
   address: string | null;
   is_free: boolean | null;
   price: string | null;
+  open_collab: boolean | null;
 }
 
 export default function EditPostPage() {
@@ -81,6 +81,8 @@ export default function EditPostPage() {
   const [address, setAddress] = useState("");
   const [isFree, setIsFree] = useState(true);
   const [price, setPrice] = useState("");
+  const [openCollab, setOpenCollab] = useState(false);
+  const [collabDescription, setCollabDescription] = useState("");
 
   // File upload
   const [newFile, setNewFile] = useState<File | null>(null);
@@ -129,6 +131,8 @@ export default function EditPostPage() {
       setAddress(p.address ?? "");
       setIsFree(p.is_free ?? true);
       setPrice(p.price ?? "");
+      setOpenCollab(p.open_collab ?? false);
+      setCollabDescription((p as PostData & { collab_description?: string | null }).collab_description ?? "");
 
       setLoading(false);
     })();
@@ -180,6 +184,8 @@ export default function EditPostPage() {
         content: postType === "escrito" ? richContentRef.current : null,
         media_url: mediaUrl,
         tags: tags ? tags.split(",").map((t) => t.trim()).filter(Boolean) : null,
+        open_collab: openCollab,
+        collab_description: openCollab && collabDescription.trim() ? collabDescription.trim() : null,
       };
 
       if (postType === "evento") {
@@ -228,14 +234,14 @@ export default function EditPostPage() {
   if (loading) {
     return (
       <div className="min-h-screen" style={{ backgroundColor: "#0c0c0b" }}>
-        <Navbar />
+
       </div>
     );
   }
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#0c0c0b" }}>
-      <Navbar />
+
 
       <main className="max-w-2xl mx-auto px-6 pb-24">
         {/* Header */}
@@ -429,6 +435,64 @@ export default function EditPostPage() {
                 </div>
               )}
             </div>
+          )}
+
+          {/* Collab toggle */}
+          <button
+            type="button"
+            onClick={() => setOpenCollab((v) => !v)}
+            className="flex items-start gap-3 cursor-pointer text-left w-full"
+            style={{ background: "none", border: "none", padding: 0 }}
+          >
+            <div
+              style={{
+                marginTop: "2px",
+                width: "16px",
+                height: "16px",
+                flexShrink: 0,
+                border: `0.5px solid ${openCollab ? "#5DCAA5" : "#2a2a28"}`,
+                backgroundColor: openCollab ? "rgba(93,202,165,0.12)" : "transparent",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {openCollab && (
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                  <path d="M1.5 5L4 7.5L8.5 2.5" stroke="#5DCAA5" strokeWidth="1.2" strokeLinecap="square" />
+                </svg>
+              )}
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <span style={{ fontSize: "11px", color: openCollab ? "#5DCAA5" : "#888780", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em" }}>
+                abierto a colaboración
+              </span>
+              <span style={{ fontSize: "10px", color: "#444441", fontFamily: mono, lineHeight: 1.5 }}>
+                invita a otros artistas a participar o comentar este proyecto
+              </span>
+            </div>
+          </button>
+
+          {openCollab && (
+            <textarea
+              rows={3}
+              placeholder="ej. busco beatmaker, abierto a remix, quiero co-escribir letras..."
+              value={collabDescription}
+              onChange={(e) => setCollabDescription(e.target.value)}
+              style={{
+                backgroundColor: "#141412",
+                border: "0.5px solid #5DCAA5",
+                color: "#e8e4dc",
+                fontFamily: mono,
+                fontSize: "12px",
+                outline: "none",
+                width: "100%",
+                padding: "10px 12px",
+                resize: "vertical",
+                lineHeight: 1.6,
+              }}
+              className="focus:outline-none placeholder:text-[#444441]"
+            />
           )}
 
           <div style={{ height: "0.5px", backgroundColor: "#2a2a28" }} />

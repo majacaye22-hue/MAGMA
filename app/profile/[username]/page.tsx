@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
-import { Navbar } from "@/app/components/navbar";
 import { ProfileView, type ProfileData } from "./ProfileView";
 import type { Post } from "@/app/components/card-art";
 
@@ -36,7 +35,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#0c0c0b" }}>
-      <Navbar />
+
       <ProfileView
         profile={profile}
         posts={posts}

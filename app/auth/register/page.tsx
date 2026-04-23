@@ -84,6 +84,7 @@ export default function RegisterPage() {
       username: username.trim().toLowerCase(),
       display_name: displayName.trim() || null,
       location: colonia.trim() || null,
+      email: email.trim().toLowerCase(),
     });
 
     if (profileError) {

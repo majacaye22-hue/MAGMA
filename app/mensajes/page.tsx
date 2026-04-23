@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { getSupabaseClient } from "@/lib/supabase";
-import { Navbar } from "@/app/components/navbar";
 
 const mono = "var(--font-space-mono), monospace";
 const syne = "var(--font-syne), sans-serif";
@@ -567,7 +566,7 @@ function MensajesInner() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: BG }}>
       <style>{BLINK_CSS}</style>
-      <Navbar />
+
 
       <div
         className="flex"
