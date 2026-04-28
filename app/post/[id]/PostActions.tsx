@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 
 const mono = "var(--font-space-mono), monospace";
 
@@ -16,7 +17,7 @@ export function PostActions({ postId, postAuthorId }: { postId: string; postAuth
 
   useEffect(() => {
     const supabase = getSupabaseClient();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
       setIsAuthor(!!session?.user && session.user.id === postAuthorId);
     });
     return () => subscription.unsubscribe();

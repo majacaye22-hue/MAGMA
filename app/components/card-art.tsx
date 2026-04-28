@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ReportModal } from "./ReportModal";
 import { BookmarkButton } from "./BookmarkButton";
 
-export type CardType = "arte" | "música" | "foto" | "evento";
+export type CardType = "arte" | "música" | "foto" | "evento" | "video";
 
 // ─── Supabase post shape ─────────────────────────────────────────────────────
 
@@ -50,6 +50,7 @@ export const TYPE_LABEL: Record<CardType, string> = {
   música: "música",
   foto: "foto",
   evento: "evento",
+  video: "video",
 };
 
 function stripHtml(html: string): string {
@@ -207,7 +208,7 @@ const SPAN_PATTERNS: Array<[1 | 2, 1 | 2]> = [
 
 function postCardType(type: string): CardType {
   if (type === "fotografía") return "foto";
-  if (type === "arte" || type === "música" || type === "evento") return type as CardType;
+  if (type === "arte" || type === "música" || type === "evento" || type === "video") return type as CardType;
   return "arte";
 }
 
@@ -340,7 +341,7 @@ function EscritoCardInner({ post, currentUserId }: { post: Post; currentUserId?:
             textTransform: "uppercase",
             letterSpacing: "0.16em",
           }}>
-            manifiesto
+            letra
           </span>
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <BookmarkButton postId={post.id} currentUserId={currentUserId ?? null} size={12} />
@@ -419,16 +420,19 @@ export function PostCard({ post, index, total, currentUserId }: { post: Post; in
   const cardType = postCardType(post.type);
   const isEvento = post.type === "evento";
   const isMusica = post.type === "música";
+  const isVideoPost = post.type === "video";
   const mediaSrc = post.media_url ?? post.media_base64 ?? null;
   const isAudio = !!mediaSrc && (post.media_type?.startsWith("audio/") || isMusica);
+  const isVideoMedia = !!mediaSrc && (post.media_type?.startsWith("video/") || isVideoPost);
   const showImage =
     !!mediaSrc &&
     !isAudio &&
+    !isVideoMedia &&
     (post.type === "arte" || post.type === "fotografía" || isEvento);
   const isGif = post.media_url?.toLowerCase().endsWith(".gif") ?? false;
 
-  // Evento cards and image cards always span 2 rows so portrait content isn't tiny.
-  const rowSpan = (isEvento || (showImage && baseRowSpan < 2)) ? 2 as const : baseRowSpan;
+  // Evento, image, and video cards always span 2 rows so portrait content isn't tiny.
+  const rowSpan = (isEvento || isVideoMedia || (showImage && baseRowSpan < 2)) ? 2 as const : baseRowSpan;
 
   const authorDisplay =
     post.profiles?.display_name ?? post.profiles?.username
@@ -472,6 +476,18 @@ export function PostCard({ post, index, total, currentUserId }: { post: Post; in
             onClick={(e) => e.stopPropagation()}
           />
         </div>
+      ) : isVideoMedia && mediaSrc ? (
+        <div style={{ position: "relative", width: "100%", height: "480px", overflow: "hidden", backgroundColor: "#0c0c0b" }}>
+          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+          <video
+            src={mediaSrc}
+            autoPlay
+            muted
+            loop
+            playsInline
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+          />
+        </div>
       ) : showImage ? (
         isEvento ? (
           <div style={{ position: "relative", width: "100%", height: "480px", overflow: "hidden" }}>
@@ -504,8 +520,8 @@ export function PostCard({ post, index, total, currentUserId }: { post: Post; in
           className="px-2 py-0.5 text-[10px] uppercase tracking-widest border"
           style={{
             background: "rgba(20,20,18,0.88)",
-            color: "#888780",
-            borderColor: "#2a2a28",
+            color: isVideoPost ? "#EF9F27" : "#888780",
+            borderColor: isVideoPost ? "#EF9F27" : "#2a2a28",
             fontFamily: "var(--font-space-mono), monospace",
           }}
         >

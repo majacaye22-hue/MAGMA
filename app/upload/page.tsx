@@ -13,7 +13,7 @@ const RichEditor = dynamic(
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type WorkType = "arte" | "música" | "fotografía" | "evento" | "escrito";
+type WorkType = "arte" | "música" | "fotografía" | "evento" | "escrito" | "video";
 
 interface TypeOption {
   id: WorkType;
@@ -27,8 +27,9 @@ const TYPE_OPTIONS: TypeOption[] = [
   { id: "arte",       label: "Arte visual",  description: "Pintura, grabado, escultura, técnica mixta",  accent: "#D85A30", accept: "image/*" },
   { id: "música",     label: "Música",       description: "Track, EP, álbum, composición, sesión",       accent: "#5DCAA5", accept: "audio/*" },
   { id: "fotografía", label: "Fotografía",   description: "Análogo, digital, documental, retrato",       accent: "#378ADD", accept: "image/*" },
+  { id: "video",      label: "Video",        description: "Obra audiovisual, performance, documental",   accent: "#EF9F27", accept: "video/*" },
   { id: "evento",     label: "Evento",       description: "Exposición, concierto, taller, performance",  accent: "#EF9F27", accept: "image/*" },
-  { id: "escrito",    label: "Manifiesto",   description: "poema, ensayo, manifiesto, pensamiento",      accent: "#7F77DD", accept: null },
+  { id: "escrito",    label: "Letra",        description: "poema, ensayo, manifiesto, pensamiento",      accent: "#7F77DD", accept: null },
 ];
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
@@ -53,6 +54,87 @@ const labelStyle: React.CSSProperties = {
   display: "block",
   marginBottom: "6px",
 };
+
+// ─── TypeCard ────────────────────────────────────────────────────────────────
+
+const BG_TEXTURE: Record<WorkType, string> = {
+  arte:       "radial-gradient(ellipse at 20% 80%, #D85A3010 0%, transparent 60%), linear-gradient(160deg, #0e0d0b 0%, #141210 100%)",
+  música:     "radial-gradient(ellipse at 80% 20%, #5DCAA510 0%, transparent 60%), linear-gradient(160deg, #0b0e0d 0%, #101412 100%)",
+  fotografía: "radial-gradient(ellipse at 50% 90%, #378ADD10 0%, transparent 60%), linear-gradient(160deg, #0b0c0e 0%, #10121a 100%)",
+  video:      "radial-gradient(ellipse at 10% 10%, #EF9F2710 0%, transparent 60%), linear-gradient(160deg, #0e0d0b 0%, #14120b 100%)",
+  evento:     "radial-gradient(ellipse at 90% 50%, #EF9F2710 0%, transparent 60%), linear-gradient(160deg, #0e0d0b 0%, #141210 100%)",
+  escrito:    "radial-gradient(ellipse at 30% 30%, #7F77DD10 0%, transparent 60%), linear-gradient(160deg, #0c0b0e 0%, #110f14 100%)",
+};
+
+function TypeCard({
+  opt,
+  isSelected,
+  onClick,
+}: {
+  opt: TypeOption;
+  isSelected: boolean;
+  onClick: () => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => e.key === "Enter" && onClick()}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        minHeight: "120px",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "flex-end",
+        padding: "12px 14px",
+        cursor: "pointer",
+        background: BG_TEXTURE[opt.id],
+        borderLeft: `2px solid ${isSelected ? opt.accent : hovered ? opt.accent + "88" : "transparent"}`,
+        backgroundColor: isSelected
+          ? opt.accent + "1e"
+          : hovered
+          ? opt.accent + "14"
+          : "#141412",
+        transition: "background-color 0.15s ease, border-color 0.15s ease",
+        outline: "none",
+        position: "relative",
+      }}
+    >
+      <span
+        style={{
+          display: "block",
+          fontSize: "9px",
+          color: isSelected ? opt.accent : hovered ? opt.accent + "cc" : "#5F5E5A",
+          fontFamily: "var(--font-space-mono), monospace",
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+          marginBottom: "4px",
+          lineHeight: 1.4,
+          transition: "color 0.15s ease",
+        }}
+      >
+        {opt.description}
+      </span>
+      <span
+        style={{
+          display: "block",
+          fontSize: "20px",
+          fontFamily: "var(--font-syne), sans-serif",
+          fontWeight: 800,
+          lineHeight: 1,
+          color: isSelected ? opt.accent : hovered ? "#e8e4dc" : "#888780",
+          transition: "color 0.15s ease",
+        }}
+      >
+        {opt.label}
+      </span>
+    </div>
+  );
+}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -85,6 +167,8 @@ function UploadPageInner() {
   const [coverDragOver, setCoverDragOver] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [userProjects, setUserProjects] = useState<{ id: string; title: string }[]>([]);
+  const [selectedProject, setSelectedProject] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
 
@@ -97,10 +181,29 @@ function UploadPageInner() {
   const [price, setPrice] = useState("");
 
   useEffect(() => {
-    getSupabaseClient().auth.getUser().then(({ data: { user } }) => {
-      setUserId(user?.id ?? null);
+    getSupabaseClient().auth.getUser().then(({ data: { user } }: { data: { user: { id: string } | null } }) => {
+      const uid = user?.id ?? null;
+      setUserId(uid);
+      if (uid) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (getSupabaseClient() as any)
+          .from("projects")
+          .select("id, title")
+          .eq("author_id", uid)
+          .order("created_at", { ascending: false })
+          .then(({ data, error: projectsError }: { data: { id: string; title: string }[] | null; error: unknown }) => {
+            console.log("userProjects:", data, "error:", projectsError)
+            setUserProjects(data ?? []);
+          });
+      }
     });
   }, []);
+
+  // Pre-select project from ?proyecto= query param
+  useEffect(() => {
+    const proyectoId = searchParams.get("proyecto");
+    if (proyectoId) setSelectedProject(proyectoId);
+  }, [searchParams]);
 
   useEffect(() => {
     const type = searchParams.get("type") as WorkType | null;
@@ -111,6 +214,7 @@ function UploadPageInner() {
 
   const activeOption = TYPE_OPTIONS.find((t) => t.id === selectedType);
   const isEscrito = selectedType === "escrito";
+  const isVideo = selectedType === "video";
 
   // ── File handling ─────────────────────────────────────────────────────────
 
@@ -158,7 +262,7 @@ function UploadPageInner() {
 
   // ── Submit ────────────────────────────────────────────────────────────────
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault()
     setSubmitting(true)
     setError(null)
@@ -224,8 +328,30 @@ function UploadPageInner() {
       console.log('[upload] insert result:', { data, error: insertError })
       if (insertError) throw insertError
 
+      // If coming from a colectivo, add the new post to it
+      const colectivoSlug = searchParams.get('colectivo')
+      if (colectivoSlug && data?.[0]?.id) {
+        const { data: col } = await supabase.from('colectivos').select('id').eq('slug', colectivoSlug).single()
+        if (col) {
+          await supabase.from('colectivo_posts').insert({ colectivo_id: col.id, post_id: data[0].id, added_by: userId })
+        }
+      }
+
+      // If a project was selected, link the post to it
+      console.log("About to insert post_projects - selectedProject:", selectedProject, "post id:", data?.[0]?.id)
+      if (selectedProject && data?.[0]?.id) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error: ppError } = await (supabase as any).from('post_projects').insert({ project_id: selectedProject, post_id: data[0].id })
+        console.log('[upload] post_projects insert error:', ppError)
+      }
+
       console.log('[upload] success, redirecting')
-      router.push('/')
+      const proyectoParam = searchParams.get('proyecto')
+      router.push(
+        colectivoSlug ? `/colectivos/${colectivoSlug}` :
+        proyectoParam  ? `/proyecto/${proyectoParam}` :
+        '/'
+      )
 
     } catch (err: unknown) {
       console.error('[upload] error:', err)
@@ -262,27 +388,16 @@ function UploadPageInner() {
         {/* Type selector */}
         <section className="mb-8">
           <p style={{ ...labelStyle, marginBottom: "12px" }}>tipo de obra</p>
-          <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(5, 1fr)" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1px", backgroundColor: "#2a2a28" }}>
             {TYPE_OPTIONS.map((opt) => {
               const isSelected = selectedType === opt.id;
               return (
-                <button
+                <TypeCard
                   key={opt.id}
+                  opt={opt}
+                  isSelected={isSelected}
                   onClick={() => setSelectedType(opt.id)}
-                  className="flex flex-col items-start gap-2 p-4 text-left cursor-pointer transition-colors duration-150"
-                  style={{
-                    backgroundColor: isSelected ? `${opt.accent}12` : "#141412",
-                    border: `0.5px solid ${isSelected ? opt.accent : "#2a2a28"}`,
-                  }}
-                >
-                  <div style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: opt.accent, opacity: isSelected ? 1 : 0.35 }} />
-                  <span style={{ fontSize: "13px", fontFamily: "var(--font-syne), sans-serif", fontWeight: 700, color: isSelected ? opt.accent : "#e8e4dc", lineHeight: 1.1 }}>
-                    {opt.label}
-                  </span>
-                  <span style={{ fontSize: "9.5px", fontFamily: "var(--font-space-mono), monospace", color: "#5F5E5A", lineHeight: 1.4 }}>
-                    {opt.description}
-                  </span>
-                </button>
+                />
               );
             })}
           </div>
@@ -338,7 +453,7 @@ function UploadPageInner() {
                 {selectedType && (
                   <span style={{ color: "#444441" }}>
                     {" "}—{" "}
-                    {activeOption?.accept === "audio/*" ? "audio (mp3, wav, flac)" : "imagen (jpg, png, gif, webp)"}
+                    {activeOption?.accept === "audio/*" ? "audio (mp3, wav, flac)" : isVideo ? "video (mp4, mov, webm)" : "imagen (jpg, png, gif, webp)"}
                   </span>
                 )}
               </label>
@@ -380,7 +495,7 @@ function UploadPageInner() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept={activeOption?.accept ?? "image/*,audio/*"}
+                accept={isVideo ? "video/mp4,video/quicktime,video/webm" : (activeOption?.accept ?? "image/*,audio/*")}
                 onChange={handleFileChange}
                 className="hidden"
                 aria-hidden
@@ -580,6 +695,33 @@ function UploadPageInner() {
             />
           )}
 
+          {/* Agregar a proyecto */}
+          {userProjects.length > 0 && (
+            <div>
+              <label style={labelStyle}>Agregar a proyecto <span style={{ color: "#444441" }}>— opcional</span></label>
+              <select
+                value={selectedProject}
+                onChange={(e) => { console.log("selectedProject changed to:", e.target.value); setSelectedProject(e.target.value); }}
+                style={{
+                  ...inputStyle,
+                  appearance: "none",
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235F5E5A' strokeWidth='1.2' fill='none' strokeLinecap='square'/%3E%3C/svg%3E")`,
+                  backgroundRepeat: "no-repeat",
+                  backgroundPosition: "right 12px center",
+                  paddingRight: "32px",
+                  cursor: "pointer",
+                  color: selectedProject ? "#e8e4dc" : "#5F5E5A",
+                }}
+                className="focus:outline-none"
+              >
+                <option value="">ninguno</option>
+                {userProjects.map((p) => (
+                  <option key={p.id} value={p.id}>{p.title}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {error && (
             <p style={{ fontSize: "11px", color: "#D85A30", fontFamily: "var(--font-space-mono), monospace" }}>
               {error}
@@ -591,13 +733,13 @@ function UploadPageInner() {
             disabled={submitting || !isSubmittable()}
             className="w-full py-3 text-sm tracking-widest uppercase cursor-pointer transition-opacity duration-150 hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
-              backgroundColor: isEscrito ? "#7F77DD" : "#D85A30",
+              backgroundColor: isEscrito ? "#7F77DD" : isVideo ? "#EF9F27" : "#D85A30",
               color: "#0c0c0b",
               fontFamily: "var(--font-space-mono), monospace",
               marginTop: "4px",
             }}
           >
-            {submitting ? "publicando..." : isEscrito ? "publicar manifiesto" : "publicar obra"}
+            {submitting ? "publicando..." : isEscrito ? "publicar manifiesto" : isVideo ? "publicar video" : "publicar obra"}
           </button>
         </form>
       </main>

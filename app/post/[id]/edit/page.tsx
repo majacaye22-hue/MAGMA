@@ -90,6 +90,11 @@ export default function EditPostPage() {
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Project linking
+  const [userProjects, setUserProjects] = useState<{ id: string; title: string }[]>([]);
+  const [selectedProject, setSelectedProject] = useState<string>("");
+  const [initialProject, setInitialProject] = useState<string>("");
+
   useEffect(() => {
     void (async () => {
       const supabase = getSupabaseClient();
@@ -133,6 +138,17 @@ export default function EditPostPage() {
       setPrice(p.price ?? "");
       setOpenCollab(p.open_collab ?? false);
       setCollabDescription((p as PostData & { collab_description?: string | null }).collab_description ?? "");
+
+      // Fetch user's projects and this post's current project link
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const [{ data: projects }, { data: linked }] = await Promise.all([
+        (supabase as any).from("projects").select("id, title").eq("author_id", session.user.id).order("created_at", { ascending: false }),
+        (supabase as any).from("post_projects").select("project_id").eq("post_id", id).maybeSingle(),
+      ]);
+      setUserProjects(projects ?? []);
+      const currentProjectId = linked?.project_id ?? "";
+      setSelectedProject(currentProjectId);
+      setInitialProject(currentProjectId);
 
       setLoading(false);
     })();
@@ -216,6 +232,17 @@ export default function EditPostPage() {
       if (!res.ok) {
         const text = await res.text();
         throw new Error(text || `Error ${res.status}`);
+      }
+
+      // Update project linkage if changed
+      if (selectedProject !== initialProject) {
+        const supabase = getSupabaseClient();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase as any).from("post_projects").delete().eq("post_id", id);
+        if (selectedProject) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (supabase as any).from("post_projects").insert({ post_id: id, project_id: selectedProject });
+        }
       }
 
       router.push(`/post/${id}`);
@@ -493,6 +520,35 @@ export default function EditPostPage() {
               }}
               className="focus:outline-none placeholder:text-[#444441]"
             />
+          )}
+
+          {/* Agregar a proyecto */}
+          {userProjects.length > 0 && (
+            <div>
+              <label style={labelStyle}>
+                Agregar a proyecto <span style={{ color: "#444441" }}>— opcional</span>
+              </label>
+              <select
+                value={selectedProject}
+                onChange={(e) => setSelectedProject(e.target.value)}
+                style={{
+                  ...inputStyle,
+                  appearance: "none",
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235F5E5A' strokeWidth='1.2' fill='none' strokeLinecap='square'/%3E%3C/svg%3E")`,
+                  backgroundRepeat: "no-repeat",
+                  backgroundPosition: "right 12px center",
+                  paddingRight: "32px",
+                  cursor: "pointer",
+                  color: selectedProject ? "#e8e4dc" : "#5F5E5A",
+                }}
+                className="focus:outline-none"
+              >
+                <option value="">ninguno</option>
+                {userProjects.map((p) => (
+                  <option key={p.id} value={p.id}>{p.title}</option>
+                ))}
+              </select>
+            </div>
           )}
 
           <div style={{ height: "0.5px", backgroundColor: "#2a2a28" }} />

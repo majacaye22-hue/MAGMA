@@ -52,7 +52,7 @@ function PostTile({ post }: { post: PostInCollection }) {
           }}
         >
           <span style={{ fontSize: "9px", color: accent, fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.16em" }}>
-            manifiesto
+            letra
           </span>
           {post.title && (
             <p style={{ fontSize: "15px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800, lineHeight: 1.2, letterSpacing: "-0.01em" }}>

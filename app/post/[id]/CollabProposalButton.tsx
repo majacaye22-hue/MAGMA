@@ -32,8 +32,7 @@ export function CollabProposalButton({
     return () => subscription.unsubscribe();
   }, []);
 
-  // Hide from the post owner
-  if (userId === postAuthorId) return null;
+  const isOwner = userId === postAuthorId;
 
   async function handleClick() {
     setErr(null);
@@ -83,66 +82,74 @@ export function CollabProposalButton({
     if (created) window.location.href = `/mensajes?c=${(created as { id: string }).id}`;
   }
 
-  const fg = hovered ? DARK : YELLOW;
-
   return (
     <div style={{ marginBottom: "24px" }}>
-      <button
-        onClick={handleClick}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        disabled={loading}
+      <div
         style={{
           display: "inline-flex",
           flexDirection: "column",
           gap: "6px",
           width: "auto",
           maxWidth: "280px",
-          textAlign: "left",
           padding: "8px 12px",
           border: `0.5px solid ${YELLOW}`,
-          backgroundColor: hovered ? YELLOW_HOVER : "transparent",
-          cursor: loading ? "default" : "pointer",
-          transition: "background-color 0.15s ease",
-          opacity: loading ? 0.6 : 1,
         }}
       >
         <span style={{
           fontSize: "9px",
-          color: fg,
+          color: YELLOW,
           fontFamily: mono,
           textTransform: "uppercase",
           letterSpacing: "0.14em",
-          transition: "color 0.15s ease",
         }}>
           ✦ abierto a colaboración
         </span>
 
         <span style={{
           fontSize: "10px",
-          color: fg,
+          color: YELLOW,
           fontFamily: mono,
           lineHeight: 1.6,
-          opacity: hovered ? 0.85 : 0.7,
-          transition: "color 0.15s ease",
+          opacity: 0.7,
         }}>
           {description?.trim()
             ? description.trim()
             : "el artista invita a otros creadores a participar o comentar este proyecto"}
         </span>
 
-        <span style={{
-          fontSize: "9px",
-          color: fg,
-          fontFamily: mono,
-          textTransform: "uppercase",
-          letterSpacing: "0.14em",
-          marginTop: "2px",
-          transition: "color 0.15s ease",
-        }}>
-          {loading ? "..." : "proponer colaboración →"}
-        </span>
-      </button>
+        {!isOwner && (
+          <button
+            onClick={handleClick}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+            disabled={loading}
+            style={{
+              textAlign: "left",
+              background: "none",
+              border: "none",
+              padding: 0,
+              cursor: loading ? "default" : "pointer",
+              opacity: loading ? 0.6 : 1,
+            }}
+          >
+            <span style={{
+              fontSize: "9px",
+              color: hovered ? DARK : YELLOW,
+              fontFamily: mono,
+              textTransform: "uppercase",
+              letterSpacing: "0.14em",
+              marginTop: "2px",
+              display: "block",
+              backgroundColor: hovered ? YELLOW_HOVER : "transparent",
+              transition: "background-color 0.15s ease, color 0.15s ease",
+              padding: "3px 6px",
+              marginLeft: "-6px",
+            }}>
+              {loading ? "..." : "proponer colaboración →"}
+            </span>
+          </button>
+        )}
+      </div>
 
       {err && (
         <p style={{ marginTop: "6px", fontSize: "10px", color: "#D85A30", fontFamily: mono }}>

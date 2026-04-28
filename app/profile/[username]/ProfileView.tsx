@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase";
 import type { Post } from "@/app/components/card-art";
+import { ProjectCard, type Project } from "@/app/components/ProjectCard";
+import { CreateProjectModal } from "@/app/components/CreateProjectModal";
 
 type PostThumb = { id: string; media_url: string | null; cover_url: string | null; type: string };
 
@@ -250,6 +252,54 @@ export function ProfileView({
   const [messagingLoading, setMessagingLoading] = useState(false);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [collectionsLoaded, setCollectionsLoaded] = useState(false);
+  const [colectivos, setColectivos] = useState<{ id: string; name: string; slug: string; avatar_color: string }[]>([]);
+  const [listings, setListings] = useState<{ id: string; title: string; price: number; currency: string; images: string[] }[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [showCreateProject, setShowCreateProject] = useState(false);
+
+  useEffect(() => {
+    const supabase = getSupabaseClient();
+    supabase
+      .from("colectivo_members")
+      .select("colectivos(id, name, slug, avatar_color)")
+      .eq("user_id", profile.id)
+      .then(({ data }) => {
+        const cols = (data ?? [])
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .map((m: any) => m.colectivos)
+          .filter(Boolean);
+        setColectivos(cols);
+      });
+  }, [profile.id]);
+
+  useEffect(() => {
+    const supabase = getSupabaseClient();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any)
+      .from("listings")
+      .select("id, title, price, currency, images")
+      .eq("user_id", profile.id)
+      .eq("is_available", true)
+      .order("created_at", { ascending: false })
+      .limit(6)
+      .then(({ data }: { data: { id: string; title: string; price: number; currency: string; images: string[] }[] | null }) => {
+        setListings(data ?? []);
+      });
+  }, [profile.id]);
+
+  useEffect(() => {
+    const supabase = getSupabaseClient();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any)
+      .from("projects")
+      .select("id, title, description, cover_image_url, links")
+      .eq("author_id", profile.id)
+      .order("created_at", { ascending: false })
+      .then(({ data, error }: { data: Project[] | null; error: unknown }) => {
+        console.log("[ProfileView] projects query →", { data, error });
+        setProjects(data ?? []);
+      });
+  }, [profile.id]);
 
   useEffect(() => {
     if (activeTab !== "colecciones" || collectionsLoaded) return;
@@ -424,6 +474,32 @@ export function ProfileView({
               ))}
             </div>
           </div>
+
+          {/* Colectivos badges */}
+          {colectivos.length > 0 && (
+            <div style={{ marginTop: "20px", paddingBottom: "20px" }}>
+              <p style={{ fontSize: "9px", color: "#444441", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: "10px" }}>
+                colectivos
+              </p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                {colectivos.map((col) => (
+                  <Link
+                    key={col.id}
+                    href={`/colectivos/${col.slug}`}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: "6px",
+                      padding: "4px 10px", border: "0.5px solid #2a2a28",
+                      textDecoration: "none",
+                    }}
+                    className="hover:border-[#D85A30] transition-colors"
+                  >
+                    <div style={{ width: "8px", height: "8px", borderRadius: "1px", backgroundColor: col.avatar_color, flexShrink: 0 }} />
+                    <span style={{ fontSize: "10px", color: "#888780", fontFamily: mono }}>{col.name}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Works grid */}
@@ -516,6 +592,93 @@ export function ProfileView({
           )}
         </div>
       </div>
+
+      {/* Projects section */}
+      {(projects.length > 0 || isOwnProfile) && (
+        <div className="max-w-6xl mx-auto px-6 pb-12" style={{ borderTop: "0.5px solid #2a2a28", paddingTop: "32px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
+            <p style={{ fontSize: "9px", color: "#444441", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.14em" }}>
+              proyectos
+            </p>
+            {isOwnProfile && (
+              <button
+                onClick={() => setShowCreateProject(true)}
+                style={{
+                  fontSize: "9px", color: "#D85A30", fontFamily: mono, textTransform: "uppercase",
+                  letterSpacing: "0.12em", background: "none", border: "0.5px solid #D85A30",
+                  padding: "4px 10px", cursor: "pointer",
+                }}
+              >
+                + nuevo
+              </button>
+            )}
+          </div>
+
+          {projects.length === 0 ? (
+            <div style={{ paddingTop: "16px", paddingBottom: "8px" }}>
+              <p style={{ fontSize: "10px", color: "#2a2a28", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                sin proyectos todavía
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "12px" }}>
+              {projects.map((project) => (
+                <ProjectCard key={project.id} project={project} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {showCreateProject && currentUserId && (
+        <CreateProjectModal
+          userId={currentUserId}
+          onClose={() => setShowCreateProject(false)}
+          onCreated={(project) => {
+            setProjects((prev) => [project, ...prev]);
+            setShowCreateProject(false);
+          }}
+        />
+      )}
+
+      {/* Tianguis section */}
+      {listings.length > 0 && (
+        <div className="max-w-6xl mx-auto px-6 pb-16" style={{ borderTop: "0.5px solid #2a2a28", paddingTop: "32px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
+            <p style={{ fontSize: "9px", color: "#444441", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.14em" }}>
+              tianguis
+            </p>
+            <Link href={`/tianguis?seller=${profile.username}`} style={{ fontSize: "9px", color: "#5F5E5A", fontFamily: mono, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+              ver todo →
+            </Link>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: "1px", backgroundColor: "#2a2a28" }}>
+            {listings.map((listing) => {
+              const img = listing.images?.[0] ?? null;
+              return (
+                <Link key={listing.id} href={`/tianguis/${listing.id}`} style={{ textDecoration: "none", display: "block", backgroundColor: "#0c0c0b" }}>
+                  <div style={{ backgroundColor: "#0c0c0b" }}>
+                    <div style={{ aspectRatio: "1", backgroundColor: "#141412", position: "relative", overflow: "hidden" }}>
+                      {img && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={img} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" />
+                      )}
+                    </div>
+                    <div style={{ padding: "10px 12px" }}>
+                      <p style={{ fontSize: "12px", color: "#e8e4dc", fontFamily: syne, fontWeight: 700, lineHeight: 1.2, marginBottom: "3px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {listing.title}
+                      </p>
+                      <p style={{ fontSize: "11px", color: "#D85A30", fontFamily: mono }}>
+                        ${listing.price} <span style={{ fontSize: "9px", color: "#5F5E5A" }}>{listing.currency}</span>
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </>
   );
 }

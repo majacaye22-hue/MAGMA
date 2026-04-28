@@ -5,6 +5,7 @@ import { CommentsSection, type Comment } from "@/app/components/CommentsSection"
 import { PostActions } from "./PostActions";
 import { BookmarkButton } from "@/app/components/BookmarkButton";
 import { CollabProposalButton } from "./CollabProposalButton";
+import { ShareToColectivoButton } from "@/app/components/ShareToColectivoButton";
 import type { Post } from "@/app/components/card-art";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -105,6 +106,7 @@ function EventoView({ post, comments, currentUserId, currentProfile }: {
         <BookmarkButton postId={post.id} currentUserId={currentUserId} />
       </div>
       <PostActions postId={post.id} postAuthorId={post.author_id} />
+      <ShareToColectivoButton postId={post.id} currentUserId={currentUserId} />
 
       {(post.media_url ?? post.media_base64) && (
         // eslint-disable-next-line @next/next/no-img-element
@@ -179,8 +181,8 @@ function EscritoView({ post, comments, currentUserId, currentProfile }: {
   return (
     <div className="mx-auto px-6 pb-24" style={{ maxWidth: "680px" }}>
       <div className="pt-8 pb-6">
-        <Link href="/manifiestos" className="text-xs tracking-widest uppercase" style={{ color: "#5F5E5A", fontFamily: mono }}>
-          ← manifiestos
+        <Link href="/letras" className="text-xs tracking-widest uppercase" style={{ color: "#5F5E5A", fontFamily: mono }}>
+          ← letras
         </Link>
       </div>
 
@@ -189,6 +191,7 @@ function EscritoView({ post, comments, currentUserId, currentProfile }: {
         <BookmarkButton postId={post.id} currentUserId={currentUserId} />
       </div>
       <PostActions postId={post.id} postAuthorId={post.author_id} />
+      <ShareToColectivoButton postId={post.id} currentUserId={currentUserId} />
 
       {post.title && (
         <h1 style={{ fontSize: "36px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800, lineHeight: 1.1, marginBottom: "28px", letterSpacing: "-0.02em" }}>
@@ -198,7 +201,7 @@ function EscritoView({ post, comments, currentUserId, currentProfile }: {
 
       <div style={{ marginBottom: "32px" }}>
         <span style={{ fontSize: "9px", color: "#7F77DD", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.14em", border: "0.5px solid #7F77DD", padding: "3px 8px" }}>
-          manifiesto
+          letra
         </span>
       </div>
 
@@ -251,12 +254,14 @@ const TYPE_ACCENT: Record<string, string> = {
   arte: "#D85A30",
   fotografía: "#378ADD",
   música: "#5DCAA5",
+  video: "#EF9F27",
 };
 
 function WorkView({ post, comments, currentUserId, currentProfile }: {
   post: Post; comments: Comment[]; currentUserId: string | null; currentProfile: CurrentProfile;
 }) {
   const isAudio = post.media_type?.startsWith("audio/") || post.type === "música";
+  const isVideo = post.media_type?.startsWith("video/") || post.type === "video";
   const accent = TYPE_ACCENT[post.type] ?? "#888780";
 
   return (
@@ -272,6 +277,7 @@ function WorkView({ post, comments, currentUserId, currentProfile }: {
         <BookmarkButton postId={post.id} currentUserId={currentUserId} />
       </div>
       <PostActions postId={post.id} postAuthorId={post.author_id} />
+      <ShareToColectivoButton postId={post.id} currentUserId={currentUserId} />
 
       {(post.media_url ?? post.media_base64) && (
         <div style={{ marginBottom: "32px", border: "0.5px solid #2a2a28" }}>
@@ -291,6 +297,14 @@ function WorkView({ post, comments, currentUserId, currentProfile }: {
               {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
               <audio controls src={(post.media_url ?? post.media_base64)!} style={{ position: "relative", width: "100%", accentColor: "#5DCAA5" }} />
             </div>
+          ) : isVideo ? (
+            /* eslint-disable-next-line jsx-a11y/media-has-caption */
+            <video
+              controls
+              playsInline
+              src={(post.media_url ?? post.media_base64)!}
+              style={{ width: "100%", display: "block", backgroundColor: "#0c0c0b", accentColor: "#EF9F27" }}
+            />
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={(post.media_url ?? post.media_base64)!} alt={post.title ?? ""} style={{ width: "100%", display: "block" }} />

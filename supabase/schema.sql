@@ -54,3 +54,44 @@ create policy "collection_posts_insert" on collection_posts for insert
   with check (exists (select 1 from collections c where c.id = collection_id and c.user_id = auth.uid()));
 create policy "collection_posts_delete" on collection_posts for delete
   using (exists (select 1 from collections c where c.id = collection_id and c.user_id = auth.uid()));
+
+-- ─── Colectivos ───────────────────────────────────────────────────────────────
+
+CREATE TABLE colectivos (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  slug text unique not null,
+  description text,
+  avatar_color text default '#D85A30',
+  cover_image_url text,
+  is_private boolean default false not null,
+  created_by uuid references profiles(id) on delete set null,
+  created_at timestamp default now()
+);
+
+CREATE TABLE colectivo_members (
+  id uuid primary key default gen_random_uuid(),
+  colectivo_id uuid references colectivos(id) on delete cascade not null,
+  user_id uuid references profiles(id) on delete cascade not null,
+  role text default 'member' not null check (role in ('admin', 'member')),
+  created_at timestamp default now(),
+  unique (colectivo_id, user_id)
+);
+
+CREATE TABLE colectivo_posts (
+  id uuid primary key default gen_random_uuid(),
+  colectivo_id uuid references colectivos(id) on delete cascade not null,
+  post_id uuid references posts(id) on delete cascade not null,
+  added_by uuid references profiles(id) on delete set null,
+  created_at timestamp default now(),
+  unique (colectivo_id, post_id)
+);
+
+CREATE TABLE colectivo_join_requests (
+  id uuid primary key default gen_random_uuid(),
+  colectivo_id uuid references colectivos(id) on delete cascade not null,
+  user_id uuid references profiles(id) on delete cascade not null,
+  status text default 'pending' not null check (status in ('pending', 'approved', 'rejected')),
+  created_at timestamp default now(),
+  unique (colectivo_id, user_id)
+);

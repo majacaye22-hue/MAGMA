@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { PostCard, type Post } from "./card-art";
 import { EventosClient } from "@/app/eventos/EventosClient";
 import { getSupabaseClient } from "@/lib/supabase"
-const supabase = getSupabaseClient();
 
 function CardWrapper({ children }: { children: React.ReactNode }) {
   const [hovered, setHovered] = useState(false);
@@ -26,36 +25,36 @@ function CardWrapper({ children }: { children: React.ReactNode }) {
   );
 }
 
-const FILTERS = ["todo", "arte", "música", "fotografía", "eventos", "manifiestos", "colaboración"] as const;
+const FILTERS = ["todo", "música", "fotografía", "video", "eventos", "letras", "colaboración"] as const;
 type Filter = (typeof FILTERS)[number];
 
 const TYPE_MAP: Record<Filter, string | null> = {
   todo: null,
-  arte: "arte",
   música: "música",
   fotografía: "fotografía",
+  video: "video",
   eventos: "evento",
-  manifiestos: "escrito",
+  letras: "escrito",
   colaboración: null, // handled separately via open_collab
 };
 
 const PILL_ACCENT: Record<Filter, string> = {
   todo: "#D85A30",
-  arte: "#D85A30",
   música: "#D85A30",
   fotografía: "#D85A30",
+  video: "#EF9F27",
   eventos: "#D85A30",
-  manifiestos: "#7F77DD",
+  letras: "#7F77DD",
   colaboración: "#5DCAA5",
 };
 
 // Maps filter name → upload ?type= param value
 const UPLOAD_TYPE: Partial<Record<Filter, string>> = {
-  arte: "arte",
   música: "música",
   fotografía: "fotografía",
+  video: "video",
   eventos: "evento",
-  manifiestos: "escrito",
+  letras: "escrito",
   // colaboración is cross-type — no specific upload destination
 };
 
@@ -68,7 +67,7 @@ export function Feed({ posts }: { posts: Post[] }) {
 
   useEffect(() => {
     void (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await getSupabaseClient().auth.getUser();
       setCurrentUserId(user?.id ?? null);
     })();
   }, []);
@@ -134,7 +133,7 @@ export function Feed({ posts }: { posts: Post[] }) {
             position: "fixed",
             bottom: "32px",
             right: "32px",
-            backgroundColor: active === "manifiestos" ? "#7F77DD" : "#D85A30",
+            backgroundColor: active === "letras" ? "#7F77DD" : "#D85A30",
             color: "#0c0c0b",
             fontFamily: mono,
             fontSize: "11px",
@@ -147,7 +146,7 @@ export function Feed({ posts }: { posts: Post[] }) {
           }}
           className="hover:opacity-90 transition-opacity"
         >
-          + subir {active === "manifiestos" ? "manifiesto" : active === "fotografía" ? "foto" : active}
+          + subir {active === "letras" ? "manifiesto" : active === "fotografía" ? "foto" : active}
         </button>
       )}
     </>

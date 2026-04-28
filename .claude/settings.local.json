@@ -8,7 +8,13 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(npx tsc:*)",
-      "Bash(curl -s http://localhost:3000 -o /dev/null -w \"%{http_code}\")"
+      "Bash(curl -s http://localhost:3000 -o /dev/null -w \"%{http_code}\")",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(npm run:*)",
+      "Bash(pkill -9 -f \"next dev\")",
+      "Bash(pkill -9 -f \"next-server\")",
+      "Bash(npm --prefix /Users/maja/magma run dev)",
+      "Bash(ls /Users/maja/magma/.env*)"
     ]
   }
 }

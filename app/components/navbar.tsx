@@ -138,6 +138,16 @@ export function Navbar() {
 
         <div className="flex items-center gap-5">
           <Link
+            href="/manifiesto"
+            className="text-xs"
+            style={{
+              color: pathname.startsWith("/manifiesto") ? "#D85A30" : "#888780",
+              fontFamily: "var(--font-space-mono), monospace",
+            }}
+          >
+            manifiesto
+          </Link>
+          <Link
             href="/radio"
             className="text-xs"
             style={{
@@ -148,14 +158,24 @@ export function Navbar() {
             radio
           </Link>
           <Link
-            href="/eventos"
+            href="/colectivos"
             className="text-xs"
             style={{
-              color: pathname.startsWith("/eventos") ? "#EF9F27" : "#888780",
+              color: pathname.startsWith("/colectivos") ? "#D85A30" : "#888780",
               fontFamily: "var(--font-space-mono), monospace",
             }}
           >
-            eventos
+            colectivos
+          </Link>
+          <Link
+            href="/tianguis"
+            className="text-xs"
+            style={{
+              color: pathname.startsWith("/tianguis") ? "#D85A30" : "#888780",
+              fontFamily: "var(--font-space-mono), monospace",
+            }}
+          >
+            tianguis
           </Link>
           <Link
             href="/upload"
@@ -236,12 +256,28 @@ export function Navbar() {
                     )}
                   </Link>
                   <Link
+                    href="/tianguis/mis-listings"
+                    onClick={() => setDropdownOpen(false)}
+                    className="px-4 py-3 text-xs hover:bg-[#1e1e1b] transition-colors border-t"
+                    style={{ color: "#e8e4dc", fontFamily: "var(--font-space-mono), monospace", borderColor: "#2a2a28" }}
+                  >
+                    mi tianguis
+                  </Link>
+                  <Link
                     href="/upload"
                     onClick={() => setDropdownOpen(false)}
                     className="px-4 py-3 text-xs hover:bg-[#1e1e1b] transition-colors border-t"
                     style={{ color: "#e8e4dc", fontFamily: "var(--font-space-mono), monospace", borderColor: "#2a2a28" }}
                   >
                     subir obra
+                  </Link>
+                  <Link
+                    href="/manifiesto"
+                    onClick={() => setDropdownOpen(false)}
+                    className="px-4 py-3 text-xs hover:bg-[#1e1e1b] transition-colors border-t"
+                    style={{ color: "#5F5E5A", fontFamily: "var(--font-space-mono), monospace", borderColor: "#2a2a28" }}
+                  >
+                    manifiesto
                   </Link>
                   <button
                     onClick={handleSignOut}
