@@ -3,6 +3,26 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 const PROTECTED = ['/upload', '/profile/edit', '/mod']
 
+// Ciudad de México + Estado de México — together they cover the CDMX
+// metro area (Zona Metropolitana del Valle de México). ISO 3166-2 codes
+// as reported by Vercel's edge geolocation headers.
+const CDMX_METRO_REGIONS = new Set(['CMX', 'MEX'])
+
+type GeoStatus = 'cdmx' | 'mx' | 'intl' | 'unknown'
+
+function getGeoStatus(request: NextRequest): GeoStatus {
+  const country = request.headers.get('x-vercel-ip-country')
+  const region = request.headers.get('x-vercel-ip-country-region')
+
+  // These headers are only populated on Vercel's edge network. Locally
+  // (or on other hosts) they're absent, so we skip the check rather than
+  // guess.
+  if (!country) return 'unknown'
+  if (country !== 'MX') return 'intl'
+  if (region && CDMX_METRO_REGIONS.has(region)) return 'cdmx'
+  return 'mx'
+}
+
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
@@ -40,6 +60,12 @@ export async function middleware(request: NextRequest) {
     loginUrl.searchParams.set('redirectTo', request.nextUrl.pathname)
     return NextResponse.redirect(loginUrl)
   }
+
+  supabaseResponse.cookies.set('magma_geo', getGeoStatus(request), {
+    path: '/',
+    maxAge: 60 * 60 * 24,
+    sameSite: 'lax',
+  })
 
   return supabaseResponse
 }

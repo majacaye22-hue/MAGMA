@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Space_Mono, Syne } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/app/components/navbar";
+import { GeoBanner } from "@/app/components/GeoBanner";
 
 const spaceMono = Space_Mono({
   weight: ["400", "700"],
@@ -31,6 +32,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <Navbar />
+        <GeoBanner />
         {children}
       </body>
     </html>
