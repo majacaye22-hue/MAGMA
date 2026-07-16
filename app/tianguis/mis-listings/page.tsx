@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type { User } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
 
 const mono = "var(--font-space-mono), monospace";
@@ -28,7 +29,7 @@ export default function MisListingsPage() {
 
   useEffect(() => {
     const supabase = getSupabaseClient();
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
+    supabase.auth.getUser().then(async ({ data: { user } }: { data: { user: User | null } }) => {
       if (!user) { router.push("/auth/login?redirectTo=/tianguis/mis-listings"); return; }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data } = await (supabase as any)

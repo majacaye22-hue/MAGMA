@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import type { PostgrestError } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
 
+const isDev = process.env.NODE_ENV !== 'production';
 const mono = "var(--font-space-mono), monospace";
 
 type Colectivo = { id: string; name: string; avatar_color: string; already_shared: boolean };
@@ -30,8 +32,8 @@ export function ShareToColectivoButton({
       .from("colectivo_members")
       .select("colectivo_id", { count: "exact", head: true })
       .eq("user_id", currentUserId)
-      .then(({ count, error }) => {
-        console.log("[ShareToColectivo] userId:", currentUserId, "count:", count, "error:", error);
+      .then(({ count, error }: { count: number | null; error: PostgrestError | null }) => {
+        if (isDev) console.log("[ShareToColectivo] userId:", currentUserId, "count:", count, "error:", error);
         if (error) { setHasMembership(false); return; }
         setHasMembership((count ?? 0) > 0);
       });

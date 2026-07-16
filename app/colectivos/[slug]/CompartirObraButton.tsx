@@ -66,7 +66,7 @@ export function CompartirObraButton({
 
     const sharedIds = new Set((sharedPosts ?? []).map((p: { post_id: string }) => p.post_id));
     setPosts(
-      (ownPosts ?? []).map((p) => ({ ...p, already_shared: sharedIds.has(p.id) }))
+      (ownPosts ?? []).map((p: Omit<OwnPost, "already_shared">) => ({ ...p, already_shared: sharedIds.has(p.id) }))
     );
     setLoading(false);
   }

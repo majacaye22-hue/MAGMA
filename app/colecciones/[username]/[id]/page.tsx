@@ -154,11 +154,9 @@ export default async function CollectionDetailPage({
     .eq("collection_id", id)
     .order("created_at", { ascending: false });
 
-  const posts = ((collectionPosts ?? [])
-    .map((cp: { posts: PostInCollection | PostInCollection[] | null }) =>
-      Array.isArray(cp.posts) ? cp.posts[0] : cp.posts
-    )
-    .filter(Boolean)) as PostInCollection[];
+  const posts = ((collectionPosts ?? []) as unknown as { posts: PostInCollection | null }[])
+    .map((cp) => cp.posts)
+    .filter((p): p is PostInCollection => p !== null);
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#0c0c0b" }}>

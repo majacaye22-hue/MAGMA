@@ -8,6 +8,8 @@ import type { Post } from "@/app/components/card-art";
 import { ProjectCard, type Project } from "@/app/components/ProjectCard";
 import { CreateProjectModal } from "@/app/components/CreateProjectModal";
 
+const isDev = process.env.NODE_ENV !== 'production';
+
 type PostThumb = { id: string; media_url: string | null; cover_url: string | null; type: string };
 
 type CollectionPost = {
@@ -263,11 +265,10 @@ export function ProfileView({
       .from("colectivo_members")
       .select("colectivos(id, name, slug, avatar_color)")
       .eq("user_id", profile.id)
-      .then(({ data }) => {
+      .then(({ data }: { data: { colectivos: { id: string; name: string; slug: string; avatar_color: string } | null }[] | null }) => {
         const cols = (data ?? [])
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .map((m: any) => m.colectivos)
-          .filter(Boolean);
+          .map((m) => m.colectivos)
+          .filter((c): c is { id: string; name: string; slug: string; avatar_color: string } => c !== null);
         setColectivos(cols);
       });
   }, [profile.id]);
@@ -296,7 +297,7 @@ export function ProfileView({
       .eq("author_id", profile.id)
       .order("created_at", { ascending: false })
       .then(({ data, error }: { data: Project[] | null; error: unknown }) => {
-        console.log("[ProfileView] projects query →", { data, error });
+        if (isDev) console.log("[ProfileView] projects query →", { data, error });
         setProjects(data ?? []);
       });
   }, [profile.id]);
@@ -309,9 +310,8 @@ export function ProfileView({
       .select("id, name, is_public, collection_posts(posts(id, media_url, cover_url, type))")
       .eq("user_id", profile.id)
       .order("created_at", { ascending: false })
-      .then(({ data }) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setCollections((data ?? []) as unknown as Collection[]);
+      .then(({ data }: { data: Collection[] | null }) => {
+        setCollections(data ?? []);
         setCollectionsLoaded(true);
       });
   }, [activeTab, collectionsLoaded, profile.id]);

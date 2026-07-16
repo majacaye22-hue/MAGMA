@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import type { User } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
 
 const mono = "var(--font-space-mono), monospace";
@@ -49,7 +50,7 @@ export default function CrearListingPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    getSupabaseClient().auth.getUser().then(({ data: { user } }) => {
+    getSupabaseClient().auth.getUser().then(({ data: { user } }: { data: { user: User | null } }) => {
       if (!user) { router.push("/auth/login?redirectTo=/tianguis/crear"); return; }
       setUserId(user.id);
     });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
 
 const mono = "var(--font-space-mono), monospace";
@@ -26,7 +27,7 @@ export function CollabProposalButton({
 
   useEffect(() => {
     const supabase = getSupabaseClient();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
       setUserId(session?.user?.id ?? null);
     });
     return () => subscription.unsubscribe();
