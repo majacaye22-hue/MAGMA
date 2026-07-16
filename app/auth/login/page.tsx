@@ -3,8 +3,6 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { getSupabaseClient } from "@/lib/supabase"
-const supabase = getSupabaseClient();
 
 const inputStyle: React.CSSProperties = {
   backgroundColor: "#141412",
@@ -56,39 +54,26 @@ function LoginForm() {
     setLoading(true);
     setError(null);
 
-    let email = emailOrUsername.trim();
-
-    if (!email.includes("@")) {
-      // Resolve username → email via server-side API (uses service role, bypasses RLS)
-      const res = await fetch('/api/auth/lookup-username', {
+    try {
+      const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: email }),
+        body: JSON.stringify({ emailOrUsername: emailOrUsername.trim(), password }),
       })
       const json = await res.json()
-      console.log("[login] username lookup:", { input: email, status: res.status, json })
 
-      if (!res.ok || !json.email) {
-        setError(json.error ?? "usuario no encontrado");
-        setLoading(false);
+      if (!res.ok) {
+        setError(json.error ?? "email o contraseña incorrectos");
         return;
       }
 
-      email = json.email;
-    }
-
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-
-    if (signInError) {
-      setError(signInError.message);
+      const raw = searchParams.get("redirectTo") ?? "/";
+      // Guard against redirect loops — never send back to /auth/*
+      const redirectTo = raw.startsWith("/auth") ? "/" : raw;
+      window.location.href = redirectTo;
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const raw = searchParams.get("redirectTo") ?? "/";
-    // Guard against redirect loops — never send back to /auth/*
-    const redirectTo = raw.startsWith("/auth") ? "/" : raw;
-    window.location.href = redirectTo;
   }
 
   return (

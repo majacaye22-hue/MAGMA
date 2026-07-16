@@ -1,8 +1,24 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase-server'
+
+const MAX_SIZE = 15 * 1024 * 1024 // 15 MB
+
+const ALLOWED_TYPES = new Set([
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+  'audio/mpeg', 'audio/wav', 'audio/flac', 'audio/ogg', 'audio/mp4',
+  'video/mp4', 'video/quicktime', 'video/webm',
+])
+
+const isDev = process.env.NODE_ENV !== 'production'
 
 export async function POST(request: NextRequest) {
-  console.log('[api/upload] request received')
+  // Auth check — must have a valid session cookie
+  const authClient = await createClient()
+  const { data: { user } } = await authClient.auth.getUser()
+  if (!user) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
 
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!serviceKey) {
@@ -10,7 +26,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'server misconfiguration: missing service key' }, { status: 500 })
   }
 
-  const supabase = createClient(
+  const supabase = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     serviceKey,
   )
@@ -19,17 +35,24 @@ export async function POST(request: NextRequest) {
   try {
     formData = await request.formData()
   } catch (err) {
-    console.error('[api/upload] failed to parse formData:', err)
+    if (isDev) console.error('[api/upload] failed to parse formData:', err)
     return NextResponse.json({ error: 'failed to parse upload — file may be too large' }, { status: 413 })
   }
 
   const file = formData.get('file') as File | null
   if (!file) {
-    console.error('[api/upload] no file in formData')
     return NextResponse.json({ error: 'no file' }, { status: 400 })
   }
 
-  console.log('[api/upload] file received:', file.name, file.type, `${(file.size / 1024 / 1024).toFixed(2)} MB`)
+  if (file.size > MAX_SIZE) {
+    return NextResponse.json({ error: 'file too large — max 15 MB' }, { status: 413 })
+  }
+
+  if (!ALLOWED_TYPES.has(file.type)) {
+    return NextResponse.json({ error: 'file type not allowed' }, { status: 415 })
+  }
+
+  if (isDev) console.log('[api/upload]', file.name, file.type, `${(file.size / 1024 / 1024).toFixed(2)} MB`)
 
   const fileExt = file.name.split('.').pop() ?? 'bin'
   const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`
@@ -39,11 +62,9 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer()
     buffer = Buffer.from(bytes)
   } catch (err) {
-    console.error('[api/upload] failed to read file bytes:', err)
+    if (isDev) console.error('[api/upload] failed to read file bytes:', err)
     return NextResponse.json({ error: 'failed to read file' }, { status: 500 })
   }
-
-  console.log('[api/upload] uploading to storage bucket "media", path:', fileName)
 
   const { error: storageError } = await supabase.storage
     .from('media')
@@ -53,14 +74,11 @@ export async function POST(request: NextRequest) {
     })
 
   if (storageError) {
-    console.error('[api/upload] storage upload error:', storageError)
+    console.error('[api/upload] storage error:', storageError)
     return NextResponse.json({ error: `storage error: ${storageError.message}` }, { status: 500 })
   }
 
-  console.log('[api/upload] storage upload succeeded')
-
   const { data } = supabase.storage.from('media').getPublicUrl(fileName)
-  console.log('[api/upload] public url:', data.publicUrl)
 
   return NextResponse.json({ url: data.publicUrl })
 }
