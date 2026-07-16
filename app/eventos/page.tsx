@@ -12,7 +12,7 @@ export default async function EventosPage() {
     .order("event_date", { ascending: true });
 
   const eventos: Post[] = data ?? [];
-  console.log("[EventosPage] eventos.length:", eventos.length, "sample:", eventos[0]?.id ?? "none");
+  if (process.env.NODE_ENV !== 'production') console.log("[EventosPage] eventos.length:", eventos.length, "sample:", eventos[0]?.id ?? "none");
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#0c0c0b" }}>

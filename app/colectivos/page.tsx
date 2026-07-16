@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase-server";
 import Link from "next/link";
 
+const isDev = process.env.NODE_ENV !== 'production';
 const mono = "var(--font-space-mono), monospace";
 const syne = "var(--font-syne), sans-serif";
 
@@ -105,7 +106,7 @@ export default async function ColectivosPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const colectivos = (data ?? []) as unknown as Colectivo[];
 
-  console.log("[colectivos page] raw data:", JSON.stringify(data, null, 2));
+  if (isDev) console.log("[colectivos page] raw data:", JSON.stringify(data, null, 2));
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#0c0c0b" }}>

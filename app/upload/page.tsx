@@ -11,6 +11,8 @@ const RichEditor = dynamic(
   { ssr: false, loading: () => <div style={{ minHeight: "320px", backgroundColor: "#141412", border: "0.5px solid #2a2a28" }} /> }
 );
 
+const isDev = process.env.NODE_ENV !== 'production';
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type WorkType = "arte" | "música" | "fotografía" | "evento" | "escrito" | "video";
@@ -192,7 +194,7 @@ function UploadPageInner() {
           .eq("author_id", uid)
           .order("created_at", { ascending: false })
           .then(({ data, error: projectsError }: { data: { id: string; title: string }[] | null; error: unknown }) => {
-            console.log("userProjects:", data, "error:", projectsError)
+            if (isDev) console.log("userProjects:", data, "error:", projectsError)
             setUserProjects(data ?? []);
           });
       }
@@ -279,30 +281,30 @@ function UploadPageInner() {
       let coverUrl = null
 
       if (file) {
-        console.log('[upload] uploading file:', file.name, file.type, `${(file.size / 1024 / 1024).toFixed(2)} MB`)
+        if (isDev) console.log('[upload] uploading file:', file.name, file.type, `${(file.size / 1024 / 1024).toFixed(2)} MB`)
         const formData = new FormData()
         formData.append('file', file)
         const response = await fetch('/api/upload', { method: 'POST', body: formData })
-        console.log('[upload] file upload response status:', response.status)
+        if (isDev) console.log('[upload] file upload response status:', response.status)
         const json = await response.json()
-        console.log('[upload] file upload response body:', json)
+        if (isDev) console.log('[upload] file upload response body:', json)
         if (!response.ok || json.error) throw new Error(json.error ?? `HTTP ${response.status}`)
         mediaUrl = json.url
       }
 
       if (coverFile) {
-        console.log('[upload] uploading cover:', coverFile.name, `${(coverFile.size / 1024 / 1024).toFixed(2)} MB`)
+        if (isDev) console.log('[upload] uploading cover:', coverFile.name, `${(coverFile.size / 1024 / 1024).toFixed(2)} MB`)
         const formData = new FormData()
         formData.append('file', coverFile)
         const response = await fetch('/api/upload', { method: 'POST', body: formData })
-        console.log('[upload] cover upload response status:', response.status)
+        if (isDev) console.log('[upload] cover upload response status:', response.status)
         const json = await response.json()
-        console.log('[upload] cover upload response body:', json)
+        if (isDev) console.log('[upload] cover upload response body:', json)
         if (!response.ok || json.error) throw new Error(json.error ?? `HTTP ${response.status}`)
         coverUrl = json.url
       }
 
-      console.log('[upload] starting insert with userId:', userId)
+      if (isDev) console.log('[upload] starting insert with userId:', userId)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error: insertError } = await (supabase as any)
         .from('posts')
@@ -325,7 +327,7 @@ function UploadPageInner() {
         })
         .select()
 
-      console.log('[upload] insert result:', { data, error: insertError })
+      if (isDev) console.log('[upload] insert result:', { data, error: insertError })
       if (insertError) throw insertError
 
       // If coming from a colectivo, add the new post to it
@@ -338,14 +340,14 @@ function UploadPageInner() {
       }
 
       // If a project was selected, link the post to it
-      console.log("About to insert post_projects - selectedProject:", selectedProject, "post id:", data?.[0]?.id)
+      if (isDev) console.log("About to insert post_projects - selectedProject:", selectedProject, "post id:", data?.[0]?.id)
       if (selectedProject && data?.[0]?.id) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { error: ppError } = await (supabase as any).from('post_projects').insert({ project_id: selectedProject, post_id: data[0].id })
-        console.log('[upload] post_projects insert error:', ppError)
+        if (isDev) console.log('[upload] post_projects insert error:', ppError)
       }
 
-      console.log('[upload] success, redirecting')
+      if (isDev) console.log('[upload] success, redirecting')
       const proyectoParam = searchParams.get('proyecto')
       router.push(
         colectivoSlug ? `/colectivos/${colectivoSlug}` :
@@ -701,7 +703,7 @@ function UploadPageInner() {
               <label style={labelStyle}>Agregar a proyecto <span style={{ color: "#444441" }}>— opcional</span></label>
               <select
                 value={selectedProject}
-                onChange={(e) => { console.log("selectedProject changed to:", e.target.value); setSelectedProject(e.target.value); }}
+                onChange={(e) => { if (isDev) console.log("selectedProject changed to:", e.target.value); setSelectedProject(e.target.value); }}
                 style={{
                   ...inputStyle,
                   appearance: "none",
