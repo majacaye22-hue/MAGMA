@@ -14,7 +14,6 @@ interface DJ {
   name: string;
   approved: boolean;
   user_id: string;
-  profiles: { email: string } | null;
 }
 
 interface RadioSettings {
@@ -23,6 +22,18 @@ interface RadioSettings {
   dj_name: string;
   set_description: string;
   stream_url: string;
+}
+
+interface SlotRequest {
+  id: string;
+  username: string;
+  genre: string;
+  platform: string;
+  preferred_date: string | null;
+  preferred_time: string | null;
+  stream_url: string | null;
+  status: string;
+  created_at: string;
 }
 
 export default function AdminPage() {
@@ -35,6 +46,8 @@ export default function AdminPage() {
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const [djs, setDjs] = useState<DJ[]>([]);
+  const [requests, setRequests] = useState<SlotRequest[]>([]);
+  const [handling, setHandling] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     void (async () => {
@@ -45,15 +58,15 @@ export default function AdminPage() {
       }
       setAuthorized(true);
 
-      const { data } = await supabase.from("radio_settings").select("*").single();
-      if (data) setSettings(data as RadioSettings);
+      const [settingsRes, djsRes, requestsRes] = await Promise.all([
+        supabase.from("radio_settings").select("*").single(),
+        supabase.from("djs").select("id, name, approved, user_id").order("created_at", { ascending: false }),
+        supabase.from("radio_slot_requests").select("*").eq("status", "pending").order("created_at", { ascending: true }),
+      ]);
 
-      const { data: djData } = await supabase
-        .from("djs")
-        .select("id, name, approved, user_id")
-        .order("created_at", { ascending: false });
-      setDjs((djData ?? []) as DJ[]);
-
+      if (settingsRes.data) setSettings(settingsRes.data as RadioSettings);
+      setDjs((djsRes.data ?? []) as DJ[]);
+      setRequests((requestsRes.data ?? []) as SlotRequest[]);
       setLoading(false);
     })();
   }, []);
@@ -84,6 +97,34 @@ export default function AdminPage() {
   async function toggleApproval(dj: DJ) {
     await supabase.from("djs").update({ approved: !dj.approved }).eq("id", dj.id);
     setDjs((prev) => prev.map((d) => d.id === dj.id ? { ...d, approved: !d.approved } : d));
+  }
+
+  async function handleSlotAction(requestId: string, action: "approve" | "reject") {
+    setHandling((prev) => new Set(prev).add(requestId));
+    try {
+      const res = await fetch("/api/admin/slot-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId, action }),
+      });
+      if (res.ok) {
+        setRequests((prev) => prev.filter((r) => r.id !== requestId));
+        if (action === "approve") {
+          // Refresh DJ list to pick up the newly created row
+          const { data } = await supabase
+            .from("djs")
+            .select("id, name, approved, user_id")
+            .order("created_at", { ascending: false });
+          if (data) setDjs(data as DJ[]);
+        }
+      }
+    } finally {
+      setHandling((prev) => {
+        const next = new Set(prev);
+        next.delete(requestId);
+        return next;
+      });
+    }
   }
 
   if (!authorized || loading) return null;
@@ -236,6 +277,109 @@ export default function AdminPage() {
         {/* Divider */}
         <div style={{ height: "0.5px", backgroundColor: "#2a2a28" }} />
 
+        {/* Slot requests section */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <div>
+            <h2 style={{ fontSize: "18px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800, marginBottom: "4px" }}>
+              Solicitudes de slot
+            </h2>
+            <p style={{ fontSize: "10px", color: "#444441", fontFamily: mono }}>
+              {requests.length === 0 ? "sin solicitudes pendientes" : `${requests.length} pendiente${requests.length > 1 ? "s" : ""}`}
+            </p>
+          </div>
+
+          {requests.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+              {requests.map((req) => {
+                const busy = handling.has(req.id);
+                return (
+                  <div
+                    key={req.id}
+                    style={{
+                      padding: "16px",
+                      backgroundColor: "#0e0e0d",
+                      border: "0.5px solid #2a2a28",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "10px",
+                    }}
+                  >
+                    {/* Name + genre */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                      <span style={{ fontSize: "14px", color: "#e8e4dc", fontFamily: syne, fontWeight: 700 }}>
+                        {req.username}
+                      </span>
+                      <span style={{ fontSize: "11px", color: "#888780", fontFamily: mono, lineHeight: 1.5 }}>
+                        {req.genre}
+                      </span>
+                    </div>
+
+                    {/* Meta row */}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
+                      {req.platform && (
+                        <span style={{ fontSize: "9px", color: "#5F5E5A", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                          {req.platform}
+                        </span>
+                      )}
+                      {req.preferred_date && (
+                        <span style={{ fontSize: "9px", color: "#5F5E5A", fontFamily: mono }}>
+                          {req.preferred_date}
+                        </span>
+                      )}
+                      {req.preferred_time && (
+                        <span style={{ fontSize: "9px", color: "#5F5E5A", fontFamily: mono }}>
+                          {req.preferred_time.slice(0, 5)}
+                        </span>
+                      )}
+                      {req.stream_url && (
+                        <a
+                          href={req.stream_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ fontSize: "9px", color: "#378ADD", fontFamily: mono, textDecoration: "none" }}
+                        >
+                          link →
+                        </a>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <button
+                        onClick={() => handleSlotAction(req.id, "approve")}
+                        disabled={busy}
+                        style={{
+                          fontSize: "9px", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em",
+                          padding: "6px 16px", border: "0.5px solid #5DCAA5",
+                          backgroundColor: "#0d1a14", color: "#5DCAA5",
+                          cursor: busy ? "default" : "pointer", opacity: busy ? 0.5 : 1,
+                        }}
+                      >
+                        {busy ? "..." : "aprobar"}
+                      </button>
+                      <button
+                        onClick={() => handleSlotAction(req.id, "reject")}
+                        disabled={busy}
+                        style={{
+                          fontSize: "9px", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em",
+                          padding: "6px 16px", border: "0.5px solid #2a2a28",
+                          backgroundColor: "transparent", color: "#888780",
+                          cursor: busy ? "default" : "pointer", opacity: busy ? 0.5 : 1,
+                        }}
+                      >
+                        {busy ? "..." : "rechazar"}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Divider */}
+        <div style={{ height: "0.5px", backgroundColor: "#2a2a28" }} />
+
         {/* DJs section */}
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           <h2 style={{ fontSize: "18px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800 }}>
@@ -243,7 +387,7 @@ export default function AdminPage() {
           </h2>
 
           {djs.length === 0 ? (
-            <p style={{ fontSize: "12px", color: "#444441", fontFamily: mono }}>sin solicitudes todavía</p>
+            <p style={{ fontSize: "12px", color: "#444441", fontFamily: mono }}>ningún DJ todavía</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
               {djs.map((dj) => (
