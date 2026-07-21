@@ -121,8 +121,9 @@ function BlockModal({ other, currentUserId, onClose, onBlocked }: {
 
 // ─── New message panel ────────────────────────────────────────────────────────
 
-function NewMessagePanel({ currentUserId, onConversationCreated, onClose }: {
+function NewMessagePanel({ currentUserId, blockedIds, onConversationCreated, onClose }: {
   currentUserId: string;
+  blockedIds: Set<string>;
   onConversationCreated: (id: string) => void;
   onClose: () => void;
 }) {
@@ -145,11 +146,11 @@ function NewMessagePanel({ currentUserId, onConversationCreated, onClose }: {
         .ilike("username", `%${q}%`)
         .neq("id", currentUserId)
         .limit(8);
-      setResults((data ?? []) as OtherProfile[]);
+      setResults(((data ?? []) as OtherProfile[]).filter((p) => !blockedIds.has(p.id)));
       setSearching(false);
     }, 250);
     return () => clearTimeout(t);
-  }, [query, currentUserId]);
+  }, [query, currentUserId, blockedIds]);
 
   async function startConversation(other: OtherProfile) {
     const [p1, p2] = [currentUserId, other.id].sort();
@@ -221,11 +222,12 @@ function NewMessagePanel({ currentUserId, onConversationCreated, onClose }: {
 
 // ─── Message thread ───────────────────────────────────────────────────────────
 
-function MessageThread({ conversationId, currentUserId, other, onBlock }: {
+function MessageThread({ conversationId, currentUserId, other, onBlock, onBack }: {
   conversationId: string;
   currentUserId: string;
   other: OtherProfile;
   onBlock: () => void;
+  onBack: () => void;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [body, setBody] = useState("");
@@ -299,6 +301,17 @@ function MessageThread({ conversationId, currentUserId, other, onBlock }: {
         style={{ padding: "10px 16px", borderColor: "#1e1e1e", backgroundColor: BG }}
       >
         <div className="flex items-center gap-3">
+          {/* Back to list — mobile only */}
+          <button
+            onClick={onBack}
+            className="md:hidden flex items-center justify-center cursor-pointer shrink-0"
+            style={{ background: "none", border: "none", padding: "4px", color: "#888780" }}
+            aria-label="Volver a mensajes"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square" />
+            </svg>
+          </button>
           <div
             className="shrink-0 flex items-center justify-center text-[9px] font-bold"
             style={{ width: "18px", height: "18px", backgroundColor: avatarBg, color: "#0c0c0b", fontFamily: syne }}
@@ -517,6 +530,7 @@ function MensajesInner() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
+  const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     void (async () => {
@@ -524,12 +538,27 @@ function MensajesInner() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push("/auth/login"); return; }
       setCurrentUserId(user.id);
-      await loadConversations(user.id);
+      const blocked = await refreshBlockedIds(user.id);
+      await loadConversations(user.id, blocked);
       setLoading(false);
     })();
   }, []);
 
-  async function loadConversations(uid: string) {
+  async function refreshBlockedIds(uid: string): Promise<Set<string>> {
+    const supabase = getSupabaseClient();
+    const [{ data: mine }, { data: theirs }] = await Promise.all([
+      supabase.from("blocked_users").select("blocked_id").eq("blocker_id", uid),
+      supabase.from("blocked_users").select("blocker_id").eq("blocked_id", uid),
+    ]);
+    const ids = new Set<string>([
+      ...(mine ?? []).map((r: { blocked_id: string }) => r.blocked_id),
+      ...(theirs ?? []).map((r: { blocker_id: string }) => r.blocker_id),
+    ]);
+    setBlockedIds(ids);
+    return ids;
+  }
+
+  async function loadConversations(uid: string, blocked: Set<string>) {
     const supabase = getSupabaseClient();
     const { data } = await supabase
       .from("conversations")
@@ -539,8 +568,14 @@ function MensajesInner() {
 
     if (!data) return;
 
+    type ConvRow = { id: string; participant_1: string; participant_2: string; last_message_at: string };
+    const visible = (data as ConvRow[]).filter((c) => {
+      const otherId = c.participant_1 === uid ? c.participant_2 : c.participant_1;
+      return !blocked.has(otherId);
+    });
+
     const convos: Conversation[] = await Promise.all(
-      data.map(async (c: { id: string; participant_1: string; participant_2: string; last_message_at: string }) => {
+      visible.map(async (c) => {
         const otherId = c.participant_1 === uid ? c.participant_2 : c.participant_1;
         const [{ data: profile }, { data: lastMsg }, { count: unreadCount }] = await Promise.all([
           supabase.from("profiles").select("id, username, display_name, avatar_color").eq("id", otherId).single(),
@@ -580,8 +615,8 @@ function MensajesInner() {
       >
         {/* ── Left panel ── */}
         <div
-          className="flex flex-col shrink-0 border-r"
-          style={{ width: "240px", borderColor: "#1e1e1e", backgroundColor: BG }}
+          className={`flex-col shrink-0 border-r ${activeId ? "hidden md:flex md:w-60" : "flex w-full md:w-60"}`}
+          style={{ borderColor: "#1e1e1e", backgroundColor: BG }}
         >
           {/* Header */}
           <div className="px-4 py-3 border-b shrink-0" style={{ borderColor: "#1e1e1e" }}>
@@ -608,9 +643,10 @@ function MensajesInner() {
             {showNew && currentUserId && (
               <NewMessagePanel
                 currentUserId={currentUserId}
+                blockedIds={blockedIds}
                 onConversationCreated={(id) => {
                   setShowNew(false);
-                  void loadConversations(currentUserId);
+                  void loadConversations(currentUserId!, blockedIds);
                   router.push(`/mensajes?c=${id}`);
                 }}
                 onClose={() => setShowNew(false)}
@@ -635,7 +671,7 @@ function MensajesInner() {
         </div>
 
         {/* ── Right panel ── */}
-        <div className="flex-1 min-w-0" style={{ backgroundColor: BG }}>
+        <div className={`min-w-0 ${activeId ? "flex-1" : "hidden md:block md:flex-1"}`} style={{ backgroundColor: BG }}>
           {!activeConvo || !currentUserId ? (
             <div className="h-full flex items-center justify-center">
               <p style={{ fontSize: "10px", color: "#2a2a28", fontFamily: mono }}>
@@ -648,9 +684,14 @@ function MensajesInner() {
               conversationId={activeConvo.id}
               currentUserId={currentUserId}
               other={activeConvo.other}
+              onBack={() => router.push("/mensajes")}
               onBlock={() => {
-                setConversations((prev) => prev.filter((c) => c.id !== activeConvo.id));
-                router.push("/mensajes");
+                void (async () => {
+                  if (!currentUserId) return;
+                  const blocked = await refreshBlockedIds(currentUserId);
+                  await loadConversations(currentUserId, blocked);
+                  router.push("/mensajes");
+                })();
               }}
             />
           )}

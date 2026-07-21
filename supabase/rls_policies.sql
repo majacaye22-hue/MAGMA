@@ -151,9 +151,15 @@ CREATE POLICY "messages: sender insert"
   WITH CHECK (
     auth.uid() = sender_id
     AND EXISTS (
-      SELECT 1 FROM conversations
-      WHERE id = conversation_id
-        AND (participant_1 = auth.uid() OR participant_2 = auth.uid())
+      SELECT 1 FROM conversations c
+      WHERE c.id = conversation_id
+        AND (c.participant_1 = auth.uid() OR c.participant_2 = auth.uid())
+        -- Neither participant may have blocked the other
+        AND NOT EXISTS (
+          SELECT 1 FROM blocked_users b
+          WHERE (b.blocker_id = c.participant_1 AND b.blocked_id = c.participant_2)
+             OR (b.blocker_id = c.participant_2 AND b.blocked_id = c.participant_1)
+        )
     )
   );
 
@@ -188,7 +194,15 @@ CREATE POLICY "conversations: participant read"
 
 CREATE POLICY "conversations: participant create"
   ON conversations FOR INSERT
-  WITH CHECK (participant_1 = auth.uid() OR participant_2 = auth.uid());
+  WITH CHECK (
+    (participant_1 = auth.uid() OR participant_2 = auth.uid())
+    -- Blocked pairs cannot create new conversations
+    AND NOT EXISTS (
+      SELECT 1 FROM blocked_users b
+      WHERE (b.blocker_id = participant_1 AND b.blocked_id = participant_2)
+         OR (b.blocker_id = participant_2 AND b.blocked_id = participant_1)
+    )
+  );
 
 -- Update (last_message_at bump) — either participant
 CREATE POLICY "conversations: participant update"
