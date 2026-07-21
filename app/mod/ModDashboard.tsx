@@ -97,13 +97,12 @@ export function ModDashboard({ initialReports }: { initialReports: Report[] }) {
         return (
           <div
             key={report.id}
+            className="flex flex-col md:grid gap-4"
             style={{
               padding: "20px 24px",
               backgroundColor: "#0e0e0d",
               border: "0.5px solid #2a2a28",
-              display: "grid",
               gridTemplateColumns: "1fr auto",
-              gap: "16px",
               alignItems: "start",
             }}
           >

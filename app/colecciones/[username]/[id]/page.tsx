@@ -193,7 +193,7 @@ export default async function CollectionDetailPage({
             sin obras en esta colección
           </p>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1px", backgroundColor: "#2a2a28" }}>
+          <div className="grid grid-cols-2 md:grid-cols-3" style={{ gap: "1px", backgroundColor: "#2a2a28" }}>
             {posts.map((post) => (
               <div key={post.id} style={{ backgroundColor: "#0c0c0b" }}>
                 <PostTile post={post} />

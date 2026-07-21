@@ -137,7 +137,7 @@ export default function CrearListingPage() {
 
             {/* Previews */}
             {imagePreviews.length > 0 && (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "4px", marginBottom: "8px" }}>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-1" style={{ marginBottom: "8px" }}>
                 {imagePreviews.map((src, i) => (
                   <div key={i} style={{ position: "relative", aspectRatio: "1", overflow: "hidden", backgroundColor: "#141412" }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -246,7 +246,7 @@ export default function CrearListingPage() {
           {/* Category */}
           <div>
             <label style={labelStyle}>categoría</label>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "6px" }}>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5">
               {CATEGORIES.map((cat) => (
                 <button
                   key={cat}

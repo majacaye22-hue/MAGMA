@@ -391,7 +391,7 @@ function UploadPageInner() {
         {/* Type selector */}
         <section className="mb-8">
           <p style={{ ...labelStyle, marginBottom: "12px" }}>tipo de obra</p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1px", backgroundColor: "#2a2a28" }}>
+          <div className="grid grid-cols-2 md:grid-cols-3" style={{ gap: "1px", backgroundColor: "#2a2a28" }}>
             {TYPE_OPTIONS.map((opt) => {
               const isSelected = selectedType === opt.id;
               return (
@@ -591,7 +591,7 @@ function UploadPageInner() {
             <div style={{ borderTop: "0.5px solid #2a2a28", paddingTop: "24px", display: "flex", flexDirection: "column", gap: "24px" }}>
               <p style={{ ...labelStyle, marginBottom: 0, color: "#EF9F27" }}>detalles del evento</p>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label style={labelStyle}>Fecha del evento</label>
                   <input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} style={{ ...inputStyle, colorScheme: "dark" }} className="focus:outline-none" />

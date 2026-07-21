@@ -169,7 +169,7 @@ export default function DJDashboard() {
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: "32px", alignItems: "start" }}>
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_360px] gap-8" style={{ alignItems: "start" }}>
 
           {/* Left — DJ info */}
           <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>

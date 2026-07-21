@@ -65,7 +65,7 @@ function relativeTime(dateStr: string): string {
 
 function LiveHero({ settings, listeners }: { settings: RadioSettings; listeners: number }) {
   return (
-    <div className="grid gap-8 pt-10 pb-12" style={{ gridTemplateColumns: "1fr 1fr", alignItems: "start" }}>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-10 pb-12" style={{ alignItems: "start" }}>
       {/* Left — info */}
       <div className="flex flex-col gap-6">
         <div className="flex items-center gap-2">
@@ -533,7 +533,7 @@ export default function RadioPage() {
         <div style={{ height: "0.5px", backgroundColor: "#2a2a28", marginBottom: "40px" }} />
 
         {/* Schedule + Chat */}
-        <div className="grid gap-8" style={{ gridTemplateColumns: "1fr 340px", alignItems: "start" }}>
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_340px] gap-8" style={{ alignItems: "start" }}>
           <Schedule isLive={isLive} />
           <LiveChat currentUserId={currentUserId} />
         </div>

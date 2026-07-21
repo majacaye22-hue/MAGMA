@@ -538,7 +538,7 @@ export function ProfileView({
                 cargando...
               </div>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "2px" }}>
+              <div className="grid grid-cols-2" style={{ gap: "2px" }}>
                 {collections.map((col) => {
                   const thumbs = col.collection_posts
                     .map((cp) => Array.isArray(cp.posts) ? cp.posts[0] : cp.posts)
@@ -547,7 +547,7 @@ export function ProfileView({
                   if (thumbs.length === 0) return null;
                   return (
                     <Link key={col.id} href={`/colecciones/${profile.username}/${col.id}`} style={{ textDecoration: "none", display: "block", border: "0.5px solid #2a2a28" }}>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", height: "180px", gap: "1px", backgroundColor: "#2a2a28" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", aspectRatio: "1", gap: "1px", backgroundColor: "#2a2a28" }}>
                         {Array.from({ length: 4 }).map((_, i) => {
                           const p = thumbs[i];
                           const src = p ? (p.type === "música" ? p.cover_url : p.media_url) ?? null : null;

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Space_Mono, Syne } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/app/components/navbar";
@@ -18,6 +18,12 @@ const syne = Syne({
 export const metadata: Metadata = {
   title: "MAGMA — Comunidad Creativa CDMX",
   description: "Plataforma dark para artistas en Ciudad de México",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  colorScheme: "dark",
 };
 
 export default function RootLayout({

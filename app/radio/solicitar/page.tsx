@@ -120,7 +120,7 @@ function SolicitarForm() {
       </div>
 
       {/* Date + time — side by side */}
-      <div className="grid gap-4" style={{ gridTemplateColumns: "1fr 1fr" }}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="flex flex-col gap-2">
           <label style={labelStyle}>fecha preferida</label>
           <input

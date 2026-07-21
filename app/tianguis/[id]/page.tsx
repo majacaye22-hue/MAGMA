@@ -52,7 +52,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
           </Link>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: "40px", alignItems: "start" }}>
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_360px]" style={{ gap: "40px", alignItems: "start" }}>
           {/* Images */}
           <div>
             {listing.images && listing.images.length > 0 ? (

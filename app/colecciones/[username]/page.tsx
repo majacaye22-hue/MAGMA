@@ -64,7 +64,7 @@ export default async function ColeccionesPage({ params }: { params: Promise<{ us
             sin colecciones públicas
           </p>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "1px", backgroundColor: "#2a2a28" }}>
+          <div className="grid grid-cols-2" style={{ gap: "1px", backgroundColor: "#2a2a28" }}>
             {cols.map((col) => {
               const thumbPosts = col.collection_posts
                 .map((cp) => Array.isArray(cp.posts) ? cp.posts[0] : cp.posts)
@@ -77,7 +77,7 @@ export default async function ColeccionesPage({ params }: { params: Promise<{ us
                   style={{ textDecoration: "none", display: "block", backgroundColor: "#141412" }}
                 >
                   {/* 2×2 thumbnail grid */}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", height: "200px", gap: "1px", backgroundColor: "#2a2a28" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", aspectRatio: "1", gap: "1px", backgroundColor: "#2a2a28" }}>
                     {Array.from({ length: 4 }).map((_, i) => {
                       const p = thumbPosts[i];
                       const thumb = p
