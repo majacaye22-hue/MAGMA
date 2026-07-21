@@ -59,38 +59,43 @@ export default function RegisterPage() {
     setLoading(true);
     setError(null);
 
-    // 1. Create auth user
-    const { data: authData, error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
+    // Create auth user + profile server-side in one shot
+    const res = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: email.trim(),
+        password,
+        username: username.trim(),
+        displayName: displayName.trim() || null,
+        location: colonia.trim() || null,
+      }),
     });
 
-    if (signUpError) {
-      setError(signUpError.message);
+    if (!res.ok) {
+      const { error: msg } = await res.json().catch(() => ({ error: "error al crear la cuenta" }));
+      setError(msg ?? "error al crear la cuenta");
       setLoading(false);
       return;
     }
 
-    const userId = authData.user?.id;
-    if (!userId) {
-      setError("Error al crear la cuenta — intenta de nuevo");
-      setLoading(false);
-      return;
-    }
-
-    // 2. Insert profile row
-    const { error: profileError } = await supabase.from("profiles").insert({
-      id: userId,
-      username: username.trim().toLowerCase(),
-      display_name: displayName.trim() || null,
-      location: colonia.trim() || null,
-      email: email.trim().toLowerCase(),
-    });
-
-    if (profileError) {
-      setError(profileError.message);
-      setLoading(false);
-      return;
+    // Establish the session using the one-time token the server generated,
+    // falling back to password sign-in if the token isn't available
+    const { token_hash } = await res.json().catch(() => ({}));
+    if (token_hash) {
+      const { error: otpErr } = await supabase.auth.verifyOtp({ token_hash, type: "magiclink" });
+      if (otpErr) {
+        setError(otpErr.message);
+        setLoading(false);
+        return;
+      }
+    } else {
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      if (signInError) {
+        setError(signInError.message);
+        setLoading(false);
+        return;
+      }
     }
 
     router.push("/");
