@@ -7,7 +7,7 @@ import { getSupabaseClient } from "@/lib/supabase";
 const mono = "var(--font-space-mono), monospace";
 const syne = "var(--font-syne), sans-serif";
 
-const OWNER_ID = "d546124c-7d0a-4a2b-a668-0e6e491c439a";
+const OWNER_ID = process.env.NEXT_PUBLIC_OWNER_USER_ID ?? "";
 
 interface DJ {
   id: string;

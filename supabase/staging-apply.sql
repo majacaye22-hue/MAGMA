@@ -1,16 +1,9 @@
 -- ============================================================
--- MAGMA — Complete Database Schema
--- Generated: 2026-07-20
--- Source of truth: synthesised from all migration files + app code.
--- Safe to run on a fresh Supabase project.
+-- MAGMA staging — paste this entire file into:
+-- supabase.com/dashboard → magma-staging → SQL Editor → New query → Run
 -- ============================================================
 
 -- ─── APP CONFIG ──────────────────────────────────────────────────────────────
--- Single-row table holding the site owner UUID.
--- Set via: INSERT INTO app_config (owner_user_id) VALUES ('<your-uuid>');
--- Public SELECT so RLS policies on other tables can query it.
--- No INSERT/UPDATE/DELETE policies — write only via service role
--- (Supabase SQL Editor or server-side migrations).
 
 CREATE TABLE app_config (
   owner_user_id uuid NOT NULL
@@ -22,7 +15,6 @@ CREATE POLICY "app_config: public read"
   ON app_config FOR SELECT USING (true);
 
 -- ─── PROFILES ────────────────────────────────────────────────────────────────
--- Extends auth.users. Inserted directly by the client at signup.
 
 CREATE TABLE profiles (
   id               uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -57,13 +49,13 @@ CREATE TABLE posts (
   id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   author_id      uuid REFERENCES profiles(id) ON DELETE CASCADE,
   title          text,
-  body           text,           -- plain text or excerpt
-  content        text,           -- sanitised rich HTML (type = "escrito" only)
-  type           text NOT NULL,  -- arte | fotografía | música | evento | escrito
+  body           text,
+  content        text,
+  type           text NOT NULL,
   media_url      text,
   media_type     text,
-  media_base64   text,           -- legacy; new uploads go to storage
-  cover_url      text,           -- album art for música
+  media_base64   text,
+  cover_url      text,
   tags           text[],
   upvotes        int DEFAULT 0,
   created_at     timestamp DEFAULT now()
@@ -276,7 +268,6 @@ ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "conversations: participant read" ON conversations FOR SELECT
   USING (participant_1 = auth.uid() OR participant_2 = auth.uid());
 
--- Block-aware: neither participant may have blocked the other
 CREATE POLICY "conversations: participant create" ON conversations FOR INSERT
   WITH CHECK (
     (participant_1 = auth.uid() OR participant_2 = auth.uid())
@@ -294,7 +285,6 @@ CREATE POLICY "conversations: participant update" ON conversations FOR UPDATE
 CREATE POLICY "messages: participant read" ON messages FOR SELECT
   USING (EXISTS (SELECT 1 FROM conversations WHERE id = messages.conversation_id AND (participant_1 = auth.uid() OR participant_2 = auth.uid())));
 
--- Block-aware: cannot send into a conversation where either party has blocked the other
 CREATE POLICY "messages: sender insert" ON messages FOR INSERT
   WITH CHECK (
     auth.uid() = sender_id
@@ -316,7 +306,6 @@ CREATE POLICY "messages: participant update read flag" ON messages FOR UPDATE
 
 -- ─── RADIO ───────────────────────────────────────────────────────────────────
 
--- Single-row table; insert one row manually after creating the project.
 CREATE TABLE radio_settings (
   id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   is_live    boolean DEFAULT false NOT NULL,
@@ -379,7 +368,7 @@ CREATE POLICY "radio_slot_requests: owner select" ON radio_slot_requests FOR SEL
 CREATE POLICY "radio_slot_requests: authenticated insert" ON radio_slot_requests FOR INSERT
   WITH CHECK (auth.uid() IS NOT NULL AND (user_id IS NULL OR auth.uid() = user_id));
 
--- ─── TIANGUIS (listings) ─────────────────────────────────────────────────────
+-- ─── TIANGUIS ────────────────────────────────────────────────────────────────
 
 CREATE TABLE listings (
   id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -435,22 +424,38 @@ CREATE POLICY "post_projects: post author insert" ON post_projects FOR INSERT
 CREATE POLICY "post_projects: post author delete" ON post_projects FOR DELETE
   USING (EXISTS (SELECT 1 FROM posts WHERE id = post_projects.post_id AND author_id = auth.uid()));
 
--- ─── STORAGE ─────────────────────────────────────────────────────────────────
--- Run these in the Supabase dashboard → Storage, or via the API:
---
---   Bucket name: "uploads"
---   Public: true
---   File size limit: 50 MB
---   Allowed MIME types: image/*, audio/*, video/*
---
--- Storage RLS (Dashboard → Storage → uploads → Policies):
---   SELECT: true (public reads)
---   INSERT: auth.role() = 'authenticated'
---   DELETE: auth.uid()::text = (storage.foldername(name))[1]
---
+-- ─── STORAGE BUCKET ──────────────────────────────────────────────────────────
+
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'uploads', 'uploads', true, 52428800,
+  ARRAY['image/jpeg','image/png','image/gif','image/webp','image/svg+xml',
+        'audio/mpeg','audio/wav','audio/flac','audio/ogg','audio/mp4',
+        'video/mp4','video/quicktime','video/webm']
+) ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY "uploads: public read"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'uploads');
+
+CREATE POLICY "uploads: authenticated insert"
+  ON storage.objects FOR INSERT
+  WITH CHECK (bucket_id = 'uploads' AND auth.role() = 'authenticated');
+
+CREATE POLICY "uploads: owner delete"
+  ON storage.objects FOR DELETE
+  USING (bucket_id = 'uploads' AND auth.uid()::text = (storage.foldername(name))[1]);
+
 -- ─── INITIAL DATA ────────────────────────────────────────────────────────────
--- After running this schema, seed radio_settings with one row:
---   INSERT INTO radio_settings (is_live, stream_url) VALUES (false, null);
---
--- And update the owner UUID in the radio_settings and djs policies above
--- to match your actual user ID in the staging project.
+
+-- Required: one row in radio_settings so the radio page doesn't 404
+INSERT INTO radio_settings (is_live, stream_url) VALUES (false, null);
+
+-- ─── NEXT STEP ───────────────────────────────────────────────────────────────
+-- After this runs successfully:
+-- 1. Start the app (npm run dev), go to /auth/register, sign up
+-- 2. In Authentication → Users, copy your new UUID
+-- 3. Run this in the SQL Editor:
+--      INSERT INTO app_config (owner_user_id) VALUES ('<your-uuid-here>');
+-- 4. Set NEXT_PUBLIC_OWNER_USER_ID and OWNER_USER_ID in .env.local to the same UUID
+-- 5. Restart the dev server — /admin will now work

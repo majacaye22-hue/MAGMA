@@ -2,7 +2,7 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
 
-const OWNER_ID = 'd546124c-7d0a-4a2b-a668-0e6e491c439a'
+const OWNER_ID = process.env.OWNER_USER_ID ?? ''
 
 const db = createServiceClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
