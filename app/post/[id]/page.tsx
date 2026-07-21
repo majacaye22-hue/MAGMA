@@ -7,6 +7,7 @@ import { BookmarkButton } from "@/app/components/BookmarkButton";
 import { CollabProposalButton } from "./CollabProposalButton";
 import { ShareToColectivoButton } from "@/app/components/ShareToColectivoButton";
 import type { Post } from "@/app/components/card-art";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -212,7 +213,7 @@ function EscritoView({ post, comments, currentUserId, currentProfile }: {
       <div style={{ height: "0.5px", backgroundColor: "#2a2a28", marginBottom: "36px" }} />
 
       {post.content ? (
-        <div className="escrito-body" dangerouslySetInnerHTML={{ __html: post.content }} />
+        <div className="escrito-body" dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
       ) : post.body ? (
         <p style={{ color: "#888780", fontFamily: mono, fontSize: "15px", lineHeight: 1.9, marginBottom: "24px", whiteSpace: "pre-wrap" }}>
           {post.body}

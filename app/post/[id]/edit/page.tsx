@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 const RichEditor = dynamic(
   () => import("@/app/components/editor/RichEditor").then((m) => m.RichEditor),
@@ -197,7 +198,7 @@ export default function EditPostPage() {
       const updatePayload: Record<string, unknown> = {
         title: title.trim() || null,
         body: postType !== "escrito" ? (description.trim() || null) : null,
-        content: postType === "escrito" ? richContentRef.current : null,
+        content: postType === "escrito" ? sanitizeHtml(richContentRef.current) : null,
         media_url: mediaUrl,
         tags: tags ? tags.split(",").map((t) => t.trim()).filter(Boolean) : null,
         open_collab: openCollab,

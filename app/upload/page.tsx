@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 const RichEditor = dynamic(
   () => import("@/app/components/editor/RichEditor").then((m) => m.RichEditor),
@@ -311,7 +312,7 @@ function UploadPageInner() {
         .insert({
           title: title || null,
           body: isEscrito ? null : (description || null),
-          content: isEscrito ? richContent : null,
+          content: isEscrito ? sanitizeHtml(richContent) : null,
           type: selectedType,
           media_url: mediaUrl,
           cover_url: coverUrl,
