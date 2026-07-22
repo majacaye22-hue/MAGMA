@@ -1,7 +1,8 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const PROTECTED = ['/upload', '/profile/edit', '/mod']
+// Only these paths are reachable without a session — everything else redirects to login.
+const PUBLIC_PATHS = ['/auth/login', '/auth/register', '/api/auth/login', '/api/auth/register']
 
 // Ciudad de México + Estado de México — together they cover the CDMX
 // metro area (Zona Metropolitana del Valle de México). ISO 3166-2 codes
@@ -50,14 +51,13 @@ export async function middleware(request: NextRequest) {
   // Refresh the session — must be called before any redirect checks.
   const { data: { user } } = await supabase.auth.getUser()
 
-  const isProtected = PROTECTED.some((path) =>
-    request.nextUrl.pathname.startsWith(path)
-  )
+  const pathname = request.nextUrl.pathname
+  const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))
 
-  if (!user && isProtected) {
+  if (!user && !isPublic) {
     const loginUrl = request.nextUrl.clone()
     loginUrl.pathname = '/auth/login'
-    loginUrl.searchParams.set('redirectTo', request.nextUrl.pathname)
+    loginUrl.searchParams.set('redirectTo', pathname)
     return NextResponse.redirect(loginUrl)
   }
 

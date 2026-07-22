@@ -40,7 +40,7 @@ CREATE TABLE profiles (
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "profiles: public read"
-  ON profiles FOR SELECT USING (true);
+  ON profiles FOR SELECT USING (auth.uid() IS NOT NULL);
 
 CREATE POLICY "profiles: owner insert"
   ON profiles FOR INSERT
@@ -72,7 +72,7 @@ CREATE TABLE posts (
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "posts: public read"
-  ON posts FOR SELECT USING (true);
+  ON posts FOR SELECT USING (auth.uid() IS NOT NULL);
 
 CREATE POLICY "posts: authenticated insert"
   ON posts FOR INSERT
@@ -172,19 +172,19 @@ ALTER TABLE colectivo_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE colectivo_posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE colectivo_join_requests ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "colectivos: public read" ON colectivos FOR SELECT USING (true);
+CREATE POLICY "colectivos: public read" ON colectivos FOR SELECT USING (auth.uid() IS NOT NULL);
 CREATE POLICY "colectivos: authenticated create" ON colectivos FOR INSERT WITH CHECK (auth.uid() = created_by);
 CREATE POLICY "colectivos: creator update" ON colectivos FOR UPDATE USING (auth.uid() = created_by) WITH CHECK (auth.uid() = created_by);
 CREATE POLICY "colectivos: creator delete" ON colectivos FOR DELETE USING (auth.uid() = created_by);
 
-CREATE POLICY "colectivo_members: public read" ON colectivo_members FOR SELECT USING (true);
+CREATE POLICY "colectivo_members: public read" ON colectivo_members FOR SELECT USING (auth.uid() IS NOT NULL);
 CREATE POLICY "colectivo_members: self insert" ON colectivo_members FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "colectivo_members: admin update" ON colectivo_members FOR UPDATE
   USING (EXISTS (SELECT 1 FROM colectivo_members cm WHERE cm.colectivo_id = colectivo_members.colectivo_id AND cm.user_id = auth.uid() AND cm.role = 'admin'));
 CREATE POLICY "colectivo_members: self or admin delete" ON colectivo_members FOR DELETE
   USING (auth.uid() = user_id OR EXISTS (SELECT 1 FROM colectivo_members cm WHERE cm.colectivo_id = colectivo_members.colectivo_id AND cm.user_id = auth.uid() AND cm.role = 'admin'));
 
-CREATE POLICY "colectivo_posts: public read" ON colectivo_posts FOR SELECT USING (true);
+CREATE POLICY "colectivo_posts: public read" ON colectivo_posts FOR SELECT USING (auth.uid() IS NOT NULL);
 CREATE POLICY "colectivo_posts: member insert" ON colectivo_posts FOR INSERT
   WITH CHECK (auth.uid() = added_by AND EXISTS (SELECT 1 FROM colectivo_members WHERE colectivo_id = colectivo_posts.colectivo_id AND user_id = auth.uid()));
 CREATE POLICY "colectivo_posts: adder or admin delete" ON colectivo_posts FOR DELETE
@@ -210,7 +210,7 @@ CREATE TABLE comments (
 
 ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "comments: public read" ON comments FOR SELECT USING (true);
+CREATE POLICY "comments: public read" ON comments FOR SELECT USING (auth.uid() IS NOT NULL);
 CREATE POLICY "comments: authenticated insert" ON comments FOR INSERT WITH CHECK (auth.uid() = author_id);
 CREATE POLICY "comments: owner or moderator delete" ON comments FOR DELETE
   USING (auth.uid() = author_id OR EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_moderator = true));
@@ -359,19 +359,19 @@ ALTER TABLE djs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE radio_chat ENABLE ROW LEVEL SECURITY;
 ALTER TABLE radio_slot_requests ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "radio_settings: public read" ON radio_settings FOR SELECT USING (true);
+CREATE POLICY "radio_settings: public read" ON radio_settings FOR SELECT USING (auth.uid() IS NOT NULL);
 CREATE POLICY "radio_settings: owner update" ON radio_settings FOR UPDATE
   USING (auth.uid() = (SELECT owner_user_id FROM app_config LIMIT 1))
   WITH CHECK (auth.uid() = (SELECT owner_user_id FROM app_config LIMIT 1));
 
-CREATE POLICY "djs: public read" ON djs FOR SELECT USING (true);
+CREATE POLICY "djs: public read" ON djs FOR SELECT USING (auth.uid() IS NOT NULL);
 CREATE POLICY "djs: owner update" ON djs FOR UPDATE
   USING (auth.uid() = (SELECT owner_user_id FROM app_config LIMIT 1))
   WITH CHECK (auth.uid() = (SELECT owner_user_id FROM app_config LIMIT 1));
 CREATE POLICY "djs: owner delete" ON djs FOR DELETE
   USING (auth.uid() = (SELECT owner_user_id FROM app_config LIMIT 1));
 
-CREATE POLICY "radio_chat: public read" ON radio_chat FOR SELECT USING (true);
+CREATE POLICY "radio_chat: public read" ON radio_chat FOR SELECT USING (auth.uid() IS NOT NULL);
 CREATE POLICY "radio_chat: authenticated insert" ON radio_chat FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "radio_chat: sender delete" ON radio_chat FOR DELETE USING (auth.uid() = user_id);
 
@@ -397,7 +397,7 @@ CREATE TABLE listings (
 
 ALTER TABLE listings ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "listings: public read" ON listings FOR SELECT USING (true);
+CREATE POLICY "listings: public read" ON listings FOR SELECT USING (auth.uid() IS NOT NULL);
 CREATE POLICY "listings: owner insert" ON listings FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "listings: owner update" ON listings FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "listings: owner delete" ON listings FOR DELETE USING (auth.uid() = user_id);
@@ -424,12 +424,12 @@ CREATE TABLE post_projects (
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE post_projects ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "projects: public read" ON projects FOR SELECT USING (true);
+CREATE POLICY "projects: public read" ON projects FOR SELECT USING (auth.uid() IS NOT NULL);
 CREATE POLICY "projects: authenticated insert" ON projects FOR INSERT WITH CHECK (auth.uid() = author_id);
 CREATE POLICY "projects: owner update" ON projects FOR UPDATE USING (auth.uid() = author_id) WITH CHECK (auth.uid() = author_id);
 CREATE POLICY "projects: owner delete" ON projects FOR DELETE USING (auth.uid() = author_id);
 
-CREATE POLICY "post_projects: public read" ON post_projects FOR SELECT USING (true);
+CREATE POLICY "post_projects: public read" ON post_projects FOR SELECT USING (auth.uid() IS NOT NULL);
 CREATE POLICY "post_projects: post author insert" ON post_projects FOR INSERT
   WITH CHECK (EXISTS (SELECT 1 FROM posts WHERE id = post_projects.post_id AND author_id = auth.uid()));
 CREATE POLICY "post_projects: post author delete" ON post_projects FOR DELETE
