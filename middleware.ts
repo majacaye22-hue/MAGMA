@@ -2,7 +2,14 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 // Only these paths are reachable without a session — everything else redirects to login.
-const PUBLIC_PATHS = ['/auth/login', '/auth/register', '/api/auth/login', '/api/auth/register']
+const PUBLIC_PATHS = [
+  '/auth/login',
+  '/auth/register',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+  '/api/auth/login',
+  '/api/auth/register',
+]
 
 // Ciudad de México + Estado de México — together they cover the CDMX
 // metro area (Zona Metropolitana del Valle de México). ISO 3166-2 codes

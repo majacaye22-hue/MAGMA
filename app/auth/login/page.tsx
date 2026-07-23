@@ -146,19 +146,32 @@ function LoginForm() {
           </button>
         </form>
 
-        {/* Register link */}
-        <p
-          className="text-center text-xs"
-          style={{ color: "#5F5E5A", fontFamily: "var(--font-space-mono), monospace" }}
-        >
-          ¿no tienes cuenta?{" "}
-          <Link
-            href="/auth/register"
-            style={{ color: "#888780", textDecoration: "underline" }}
+        {/* Register + forgot password links */}
+        <div className="flex flex-col gap-2 items-center">
+          <p
+            className="text-center text-xs"
+            style={{ color: "#5F5E5A", fontFamily: "var(--font-space-mono), monospace" }}
           >
-            únete
-          </Link>
-        </p>
+            ¿no tienes cuenta?{" "}
+            <Link
+              href="/auth/register"
+              style={{ color: "#888780", textDecoration: "underline" }}
+            >
+              únete
+            </Link>
+          </p>
+          <p
+            className="text-center text-xs"
+            style={{ color: "#5F5E5A", fontFamily: "var(--font-space-mono), monospace" }}
+          >
+            <Link
+              href="/auth/forgot-password"
+              style={{ color: "#888780", textDecoration: "underline" }}
+            >
+              ¿olvidaste tu contraseña?
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );
