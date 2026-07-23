@@ -452,5 +452,5 @@ CREATE POLICY "post_projects: post author delete" ON post_projects FOR DELETE
 -- After running this schema, seed radio_settings with one row:
 --   INSERT INTO radio_settings (is_live, stream_url) VALUES (false, null);
 --
--- And update the owner UUID in the radio_settings and djs policies above
--- to match your actual user ID in the staging project.
+-- And insert the owner UUID into app_config:
+--   INSERT INTO app_config (owner_user_id) VALUES ('<your-uuid>');

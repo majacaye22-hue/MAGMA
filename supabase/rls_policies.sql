@@ -1,42 +1,46 @@
 -- ============================================================
 -- MAGMA — Row Level Security Policies
--- Paste into Supabase SQL Editor and run in full.
--- Safe to re-run: uses CREATE POLICY IF NOT EXISTS where possible,
--- and ENABLE ROW LEVEL SECURITY is idempotent.
+-- Updated: 2026-07-23
+-- Source of truth: schema.sql (which embeds these inline).
+-- This file can be pasted into Supabase SQL Editor to re-apply
+-- just the RLS layer on an existing schema.
+-- All content reads require an authenticated session.
+-- Owner policies reference app_config (no hardcoded UUIDs).
 -- ============================================================
 
--- ============================================================
--- PROFILES
--- Fix: drop the email column (emails belong only in auth.users,
--- no app code reads profiles.email).
--- ============================================================
+-- ─── APP CONFIG ──────────────────────────────────────────────
+-- Public SELECT so other RLS policies can query it.
+ALTER TABLE app_config ENABLE ROW LEVEL SECURITY;
 
-ALTER TABLE profiles DROP COLUMN IF EXISTS email;
+CREATE POLICY "app_config: public read"
+  ON app_config FOR SELECT USING (true);
+
+-- ─── PROFILES ────────────────────────────────────────────────
 
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "profiles: public read"
   ON profiles FOR SELECT
-  USING (true);
+  USING (auth.uid() IS NOT NULL);
 
--- Users update only their own row
+-- Registration inserts the profile row server-side, but the policy
+-- is needed for any client path that creates a profile.
+CREATE POLICY "profiles: owner insert"
+  ON profiles FOR INSERT
+  WITH CHECK (id = auth.uid());
+
 CREATE POLICY "profiles: owner update"
   ON profiles FOR UPDATE
-  USING (auth.uid() = id)
+  USING    (auth.uid() = id)
   WITH CHECK (auth.uid() = id);
 
--- No direct INSERT policy — a trigger on auth.users creates the profile row.
--- No DELETE policy — cascades from auth.users deletion.
-
--- ============================================================
--- POSTS
--- ============================================================
+-- ─── POSTS ───────────────────────────────────────────────────
 
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "posts: public read"
   ON posts FOR SELECT
-  USING (true);
+  USING (auth.uid() IS NOT NULL);
 
 CREATE POLICY "posts: authenticated insert"
   ON posts FOR INSERT
@@ -44,10 +48,9 @@ CREATE POLICY "posts: authenticated insert"
 
 CREATE POLICY "posts: owner update"
   ON posts FOR UPDATE
-  USING (auth.uid() = author_id)
+  USING    (auth.uid() = author_id)
   WITH CHECK (auth.uid() = author_id);
 
--- Authors can delete their own posts; moderators can delete any post
 CREATE POLICY "posts: owner or moderator delete"
   ON posts FOR DELETE
   USING (
@@ -57,257 +60,61 @@ CREATE POLICY "posts: owner or moderator delete"
     )
   );
 
--- ============================================================
--- COMMENTS
--- ============================================================
+-- ─── COLLECTIONS ─────────────────────────────────────────────
 
-ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE collections ENABLE ROW LEVEL SECURITY;
+ALTER TABLE collection_posts ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "comments: public read"
-  ON comments FOR SELECT
-  USING (true);
+CREATE POLICY "collections: public or owner read"
+  ON collections FOR SELECT
+  USING (is_public OR auth.uid() = user_id);
 
-CREATE POLICY "comments: authenticated insert"
-  ON comments FOR INSERT
-  WITH CHECK (auth.uid() = author_id);
-
-CREATE POLICY "comments: owner or moderator delete"
-  ON comments FOR DELETE
-  USING (
-    auth.uid() = author_id
-    OR EXISTS (
-      SELECT 1 FROM profiles WHERE id = auth.uid() AND is_moderator = true
-    )
-  );
-
--- ============================================================
--- REPORTS
--- Only the reporter and moderators can see reports.
--- ============================================================
-
-ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "reports: reporter or moderator read"
-  ON reports FOR SELECT
-  USING (
-    auth.uid() = reporter_id
-    OR EXISTS (
-      SELECT 1 FROM profiles WHERE id = auth.uid() AND is_moderator = true
-    )
-  );
-
-CREATE POLICY "reports: authenticated insert"
-  ON reports FOR INSERT
-  WITH CHECK (auth.uid() = reporter_id);
-
--- Only moderators resolve/delete reports
-CREATE POLICY "reports: moderator delete"
-  ON reports FOR DELETE
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles WHERE id = auth.uid() AND is_moderator = true
-    )
-  );
-
--- ============================================================
--- BLOCKED_USERS
--- A user can only see and manage their own blocks.
--- ============================================================
-
-ALTER TABLE blocked_users ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "blocked_users: owner read"
-  ON blocked_users FOR SELECT
-  USING (auth.uid() = blocker_id);
-
-CREATE POLICY "blocked_users: owner insert"
-  ON blocked_users FOR INSERT
-  WITH CHECK (auth.uid() = blocker_id);
-
-CREATE POLICY "blocked_users: owner delete"
-  ON blocked_users FOR DELETE
-  USING (auth.uid() = blocker_id);
-
--- ============================================================
--- MESSAGES
--- Only participants in the conversation can read/write.
--- ============================================================
-
-ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
-
--- Participant check joins through conversations table
-CREATE POLICY "messages: participant read"
-  ON messages FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM conversations
-      WHERE id = messages.conversation_id
-        AND (participant_1 = auth.uid() OR participant_2 = auth.uid())
-    )
-  );
-
-CREATE POLICY "messages: sender insert"
-  ON messages FOR INSERT
-  WITH CHECK (
-    auth.uid() = sender_id
-    AND EXISTS (
-      SELECT 1 FROM conversations c
-      WHERE c.id = conversation_id
-        AND (c.participant_1 = auth.uid() OR c.participant_2 = auth.uid())
-        -- Neither participant may have blocked the other
-        AND NOT EXISTS (
-          SELECT 1 FROM blocked_users b
-          WHERE (b.blocker_id = c.participant_1 AND b.blocked_id = c.participant_2)
-             OR (b.blocker_id = c.participant_2 AND b.blocked_id = c.participant_1)
-        )
-    )
-  );
-
--- Allow participants to mark messages as read (update only the read column)
-CREATE POLICY "messages: participant update read flag"
-  ON messages FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM conversations
-      WHERE id = messages.conversation_id
-        AND (participant_1 = auth.uid() OR participant_2 = auth.uid())
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM conversations
-      WHERE id = messages.conversation_id
-        AND (participant_1 = auth.uid() OR participant_2 = auth.uid())
-    )
-  );
-
--- ============================================================
--- CONVERSATIONS
--- Only the two participants can see or write to a conversation.
--- ============================================================
-
-ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "conversations: participant read"
-  ON conversations FOR SELECT
-  USING (participant_1 = auth.uid() OR participant_2 = auth.uid());
-
-CREATE POLICY "conversations: participant create"
-  ON conversations FOR INSERT
-  WITH CHECK (
-    (participant_1 = auth.uid() OR participant_2 = auth.uid())
-    -- Blocked pairs cannot create new conversations
-    AND NOT EXISTS (
-      SELECT 1 FROM blocked_users b
-      WHERE (b.blocker_id = participant_1 AND b.blocked_id = participant_2)
-         OR (b.blocker_id = participant_2 AND b.blocked_id = participant_1)
-    )
-  );
-
--- Update (last_message_at bump) — either participant
-CREATE POLICY "conversations: participant update"
-  ON conversations FOR UPDATE
-  USING (participant_1 = auth.uid() OR participant_2 = auth.uid())
-  WITH CHECK (participant_1 = auth.uid() OR participant_2 = auth.uid());
-
--- ============================================================
--- RADIO_SETTINGS
--- Public read (radio page shows stream URL/status).
--- Only the site owner can write.
--- ============================================================
-
-ALTER TABLE radio_settings ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "radio_settings: public read"
-  ON radio_settings FOR SELECT
-  USING (true);
-
-CREATE POLICY "radio_settings: owner update"
-  ON radio_settings FOR UPDATE
-  USING    (auth.uid() = 'd546124c-7d0a-4a2b-a668-0e6e491c439a'::uuid)
-  WITH CHECK (auth.uid() = 'd546124c-7d0a-4a2b-a668-0e6e491c439a'::uuid);
-
--- ============================================================
--- DJS
--- Public read (DJ profiles are public).
--- Any authenticated user can submit their own application (INSERT).
--- Only the site owner can approve/unapprove (UPDATE) or delete rows.
--- Note: if you want DJs to edit their own bio/instagram/genres,
--- handle that through a server-side API endpoint that strips the
--- `approved` field before writing — don't add a self-UPDATE policy
--- here or a DJ could flip their own approved flag.
--- ============================================================
-
-ALTER TABLE djs ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "djs: public read"
-  ON djs FOR SELECT
-  USING (true);
-
--- No client INSERT policy — DJ rows are created only via the admin API route
--- (service role, which bypasses RLS). Dropped by add_slot_request_columns.sql.
-
-CREATE POLICY "djs: owner update"
-  ON djs FOR UPDATE
-  USING    (auth.uid() = 'd546124c-7d0a-4a2b-a668-0e6e491c439a'::uuid)
-  WITH CHECK (auth.uid() = 'd546124c-7d0a-4a2b-a668-0e6e491c439a'::uuid);
-
-CREATE POLICY "djs: owner delete"
-  ON djs FOR DELETE
-  USING (auth.uid() = 'd546124c-7d0a-4a2b-a668-0e6e491c439a'::uuid);
-
--- ============================================================
--- RADIO_CHAT
--- Public read (chat is visible on the radio page).
--- Authenticated users can send; only the sender can delete their message.
--- ============================================================
-
-ALTER TABLE radio_chat ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "radio_chat: public read"
-  ON radio_chat FOR SELECT
-  USING (true);
-
-CREATE POLICY "radio_chat: authenticated insert"
-  ON radio_chat FOR INSERT
+CREATE POLICY "collections: authenticated insert"
+  ON collections FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "radio_chat: sender delete"
-  ON radio_chat FOR DELETE
+CREATE POLICY "collections: owner update"
+  ON collections FOR UPDATE
   USING (auth.uid() = user_id);
 
--- ============================================================
--- RADIO_SLOT_REQUESTS
--- Columns added by add_slot_request_columns.sql:
---   user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL
---   status  text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected'))
--- ============================================================
-
-ALTER TABLE radio_slot_requests ENABLE ROW LEVEL SECURITY;
-
--- Users can see their own requests (any status)
-CREATE POLICY "radio_slot_requests: owner select"
-  ON radio_slot_requests FOR SELECT
+CREATE POLICY "collections: owner delete"
+  ON collections FOR DELETE
   USING (auth.uid() = user_id);
 
--- Authenticated users can submit; user_id must match their own session
-CREATE POLICY "radio_slot_requests: authenticated insert"
-  ON radio_slot_requests FOR INSERT
-  WITH CHECK (auth.uid() IS NOT NULL AND (user_id IS NULL OR auth.uid() = user_id));
+CREATE POLICY "collection_posts: collection read"
+  ON collection_posts FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM collections c
+      WHERE c.id = collection_id AND (c.is_public OR c.user_id = auth.uid())
+    )
+  );
 
--- No client UPDATE or DELETE policies — the admin API route uses service role
--- (which bypasses RLS) to update status and is protected by the OWNER_ID check.
+CREATE POLICY "collection_posts: collection owner insert"
+  ON collection_posts FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM collections c
+      WHERE c.id = collection_id AND c.user_id = auth.uid()
+    )
+  );
 
--- ============================================================
--- COLECTIVOS
--- Public read. Only the creator can update/delete.
--- ============================================================
+CREATE POLICY "collection_posts: collection owner delete"
+  ON collection_posts FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM collections c
+      WHERE c.id = collection_id AND c.user_id = auth.uid()
+    )
+  );
+
+-- ─── COLECTIVOS ──────────────────────────────────────────────
 
 ALTER TABLE colectivos ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "colectivos: public read"
   ON colectivos FOR SELECT
-  USING (true);
+  USING (auth.uid() IS NOT NULL);
 
 CREATE POLICY "colectivos: authenticated create"
   ON colectivos FOR INSERT
@@ -322,24 +129,18 @@ CREATE POLICY "colectivos: creator delete"
   ON colectivos FOR DELETE
   USING (auth.uid() = created_by);
 
--- ============================================================
--- COLECTIVO_MEMBERS
--- Public read (member lists are visible).
--- Users can insert themselves; admins or the user can remove a member.
--- ============================================================
+-- ─── COLECTIVO MEMBERS ───────────────────────────────────────
 
 ALTER TABLE colectivo_members ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "colectivo_members: public read"
   ON colectivo_members FOR SELECT
-  USING (true);
+  USING (auth.uid() IS NOT NULL);
 
--- Users join themselves; role must be set by app logic, not by this policy
 CREATE POLICY "colectivo_members: self insert"
   ON colectivo_members FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
--- A colectivo admin can change member roles
 CREATE POLICY "colectivo_members: admin update"
   ON colectivo_members FOR UPDATE
   USING (
@@ -351,7 +152,6 @@ CREATE POLICY "colectivo_members: admin update"
     )
   );
 
--- Members can leave themselves; admins can remove anyone
 CREATE POLICY "colectivo_members: self or admin delete"
   ON colectivo_members FOR DELETE
   USING (
@@ -364,16 +164,13 @@ CREATE POLICY "colectivo_members: self or admin delete"
     )
   );
 
--- ============================================================
--- COLECTIVO_POSTS
--- Public read. Members can add posts; admins or the adder can remove.
--- ============================================================
+-- ─── COLECTIVO POSTS ─────────────────────────────────────────
 
 ALTER TABLE colectivo_posts ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "colectivo_posts: public read"
   ON colectivo_posts FOR SELECT
-  USING (true);
+  USING (auth.uid() IS NOT NULL);
 
 CREATE POLICY "colectivo_posts: member insert"
   ON colectivo_posts FOR INSERT
@@ -398,11 +195,7 @@ CREATE POLICY "colectivo_posts: adder or admin delete"
     )
   );
 
--- ============================================================
--- COLECTIVO_JOIN_REQUESTS
--- The requester sees their own requests.
--- Colectivo admins see all requests for their colectivos.
--- ============================================================
+-- ─── COLECTIVO JOIN REQUESTS ─────────────────────────────────
 
 ALTER TABLE colectivo_join_requests ENABLE ROW LEVEL SECURITY;
 
@@ -422,7 +215,6 @@ CREATE POLICY "join_requests: authenticated insert"
   ON colectivo_join_requests FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
--- Admins approve/reject (update status); users can cancel their own request
 CREATE POLICY "join_requests: admin update"
   ON colectivo_join_requests FOR UPDATE
   USING (
@@ -446,16 +238,219 @@ CREATE POLICY "join_requests: requester or admin delete"
     )
   );
 
--- ============================================================
--- PROJECTS
--- Public read. Authors manage their own projects.
--- ============================================================
+-- ─── COMMENTS ────────────────────────────────────────────────
+
+ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "comments: public read"
+  ON comments FOR SELECT
+  USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "comments: authenticated insert"
+  ON comments FOR INSERT
+  WITH CHECK (auth.uid() = author_id);
+
+CREATE POLICY "comments: owner or moderator delete"
+  ON comments FOR DELETE
+  USING (
+    auth.uid() = author_id
+    OR EXISTS (
+      SELECT 1 FROM profiles WHERE id = auth.uid() AND is_moderator = true
+    )
+  );
+
+-- ─── REPORTS ─────────────────────────────────────────────────
+
+ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "reports: reporter or moderator read"
+  ON reports FOR SELECT
+  USING (
+    auth.uid() = reporter_id
+    OR EXISTS (
+      SELECT 1 FROM profiles WHERE id = auth.uid() AND is_moderator = true
+    )
+  );
+
+CREATE POLICY "reports: authenticated insert"
+  ON reports FOR INSERT
+  WITH CHECK (auth.uid() = reporter_id);
+
+CREATE POLICY "reports: moderator delete"
+  ON reports FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles WHERE id = auth.uid() AND is_moderator = true
+    )
+  );
+
+-- ─── BLOCKED USERS ───────────────────────────────────────────
+
+ALTER TABLE blocked_users ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "blocked_users: owner read"
+  ON blocked_users FOR SELECT
+  USING (auth.uid() = blocker_id);
+
+CREATE POLICY "blocked_users: owner insert"
+  ON blocked_users FOR INSERT
+  WITH CHECK (auth.uid() = blocker_id);
+
+CREATE POLICY "blocked_users: owner delete"
+  ON blocked_users FOR DELETE
+  USING (auth.uid() = blocker_id);
+
+-- ─── MESSAGING ───────────────────────────────────────────────
+
+ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "conversations: participant read"
+  ON conversations FOR SELECT
+  USING (participant_1 = auth.uid() OR participant_2 = auth.uid());
+
+-- Block-aware: blocked pairs cannot open new conversations
+CREATE POLICY "conversations: participant create"
+  ON conversations FOR INSERT
+  WITH CHECK (
+    (participant_1 = auth.uid() OR participant_2 = auth.uid())
+    AND NOT EXISTS (
+      SELECT 1 FROM blocked_users b
+      WHERE (b.blocker_id = participant_1 AND b.blocked_id = participant_2)
+         OR (b.blocker_id = participant_2 AND b.blocked_id = participant_1)
+    )
+  );
+
+CREATE POLICY "conversations: participant update"
+  ON conversations FOR UPDATE
+  USING    (participant_1 = auth.uid() OR participant_2 = auth.uid())
+  WITH CHECK (participant_1 = auth.uid() OR participant_2 = auth.uid());
+
+CREATE POLICY "messages: participant read"
+  ON messages FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM conversations
+      WHERE id = messages.conversation_id
+        AND (participant_1 = auth.uid() OR participant_2 = auth.uid())
+    )
+  );
+
+-- Block-aware: cannot send into a conversation where either party has blocked the other
+CREATE POLICY "messages: sender insert"
+  ON messages FOR INSERT
+  WITH CHECK (
+    auth.uid() = sender_id
+    AND EXISTS (
+      SELECT 1 FROM conversations c
+      WHERE c.id = conversation_id
+        AND (c.participant_1 = auth.uid() OR c.participant_2 = auth.uid())
+        AND NOT EXISTS (
+          SELECT 1 FROM blocked_users b
+          WHERE (b.blocker_id = c.participant_1 AND b.blocked_id = c.participant_2)
+             OR (b.blocker_id = c.participant_2 AND b.blocked_id = c.participant_1)
+        )
+    )
+  );
+
+CREATE POLICY "messages: participant update read flag"
+  ON messages FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM conversations
+      WHERE id = messages.conversation_id
+        AND (participant_1 = auth.uid() OR participant_2 = auth.uid())
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM conversations
+      WHERE id = messages.conversation_id
+        AND (participant_1 = auth.uid() OR participant_2 = auth.uid())
+    )
+  );
+
+-- ─── RADIO ───────────────────────────────────────────────────
+
+ALTER TABLE radio_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE djs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE radio_chat ENABLE ROW LEVEL SECURITY;
+ALTER TABLE radio_slot_requests ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "radio_settings: public read"
+  ON radio_settings FOR SELECT
+  USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "radio_settings: owner update"
+  ON radio_settings FOR UPDATE
+  USING    (auth.uid() = (SELECT owner_user_id FROM app_config LIMIT 1))
+  WITH CHECK (auth.uid() = (SELECT owner_user_id FROM app_config LIMIT 1));
+
+CREATE POLICY "djs: public read"
+  ON djs FOR SELECT
+  USING (auth.uid() IS NOT NULL);
+
+-- No client INSERT policy — DJ rows are created only via the admin API route
+-- (service role, which bypasses RLS).
+CREATE POLICY "djs: owner update"
+  ON djs FOR UPDATE
+  USING    (auth.uid() = (SELECT owner_user_id FROM app_config LIMIT 1))
+  WITH CHECK (auth.uid() = (SELECT owner_user_id FROM app_config LIMIT 1));
+
+CREATE POLICY "djs: owner delete"
+  ON djs FOR DELETE
+  USING (auth.uid() = (SELECT owner_user_id FROM app_config LIMIT 1));
+
+CREATE POLICY "radio_chat: public read"
+  ON radio_chat FOR SELECT
+  USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "radio_chat: authenticated insert"
+  ON radio_chat FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "radio_chat: sender delete"
+  ON radio_chat FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- Users see their own requests; admin writes via service role
+CREATE POLICY "radio_slot_requests: owner select"
+  ON radio_slot_requests FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "radio_slot_requests: authenticated insert"
+  ON radio_slot_requests FOR INSERT
+  WITH CHECK (auth.uid() IS NOT NULL AND (user_id IS NULL OR auth.uid() = user_id));
+
+-- ─── TIANGUIS (listings) ─────────────────────────────────────
+
+ALTER TABLE listings ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "listings: public read"
+  ON listings FOR SELECT
+  USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "listings: owner insert"
+  ON listings FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "listings: owner update"
+  ON listings FOR UPDATE
+  USING    (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "listings: owner delete"
+  ON listings FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- ─── PROJECTS ────────────────────────────────────────────────
 
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE post_projects ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "projects: public read"
   ON projects FOR SELECT
-  USING (true);
+  USING (auth.uid() IS NOT NULL);
 
 CREATE POLICY "projects: authenticated insert"
   ON projects FOR INSERT
@@ -470,16 +465,9 @@ CREATE POLICY "projects: owner delete"
   ON projects FOR DELETE
   USING (auth.uid() = author_id);
 
--- ============================================================
--- POST_PROJECTS
--- Public read. Only the post's author can link/unlink.
--- ============================================================
-
-ALTER TABLE post_projects ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "post_projects: public read"
   ON post_projects FOR SELECT
-  USING (true);
+  USING (auth.uid() IS NOT NULL);
 
 CREATE POLICY "post_projects: post author insert"
   ON post_projects FOR INSERT
@@ -498,27 +486,3 @@ CREATE POLICY "post_projects: post author delete"
       WHERE id = post_projects.post_id AND author_id = auth.uid()
     )
   );
-
--- ============================================================
--- LISTINGS (tianguis)
--- Public read. Sellers manage their own listings.
--- ============================================================
-
-ALTER TABLE listings ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "listings: public read"
-  ON listings FOR SELECT
-  USING (true);
-
-CREATE POLICY "listings: owner insert"
-  ON listings FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "listings: owner update"
-  ON listings FOR UPDATE
-  USING    (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "listings: owner delete"
-  ON listings FOR DELETE
-  USING (auth.uid() = user_id);
