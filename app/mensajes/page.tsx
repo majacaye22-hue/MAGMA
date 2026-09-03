@@ -92,7 +92,7 @@ function BlockModal({ other, currentUserId, onClose, onBlocked }: {
         style={{ backgroundColor: BG, border: "0.5px solid #2a2a28", maxWidth: "320px", width: "100%" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <p style={{ fontSize: "10px", color: "#5F5E5A", fontFamily: mono }}>// bloquear usuario</p>
+        <p style={{ fontSize: "10px", color: "#5F5E5A", fontFamily: mono }}>{"// bloquear usuario"}</p>
         <p style={{ fontSize: "13px", color: "#e8e4dc", fontFamily: mono }}>@{other.username}</p>
         <p style={{ fontSize: "11px", color: "#5F5E5A", fontFamily: mono, lineHeight: 1.7 }}>
           no podrá enviarte mensajes.
@@ -137,7 +137,7 @@ function NewMessagePanel({ currentUserId, blockedIds, onConversationCreated, onC
 
   useEffect(() => {
     const q = query.replace(/^@/, "").trim();
-    if (!q) { setResults([]); return; }
+    if (!q) return;
     const t = setTimeout(async () => {
       setSearching(true);
       const { data } = await supabase
@@ -150,7 +150,7 @@ function NewMessagePanel({ currentUserId, blockedIds, onConversationCreated, onC
       setSearching(false);
     }, 250);
     return () => clearTimeout(t);
-  }, [query, currentUserId, blockedIds]);
+  }, [query, currentUserId, blockedIds, supabase]);
 
   async function startConversation(other: OtherProfile) {
     const [p1, p2] = [currentUserId, other.id].sort();
@@ -359,7 +359,7 @@ function MessageThread({ conversationId, currentUserId, other, onBlock, onBack }
       >
         {/* Start comment */}
         <p style={{ fontSize: "10px", color: "#2a2a28", fontFamily: mono, textAlign: "center", marginBottom: "8px", userSelect: "none" }}>
-          // inicio de la conversación
+          {"// inicio de la conversación"}
         </p>
 
         {messages.map((msg) => {
@@ -532,18 +532,6 @@ function MensajesInner() {
   const [showNew, setShowNew] = useState(false);
   const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    void (async () => {
-      const supabase = getSupabaseClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.push("/auth/login"); return; }
-      setCurrentUserId(user.id);
-      const blocked = await refreshBlockedIds(user.id);
-      await loadConversations(user.id, blocked);
-      setLoading(false);
-    })();
-  }, []);
-
   async function refreshBlockedIds(uid: string): Promise<Set<string>> {
     const supabase = getSupabaseClient();
     const [{ data: mine }, { data: theirs }] = await Promise.all([
@@ -594,6 +582,18 @@ function MensajesInner() {
     setConversations(convos);
   }
 
+  useEffect(() => {
+    void (async () => {
+      const supabase = getSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.push("/auth/login"); return; }
+      setCurrentUserId(user.id);
+      const blocked = await refreshBlockedIds(user.id);
+      await loadConversations(user.id, blocked);
+      setLoading(false);
+    })();
+  }, [router]);
+
   const activeConvo = conversations.find((c) => c.id === activeId);
 
   if (loading) return <div style={{ minHeight: "100vh", backgroundColor: BG }} />;
@@ -629,7 +629,7 @@ function MensajesInner() {
           <div className="flex-1 overflow-y-auto">
             {!showNew && conversations.length === 0 && (
               <p style={{ fontSize: "10px", color: "#2a2a28", fontFamily: mono, padding: "14px" }}>
-                // sin mensajes todavía
+                {"// sin mensajes todavía"}
               </p>
             )}
             {!showNew && conversations.map((convo) => (
@@ -675,7 +675,7 @@ function MensajesInner() {
           {!activeConvo || !currentUserId ? (
             <div className="h-full flex items-center justify-center">
               <p style={{ fontSize: "10px", color: "#2a2a28", fontFamily: mono }}>
-                // selecciona una conversación
+                {"// selecciona una conversación"}
               </p>
             </div>
           ) : (

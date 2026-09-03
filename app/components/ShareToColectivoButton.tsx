@@ -26,7 +26,7 @@ export function ShareToColectivoButton({
   const [hasMembership, setHasMembership] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (!currentUserId) { setHasMembership(false); return; }
+    if (!currentUserId) return;
     const supabase = getSupabaseClient();
     supabase
       .from("colectivo_members")

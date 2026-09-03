@@ -32,6 +32,21 @@ function getGeoStatus(request: NextRequest): GeoStatus {
 }
 
 export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname
+  const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))
+
+  // Public auth routes must remain reachable even if Supabase Auth is
+  // temporarily unavailable; they do not need a session check to render.
+  if (isPublic) {
+    const publicResponse = NextResponse.next({ request })
+    publicResponse.cookies.set('magma_geo', getGeoStatus(request), {
+      path: '/',
+      maxAge: 60 * 60 * 24,
+      sameSite: 'lax',
+    })
+    return publicResponse
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -58,10 +73,7 @@ export async function middleware(request: NextRequest) {
   // Refresh the session — must be called before any redirect checks.
   const { data: { user } } = await supabase.auth.getUser()
 
-  const pathname = request.nextUrl.pathname
-  const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))
-
-  if (!user && !isPublic) {
+  if (!user) {
     const loginUrl = request.nextUrl.clone()
     loginUrl.pathname = '/auth/login'
     loginUrl.searchParams.set('redirectTo', pathname)

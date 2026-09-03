@@ -64,8 +64,11 @@ export default async function ColectivoPage({ params }: { params: Promise<{ slug
     .map((cp: { posts: Post | Post[] | null }) => Array.isArray(cp.posts) ? cp.posts[0] : cp.posts)
     .filter(Boolean)) as Post[];
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const memberCount = (col as any).colectivo_members?.[0]?.count ?? 0;
+  const colectivo = col as typeof col & {
+    colectivo_members: { count: number }[];
+    cover_image_url: string | null;
+  };
+  const memberCount = colectivo.colectivo_members?.[0]?.count ?? 0;
   const isAdmin = memberStatus === "admin";
   const isMember = memberStatus === "admin" || memberStatus === "member";
 
@@ -73,11 +76,10 @@ export default async function ColectivoPage({ params }: { params: Promise<{ slug
     <div className="min-h-screen" style={{ backgroundColor: "#0c0c0b" }}>
       {/* Banner */}
       <div style={{ position: "relative", height: "240px", overflow: "hidden", background: `linear-gradient(135deg, ${col.avatar_color}44 0%, #0c0c0b 100%)` }}>
-        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        {(col as any).cover_image_url && (
+        {colectivo.cover_image_url && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={(col as any).cover_image_url}
+            src={colectivo.cover_image_url}
             alt=""
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
           />

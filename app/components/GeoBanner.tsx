@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 
 const mono = "var(--font-space-mono), monospace";
 
@@ -15,12 +15,12 @@ const MESSAGES: Record<string, string> = {
 };
 
 export function GeoBanner() {
-  const [status, setStatus] = useState<string | null>(null);
+  const status = useSyncExternalStore(
+    () => () => undefined,
+    () => readCookie("magma_geo"),
+    () => null,
+  );
   const [dismissed, setDismissed] = useState(false);
-
-  useEffect(() => {
-    setStatus(readCookie("magma_geo"));
-  }, []);
 
   const message = status ? MESSAGES[status] : undefined;
   if (dismissed || !message) return null;

@@ -141,10 +141,9 @@ export default function EditPostPage() {
       setCollabDescription((p as PostData & { collab_description?: string | null }).collab_description ?? "");
 
       // Fetch user's projects and this post's current project link
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const [{ data: projects }, { data: linked }] = await Promise.all([
-        (supabase as any).from("projects").select("id, title").eq("author_id", session.user.id).order("created_at", { ascending: false }),
-        (supabase as any).from("post_projects").select("project_id").eq("post_id", id).maybeSingle(),
+        supabase.from("projects").select("id, title").eq("author_id", session.user.id).order("created_at", { ascending: false }),
+        supabase.from("post_projects").select("project_id").eq("post_id", id).maybeSingle(),
       ]);
       setUserProjects(projects ?? []);
       const currentProjectId = linked?.project_id ?? "";
