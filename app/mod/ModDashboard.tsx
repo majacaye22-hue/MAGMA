@@ -15,8 +15,8 @@ export interface Report {
   created_at: string;
   post_id: string | null;
   comment_id: string | null;
-  posts: { id: string; title: string } | null;
-  comments: { id: string; body: string } | null;
+  posts: { id: string; title: string; is_hidden: boolean } | null;
+  comments: { id: string; body: string; is_hidden: boolean } | null;
   profiles: { username: string } | null;
 }
 
@@ -64,6 +64,35 @@ export function ModDashboard({ initialReports }: { initialReports: Report[] }) {
     setWorking(null);
   }
 
+  async function handleHide(report: Report) {
+    setWorking(report.id);
+
+    if (report.post_id) {
+      await supabase.from("posts").update({ is_hidden: true }).eq("id", report.post_id);
+    }
+
+    if (report.comment_id) {
+      await supabase.from("comments").update({ is_hidden: true }).eq("id", report.comment_id);
+    }
+
+    setWorking(null);
+  }
+
+  async function handleRestore(report: Report) {
+    setWorking(report.id);
+    if (report.post_id) {
+      await supabase.from("posts").update({ is_hidden: false }).eq("id", report.post_id);
+      await supabase.from("reports").update({ status: "resolved" }).eq("post_id", report.post_id);
+      setReports((prev) => prev.filter((r) => r.post_id !== report.post_id));
+    }
+    if (report.comment_id) {
+      await supabase.from("comments").update({ is_hidden: false }).eq("id", report.comment_id);
+      await supabase.from("reports").update({ status: "resolved" }).eq("comment_id", report.comment_id);
+      setReports((prev) => prev.filter((r) => r.comment_id !== report.comment_id));
+    }
+    setWorking(null);
+  }
+
   async function handleDeleteComment(report: Report) {
     setWorking(report.id);
 
@@ -93,6 +122,7 @@ export function ModDashboard({ initialReports }: { initialReports: Report[] }) {
       {reports.map((report) => {
         const isComment = !!report.comment_id;
         const busy = working === report.id;
+        const isHidden = isComment ? report.comments?.is_hidden : report.posts?.is_hidden;
 
         return (
           <div
@@ -137,11 +167,12 @@ export function ModDashboard({ initialReports }: { initialReports: Report[] }) {
               <p style={{ fontSize: "12px", color: "#888780", fontFamily: mono }}>
                 {report.reason}
               </p>
+              {isHidden && <p style={{ fontSize: "9px", color: "#EF9F27", fontFamily: mono, letterSpacing: "0.12em", textTransform: "uppercase" }}>oculto mientras se revisa</p>}
 
               {/* Details (if any) */}
               {report.details && (
                 <p style={{ fontSize: "11px", color: "#5F5E5A", fontFamily: mono, fontStyle: "italic" }}>
-                  "{report.details}"
+                  &ldquo;{report.details}&rdquo;
                 </p>
               )}
 
@@ -155,6 +186,11 @@ export function ModDashboard({ initialReports }: { initialReports: Report[] }) {
 
             {/* Right — action buttons */}
             <div className="flex gap-3 items-start" style={{ paddingTop: "2px" }}>
+              {isHidden ? (
+                <button onClick={() => handleRestore(report)} disabled={busy} className="cursor-pointer hover:opacity-70 disabled:opacity-40" style={{ fontSize: "10px", color: "#5DCAA5", fontFamily: mono, background: "none", border: "0.5px solid #5DCAA5", padding: "5px 12px", whiteSpace: "nowrap" }}>{busy ? "..." : "restaurar"}</button>
+              ) : (
+                <button onClick={() => handleHide(report)} disabled={busy} className="cursor-pointer hover:opacity-70 disabled:opacity-40" style={{ fontSize: "10px", color: "#EF9F27", fontFamily: mono, background: "none", border: "0.5px solid #EF9F27", padding: "5px 12px", whiteSpace: "nowrap" }}>{busy ? "..." : "ocultar y revisar"}</button>
+              )}
               <button
                 onClick={() => handleIgnore(report.id)}
                 disabled={busy}

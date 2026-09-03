@@ -75,7 +75,7 @@ export function ReportModal({ postId, commentId, currentUserId, onClose }: Props
               reporte enviado
             </h2>
             <p style={{ fontSize: "12px", color: "#5F5E5A", fontFamily: mono, lineHeight: 1.6 }}>
-              gracias. nuestro equipo lo revisará pronto.
+              gracias. cuidadorxs de la casa lo revisarán pronto.
             </p>
             <button
               onClick={onClose}

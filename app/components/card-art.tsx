@@ -95,7 +95,7 @@ export function ArteArt() {
   );
 }
 
-export function MusicaArt({ title, artist }: { title: string; artist: string }) {
+export function MusicaArt() {
   const heights = [
      5, 10, 18, 28, 40, 55, 64, 72, 80, 88,
     92, 86, 78, 88, 96, 86, 74, 84, 92, 82,
@@ -194,7 +194,7 @@ export function EventoArt() {
 export function CardArt({ card }: { card: CardData }) {
   switch (card.type) {
     case "arte":   return <ArteArt />;
-    case "música": return <MusicaArt title={card.title} artist={card.author} />;
+    case "música": return <MusicaArt />;
     case "foto":   return <FotoArt location={card.location ?? "CDMX · NOCHE"} />;
     case "evento": return <EventoArt />;
   }
@@ -252,10 +252,39 @@ function EventoPlaceholder({ post }: { post: Post }) {
 function PostCardArt({ post, cardType }: { post: Post; cardType: CardType }) {
   switch (cardType) {
     case "arte":   return <ArteArt />;
-    case "música": return <MusicaArt title={post.title ?? ""} artist="artista" />;
+    case "música": return <MusicaArt />;
     case "foto":   return <FotoArt location="CDMX" />;
     case "evento": return <EventoPlaceholder post={post} />;
   }
+}
+
+function MusicPostSurface({ post, audioSrc }: { post: Post; audioSrc: string }) {
+  return (
+    <div style={{ backgroundColor: "#141412", position: "relative" }}>
+      <div style={{ aspectRatio: "1 / 1", overflow: "hidden", position: "relative" }}>
+        {post.cover_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={post.cover_url}
+            alt={post.title ? `Portada de ${post.title}` : "Portada de música"}
+            style={{ display: "block", height: "100%", objectFit: "cover", width: "100%" }}
+          />
+        ) : (
+          <div className="flex items-center justify-center" style={{ background: "#141412", color: "#5F5E5A", fontFamily: "var(--font-space-mono), monospace", fontSize: "10px", height: "100%", letterSpacing: "0.12em", textTransform: "uppercase" }}>
+            sin portada
+          </div>
+        )}
+      </div>
+      <div style={{ borderTop: "0.5px solid #2a2a28", padding: "10px 12px" }}>
+        <audio
+          controls
+          src={audioSrc}
+          style={{ accentColor: "#5DCAA5", display: "block", height: "28px", width: "100%" }}
+          onClick={(event) => event.stopPropagation()}
+        />
+      </div>
+    </div>
+  );
 }
 
 function EventoHoverOverlay({ post, showFlag, onFlag, currentUserId }: { post: Post; showFlag: boolean; onFlag: () => void; currentUserId?: string | null }) {
@@ -453,29 +482,7 @@ export function PostCard({ post, index, total, currentUserId }: { post: Post; in
     >
       {/* Media layer */}
       {isAudio && mediaSrc ? (
-        <div style={{ position: "relative", height: "200px", backgroundColor: "#141412" }}>
-          {/* Cover image — fills full card area */}
-          {post.cover_url && (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={post.cover_url}
-                alt=""
-                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-              />
-              {/* Gradient overlay for audio control readability */}
-              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(12,12,11,0.95) 0%, rgba(12,12,11,0.4) 50%, transparent 100%)" }} />
-            </>
-          )}
-          {/* Audio controls pinned to bottom via absolute positioning */}
-          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-          <audio
-            controls
-            src={mediaSrc}
-            style={{ position: "absolute", bottom: 0, left: 0, width: "100%", accentColor: "#5DCAA5", height: "28px" }}
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
+        <MusicPostSurface post={post} audioSrc={mediaSrc} />
       ) : isVideoMedia && mediaSrc ? (
         <div style={{ position: "relative", width: "100%", height: "480px", overflow: "hidden", backgroundColor: "#0c0c0b" }}>
           {/* eslint-disable-next-line jsx-a11y/media-has-caption */}

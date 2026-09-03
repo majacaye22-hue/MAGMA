@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PostCard, type Post } from "./card-art";
-import { EventosClient } from "@/app/eventos/EventosClient";
 import { getSupabaseClient } from "@/lib/supabase"
 
 function CardWrapper({ children }: { children: React.ReactNode }) {
@@ -25,7 +25,7 @@ function CardWrapper({ children }: { children: React.ReactNode }) {
   );
 }
 
-const FILTERS = ["todo", "música", "fotografía", "video", "eventos", "letras", "colaboración"] as const;
+const FILTERS = ["todo", "música", "fotografía", "video", "letras", "colaboración"] as const;
 type Filter = (typeof FILTERS)[number];
 
 const TYPE_MAP: Record<Filter, string | null> = {
@@ -33,7 +33,6 @@ const TYPE_MAP: Record<Filter, string | null> = {
   música: "música",
   fotografía: "fotografía",
   video: "video",
-  eventos: "evento",
   letras: "escrito",
   colaboración: null, // handled separately via open_collab
 };
@@ -43,7 +42,6 @@ const PILL_ACCENT: Record<Filter, string> = {
   música: "#D85A30",
   fotografía: "#D85A30",
   video: "#EF9F27",
-  eventos: "#D85A30",
   letras: "#7F77DD",
   colaboración: "#5DCAA5",
 };
@@ -53,7 +51,6 @@ const UPLOAD_TYPE: Partial<Record<Filter, string>> = {
   música: "música",
   fotografía: "fotografía",
   video: "video",
-  eventos: "evento",
   letras: "escrito",
   // colaboración is cross-type — no specific upload destination
 };
@@ -81,7 +78,7 @@ export function Feed({ posts }: { posts: Post[] }) {
   return (
     <>
       {/* Filter pills */}
-      <div className="flex flex-wrap gap-2 py-6">
+      <div className="flex flex-wrap items-center gap-2 py-6">
         {FILTERS.map((f) => {
           const isActive = f === active;
           const accent = PILL_ACCENT[f];
@@ -101,12 +98,17 @@ export function Feed({ posts }: { posts: Post[] }) {
             </button>
           );
         })}
+        <Link
+          href="/eventos"
+          className="px-4 py-1.5 text-xs tracking-widest uppercase border"
+          style={{ borderColor: "#5DCAA5", color: "#5DCAA5", fontFamily: "var(--font-space-mono), monospace", textDecoration: "none" }}
+        >
+          ver la cartelera →
+        </Link>
       </div>
 
       {/* Grid or empty state */}
-      {active === "eventos" ? (
-        <EventosClient eventos={visible} />
-      ) : visible.length === 0 ? (
+      {visible.length === 0 ? (
         <div
           className="py-24 text-center text-xs tracking-widest uppercase"
           style={{ color: "#888780", fontFamily: "var(--font-space-mono), monospace" }}

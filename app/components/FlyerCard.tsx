@@ -28,8 +28,9 @@ function formatTime(dateStr: string): string {
   return d.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
-export function FlyerCard({ post }: { post: Post }) {
+export function FlyerCard({ post, state }: { post: Post; state?: "sala" | "próximo" | "archivo" | "sin-fecha" }) {
   const today = isToday(post.event_date);
+  const isLive = state === "sala";
 
   return (
     <div
@@ -55,17 +56,17 @@ export function FlyerCard({ post }: { post: Post }) {
         </div>
       )}
 
-      {/* Hoy badge */}
-      {today && (
+      {(today || isLive || state === "archivo") && (
         <span
           className="absolute top-3 right-3 px-2 py-0.5 text-[9px] tracking-widest uppercase"
           style={{
-            backgroundColor: "#D85A30",
-            color: "#0c0c0b",
+            backgroundColor: isLive ? "#5DCAA5" : state === "archivo" ? "#141412" : "#D85A30",
+            border: state === "archivo" ? "0.5px solid #5F5E5A" : "none",
+            color: isLive || today ? "#0c0c0b" : "#888780",
             fontFamily: "var(--font-space-mono), monospace",
           }}
         >
-          hoy
+          {isLive ? "sala abierta" : state === "archivo" ? "archivo" : "hoy"}
         </span>
       )}
 

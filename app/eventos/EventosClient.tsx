@@ -1,200 +1,168 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FlyerCard } from "@/app/components/FlyerCard";
 import type { Post } from "@/app/components/card-art";
 
 const mono = "var(--font-space-mono), monospace";
+type Wall = "muro" | "sala" | "archivo";
+type DayFilter = "todo" | "hoy" | "semana" | "próximos";
 
-type DateFilter = "todos" | "hoy" | "semana" | "mes";
-type PrecioFilter = "todos" | "gratis" | "paga";
-
-function startOfDay(d: Date) {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+function eventState(post: Post) {
+  if (!post.event_date) return "sin-fecha" as const;
+  const now = Date.now();
+  const starts = new Date(post.event_date).getTime();
+  if (now >= starts - 48 * 60 * 60 * 1000 && now <= starts + 72 * 60 * 60 * 1000) return "sala" as const;
+  return starts > now ? "próximo" as const : "archivo" as const;
 }
 
-function isInDateRange(post: Post, filter: DateFilter): boolean {
-  if (filter === "todos") return true;
+function sortForWall(a: Post, b: Post) {
+  const order = { sala: 0, próximo: 1, "sin-fecha": 2, archivo: 3 } as const;
+  const stateDifference = order[eventState(a)] - order[eventState(b)];
+  if (stateDifference !== 0) return stateDifference;
+  if (!a.event_date || !b.event_date) return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  return new Date(a.event_date).getTime() - new Date(b.event_date).getTime();
+}
+
+function startOfToday() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today.getTime();
+}
+
+function isInDayFilter(post: Post, filter: DayFilter) {
+  if (filter === "todo") return true;
   if (!post.event_date) return false;
-  const eventDay = startOfDay(new Date(post.event_date));
-  const today = startOfDay(new Date());
-  if (filter === "hoy") {
-    return eventDay.getTime() === today.getTime();
-  }
-  if (filter === "semana") {
-    const end = new Date(today); end.setDate(today.getDate() + 7);
-    return eventDay >= today && eventDay <= end;
-  }
-  if (filter === "mes") {
-    const end = new Date(today); end.setDate(today.getDate() + 30);
-    return eventDay >= today && eventDay <= end;
-  }
-  return true;
+  const start = new Date(post.event_date).getTime();
+  const today = startOfToday();
+  const weekEnd = today + 7 * 24 * 60 * 60 * 1000;
+  if (filter === "hoy") return start >= today && start < today + 24 * 60 * 60 * 1000;
+  if (filter === "semana") return start >= today && start < weekEnd;
+  return start >= today;
 }
 
-function matchesColonia(post: Post, colonia: string): boolean {
-  if (!colonia.trim()) return true;
-  const q = colonia.trim().toLowerCase();
-  return (
-    (post.venue?.toLowerCase().includes(q) ?? false) ||
-    (post.address?.toLowerCase().includes(q) ?? false)
-  );
+const KNOWN_COLONIAS = [
+  "San Rafael",
+  "Roma Norte",
+  "Roma Sur",
+  "Condesa",
+  "Juárez",
+  "Centro Histórico",
+  "Centro",
+  "Doctores",
+  "Santa María la Ribera",
+  "Escandón",
+  "Narvarte",
+  "San Pedro de los Pinos",
+  "Coyoacán",
+  "Iztapalapa",
+];
+
+function eventColonia(post: Post) {
+  const placeText = `${post.address ?? ""} ${post.venue ?? ""}`.toLowerCase();
+  return KNOWN_COLONIAS.find((colonia) => placeText.includes(colonia.toLowerCase())) ?? "sin colonia";
 }
 
-function matchesPrecio(post: Post, precio: PrecioFilter): boolean {
-  if (precio === "todos") return true;
-  if (precio === "gratis") return post.is_free === true;
-  if (precio === "paga") return post.is_free === false;
-  return true;
-}
-
-// ─── Pill toggle ─────────────────────────────────────────────────────────────
-
-function Pill({
-  label,
-  active,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
+function WallButton({ active, children, onClick }: { active: boolean; children: React.ReactNode; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="cursor-pointer transition-colors duration-100"
       style={{
+        border: "0.5px solid " + (active ? "#D85A30" : "#2a2a28"),
+        background: active ? "#D85A30" : "transparent",
+        color: active ? "#0c0c0b" : "#888780",
+        cursor: "pointer",
         fontFamily: mono,
         fontSize: "10px",
+        letterSpacing: "0.11em",
+        padding: "7px 10px",
         textTransform: "uppercase",
-        letterSpacing: "0.12em",
-        padding: "4px 10px",
-        border: `0.5px solid ${active ? "#D85A30" : "#2a2a28"}`,
-        backgroundColor: active ? "rgba(216,90,48,0.08)" : "transparent",
-        color: active ? "#D85A30" : "#5F5E5A",
       }}
     >
-      {label}
+      {children}
     </button>
   );
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+export function EventosClient() {
+  const [eventos, setEventos] = useState<Post[] | null>(null);
+  const [wall, setWall] = useState<Wall>("muro");
+  const [day, setDay] = useState<DayFilter>("todo");
+  const [colonia, setColonia] = useState("todo");
+  useEffect(() => {
+    async function load() {
+      const response = await fetch("/api/events", { cache: "no-store" });
+      if (!response.ok) { setEventos([]); return; }
+      const data = await response.json() as { events: Post[] };
+      setEventos(data.events);
+    }
+    void load();
+  }, []);
+  const eventList = useMemo(() => eventos ?? [], [eventos]);
+  const colonias = useMemo(() => [...new Set(eventList.map(eventColonia))].filter((item) => item !== "sin colonia").sort((a, b) => a.localeCompare(b, "es")), [eventList]);
+  const visible = useMemo(() => {
+    const sorted = [...eventList].sort(sortForWall);
+    return sorted.filter((post) => {
+      if (wall === "sala" && eventState(post) !== "sala") return false;
+      if (wall === "archivo" && eventState(post) !== "archivo") return false;
+      if (!isInDayFilter(post, day)) return false;
+      return colonia === "todo" || eventColonia(post) === colonia;
+    });
+  }, [colonia, day, eventList, wall]);
 
-export function EventosClient({ eventos }: { eventos: Post[] }) {
-  const [dateFilter, setDateFilter] = useState<DateFilter>("todos");
-  const [coloniaInput, setColoniaInput] = useState("");
-  const [precioFilter, setPrecioFilter] = useState<PrecioFilter>("todos");
-
-  const filtered = useMemo(() => {
-    return eventos.filter(
-      (p) =>
-        isInDateRange(p, dateFilter) &&
-        matchesColonia(p, coloniaInput) &&
-        matchesPrecio(p, precioFilter)
-    );
-  }, [eventos, dateFilter, coloniaInput, precioFilter]);
-
-  const hasActiveFilter =
-    dateFilter !== "todos" || coloniaInput.trim() !== "" || precioFilter !== "todos";
+  const salaCount = eventList.filter((post) => eventState(post) === "sala").length;
+  const rotations = [-0.6, 0.35, -0.25, 0.55, -0.4, 0.2];
 
   return (
-    <>
-      {/* Filter bar */}
-      <div
-        className="flex flex-wrap items-end gap-6 pb-6"
-        style={{ borderBottom: "0.5px solid #2a2a28", marginBottom: "24px" }}
-      >
-        {/* Date */}
-        <div className="flex flex-col gap-2">
-          <span style={{ fontFamily: mono, fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.14em", color: "#444441" }}>
-            fecha
-          </span>
-          <div className="flex gap-1">
-            {(["todos", "hoy", "semana", "mes"] as DateFilter[]).map((v) => (
-              <Pill
-                key={v}
-                label={v === "semana" ? "esta semana" : v === "mes" ? "este mes" : v}
-                active={dateFilter === v}
-                onClick={() => setDateFilter(v)}
-              />
-            ))}
-          </div>
+    <section className="pt-7">
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-6">
+        <div className="flex flex-wrap gap-1.5">
+          <WallButton active={wall === "muro"} onClick={() => setWall("muro")}>muro completo</WallButton>
+          <WallButton active={wall === "sala"} onClick={() => setWall("sala")}>
+            salas abiertas{ salaCount ? ` · ${salaCount}` : "" }
+          </WallButton>
+          <WallButton active={wall === "archivo"} onClick={() => setWall("archivo")}>archivo</WallButton>
         </div>
-
-        {/* Colonia */}
-        <div className="flex flex-col gap-2">
-          <span style={{ fontFamily: mono, fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.14em", color: "#444441" }}>
-            colonia / lugar
-          </span>
-          <input
-            type="text"
-            placeholder="ej. roma, tepito..."
-            value={coloniaInput}
-            onChange={(e) => setColoniaInput(e.target.value)}
-            style={{
-              fontFamily: mono,
-              fontSize: "11px",
-              color: "#e8e4dc",
-              backgroundColor: "#141412",
-              border: "0.5px solid #2a2a28",
-              outline: "none",
-              padding: "4px 10px",
-              width: "180px",
-            }}
-            className="focus:outline-none placeholder:text-[#444441]"
-          />
-        </div>
-
-        {/* Precio */}
-        <div className="flex flex-col gap-2">
-          <span style={{ fontFamily: mono, fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.14em", color: "#444441" }}>
-            precio
-          </span>
-          <div className="flex gap-1">
-            {(["todos", "gratis", "paga"] as PrecioFilter[]).map((v) => (
-              <Pill
-                key={v}
-                label={v === "paga" ? "de paga" : v}
-                active={precioFilter === v}
-                onClick={() => setPrecioFilter(v)}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Clear */}
-        {hasActiveFilter && (
-          <button
-            onClick={() => { setDateFilter("todos"); setColoniaInput(""); setPrecioFilter("todos"); }}
-            className="cursor-pointer hover:opacity-70 self-end"
-            style={{ fontFamily: mono, fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.12em", color: "#444441", background: "none", border: "none", padding: "4px 0", marginBottom: "1px" }}
-          >
-            limpiar ×
-          </button>
-        )}
+        <p style={{ color: "#5F5E5A", fontFamily: mono, fontSize: "10px", letterSpacing: "0.06em" }}>
+          {eventos === null ? "pegando carteles..." : `${visible.length} cartel${visible.length === 1 ? "" : "es"} pegado${visible.length === 1 ? "" : "s"}`}
+        </p>
       </div>
 
-      {/* Grid */}
-      {filtered.length === 0 ? (
-        <div
-          className="py-24 text-center text-xs tracking-widest uppercase"
-          style={{ color: "#444441", fontFamily: mono }}
-        >
-          {eventos.length === 0
-            ? "sin eventos próximos — sé el primero en publicar"
-            : "sin resultados para estos filtros"}
+      <div className="flex flex-wrap items-end gap-x-6 gap-y-4 pb-6" style={{ borderBottom: "0.5px solid #2a2a28", marginBottom: "18px" }}>
+        <div>
+          <p style={{ color: "#5F5E5A", fontFamily: mono, fontSize: "9px", letterSpacing: "0.13em", marginBottom: "7px", textTransform: "uppercase" }}>cuándo</p>
+          <div className="flex flex-wrap gap-1.5">
+            {(["todo", "hoy", "semana", "próximos"] as DayFilter[]).map((filter) => (
+              <WallButton key={filter} active={day === filter} onClick={() => setDay(filter)}>{filter === "todo" ? "cualquier día" : filter === "semana" ? "esta semana" : filter}</WallButton>
+            ))}
+          </div>
+        </div>
+        <label>
+          <span style={{ color: "#5F5E5A", display: "block", fontFamily: mono, fontSize: "9px", letterSpacing: "0.13em", marginBottom: "7px", textTransform: "uppercase" }}>colonia</span>
+          <select value={colonia} onChange={(event) => setColonia(event.target.value)} style={{ background: "#141412", border: "0.5px solid #2a2a28", color: "#e8e4dc", fontFamily: mono, fontSize: "10px", minWidth: "190px", padding: "8px 10px" }}>
+            <option value="todo">cualquier colonia</option>
+            {colonias.map((item) => <option key={item} value={item}>{item}</option>)}
+          </select>
+        </label>
+      </div>
+
+      {visible.length === 0 ? (
+        <div style={{ border: "0.5px dashed #2a2a28", color: "#5F5E5A", fontFamily: mono, fontSize: "11px", padding: "72px 24px", textAlign: "center" }}>
+          {wall === "sala" ? "todavía no hay una sala abierta · vuelve cuando un evento esté por comenzar" : "no encontramos carteles con esos filtros"}
         </div>
       ) : (
-        <div
-          style={{ columnGap: "8px" }}
-          className="[column-count:1] sm:[column-count:2] lg:[column-count:3]"
-        >
-          {filtered.map((post) => (
-            <FlyerCard key={post.id} post={post} />
+        <div className="[column-count:1] sm:[column-count:2] lg:[column-count:3]" style={{ columnGap: "12px" }}>
+          {visible.map((post, index) => (
+            <div
+              key={post.id}
+              className="break-inside-avoid"
+              style={{ transform: `rotate(${rotations[index % rotations.length]}deg)`, transition: "transform 180ms ease" }}
+            >
+              <FlyerCard post={post} state={eventState(post)} />
+            </div>
           ))}
         </div>
       )}
-    </>
+    </section>
   );
 }

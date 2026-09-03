@@ -23,7 +23,7 @@ type Collection = {
   collection_posts: CollectionPost[];
 };
 
-type Tab = "obras" | "eventos" | "manifiestos" | "colecciones";
+type Tab = "obras" | "eventos" | "letras" | "colecciones";
 
 export interface ProfileData {
   id: string;
@@ -33,10 +33,49 @@ export interface ProfileData {
   location: string | null;
   disciplines: string[] | null;
   avatar_color: string | null;
+  casa_name?: string | null;
+  casa_tone?: string | null;
+  casa_welcome?: string | null;
+  casa_pinned_post_ids?: string[] | null;
+  casa_shelf_items?: string[] | null;
+  casa_cartel_post_id?: string | null;
+  casa_radio_post_id?: string | null;
 }
 
 const mono = "var(--font-space-mono), monospace";
 const syne = "var(--font-syne), sans-serif";
+
+const CASA_TONES: Record<string, { accent: string; wash: string }> = {
+  terracota: { accent: "#D85A30", wash: "rgba(216,90,48,0.08)" },
+  jade: { accent: "#5DCAA5", wash: "rgba(93,202,165,0.08)" },
+  noche: { accent: "#4A7FA5", wash: "rgba(74,127,165,0.08)" },
+  ciruela: { accent: "#7F77DD", wash: "rgba(127,119,221,0.08)" },
+};
+
+const CASA_SHELF_ITEMS: Record<string, { label: string; detail: string }> = {
+  radio: { label: "radio", detail: "algo sonando" },
+  cartel: { label: "cartel", detail: "algo por pasar" },
+};
+
+function ShelfObject({ item, accent, linkedPost }: { item: string; accent: string; linkedPost?: Post | null }) {
+  const object = CASA_SHELF_ITEMS[item];
+  if (!object) return null;
+
+  const contents = (
+    <div style={{ background: "rgba(12,12,11,0.42)", border: "0.5px solid rgba(232,228,220,0.14)", minHeight: "118px", padding: "14px", position: "relative" }}>
+      <div aria-hidden="true" style={{ height: "54px", marginBottom: "11px", position: "relative" }}>
+        {item === "radio" && <><div style={{ border: `1px solid ${accent}`, height: "33px", left: "3px", position: "absolute", top: "12px", width: "68px" }} /><div style={{ border: `1px solid ${accent}`, borderRadius: "50%", height: "18px", left: "11px", position: "absolute", top: "19px", width: "18px" }} /><div style={{ borderTop: `1px solid ${accent}`, left: "40px", position: "absolute", top: "20px", width: "22px" }} /><div style={{ borderTop: `1px solid ${accent}`, left: "40px", position: "absolute", top: "26px", width: "18px" }} /><div style={{ border: `1px solid ${accent}`, borderBottom: "none", height: "16px", left: "18px", position: "absolute", top: "0", transform: "skewX(-24deg)", width: "1px" }} /></>}
+        {item === "cartel" && <><div style={{ background: accent, height: "43px", left: "13px", opacity: 0.18, position: "absolute", top: "4px", transform: "rotate(-6deg)", width: "36px" }} /><div style={{ border: `1px solid ${accent}`, height: "43px", left: "18px", position: "absolute", top: "7px", transform: "rotate(5deg)", width: "36px" }} /><span style={{ color: accent, fontFamily: syne, fontSize: "16px", fontWeight: 800, left: "25px", position: "absolute", top: "18px" }}>+</span></>}
+      </div>
+      <p style={{ color: "#e8e4dc", fontFamily: mono, fontSize: "10px", textTransform: "uppercase" }}>{object.label}</p>
+      <p className="truncate" style={{ color: linkedPost ? accent : "#5F5E5A", fontFamily: mono, fontSize: "9px", marginTop: "3px" }}>{linkedPost ? linkedPost.title ?? `${object.label} fijado` : object.detail}</p>
+    </div>
+  );
+
+  return linkedPost ? (
+    <Link href={`/post/${linkedPost.id}`} style={{ textDecoration: "none" }} title={`abrir: ${linkedPost.title ?? `${object.label} fijado`}`}>{contents}</Link>
+  ) : contents;
+}
 
 function getInitials(p: ProfileData): string {
   if (p.display_name) {
@@ -162,7 +201,7 @@ function ProfilePostCard({ post }: { post: Post }) {
   );
 }
 
-// ─── Escrito card for manifiestos tab ─────────────────────────────────────────
+// ─── Escrito card for letras tab ──────────────────────────────────────────────
 
 function ManifiestoCard({ post }: { post: Post }) {
   const preview = post.content
@@ -192,7 +231,7 @@ function ManifiestoCard({ post }: { post: Post }) {
             alignSelf: "flex-start",
           }}
         >
-          manifiesto
+          letra
         </span>
         <div className="flex flex-col gap-1 flex-1 py-3">
           {post.title && (
@@ -234,7 +273,59 @@ function BannerSVG() {
   );
 }
 
-const TABS: Tab[] = ["obras", "eventos", "manifiestos", "colecciones"];
+const TABS: Tab[] = ["obras", "eventos", "letras", "colecciones"];
+
+function LaTrama({
+  shared,
+  events,
+  comments,
+  colectivos,
+  isOwnProfile,
+}: {
+  shared: number;
+  events: number;
+  comments: number;
+  colectivos: number;
+  isOwnProfile: boolean;
+}) {
+  const gestures = shared + events + comments + colectivos;
+  const items = [
+    { value: shared, label: "obra compartida" },
+    { value: events, label: "evento abierto" },
+    { value: comments, label: "comentario dejado" },
+    { value: colectivos, label: "cuarto colectivo" },
+  ];
+
+  if (gestures === 0) {
+    return (
+      <aside style={{ background: "#141412", border: "0.5px solid #2a2a28", padding: "18px" }}>
+        <p style={{ color: "#D85A30", fontFamily: mono, fontSize: "9px", letterSpacing: "0.15em", marginBottom: "8px", textTransform: "uppercase" }}>la trama</p>
+        <p style={{ color: "#e8e4dc", fontFamily: syne, fontSize: "17px", fontWeight: 800, lineHeight: 1.15, marginBottom: "8px" }}>la casa empieza con un gesto.</p>
+        <p style={{ color: "#888780", fontFamily: mono, fontSize: "10px", lineHeight: 1.55 }}>{isOwnProfile ? "cuando compartas, abras un evento o dejes una nota, los hilos aparecerán aquí." : "los hilos que esta persona deja en la casa aparecerán aquí."}</p>
+      </aside>
+    );
+  }
+
+  return (
+    <aside style={{ background: "#141412", border: "0.5px solid #2a2a28", padding: "17px 18px" }}>
+      <div className="flex items-start justify-between gap-4" style={{ borderBottom: "0.5px solid #2a2a28", paddingBottom: "13px" }}>
+        <div>
+          <p style={{ color: "#D85A30", fontFamily: mono, fontSize: "9px", letterSpacing: "0.15em", marginBottom: "5px", textTransform: "uppercase" }}>la trama</p>
+          <p style={{ color: "#888780", fontFamily: mono, fontSize: "10px", lineHeight: 1.5 }}>los hilos que esta persona ha dejado en la casa</p>
+        </div>
+        <p style={{ color: "#e8e4dc", fontFamily: syne, fontSize: "28px", fontWeight: 800, lineHeight: 1 }}>{formatStat(gestures)}</p>
+      </div>
+      <div className="grid grid-cols-2 gap-x-5 gap-y-3 pt-4">
+        {items.map((item) => (
+          <div key={item.label}>
+            <p style={{ color: "#e8e4dc", fontFamily: syne, fontSize: "17px", fontWeight: 800, lineHeight: 1 }}>{formatStat(item.value)}</p>
+            <p style={{ color: "#5F5E5A", fontFamily: mono, fontSize: "9px", lineHeight: 1.35, marginTop: "4px", textTransform: "uppercase" }}>{item.label}{item.value === 1 ? "" : "s"}</p>
+          </div>
+        ))}
+      </div>
+    </aside>
+  );
+}
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
@@ -243,11 +334,17 @@ export function ProfileView({
   posts,
   isOwnProfile,
   currentUserId,
+  laTrama = { comments: 0, colectivos: 0 },
+  cartelPost,
+  radioPost,
 }: {
   profile: ProfileData;
   posts: Post[];
   isOwnProfile: boolean;
   currentUserId: string | null;
+  laTrama?: { comments: number; colectivos: number };
+  cartelPost?: Post | null;
+  radioPost?: Post | null;
 }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("obras");
@@ -351,88 +448,58 @@ export function ProfileView({
   // Tab filtering — covers all post types
   const obrasPosts       = posts.filter((p) => p.type === "arte" || p.type === "música" || p.type === "fotografía");
   const eventosPosts     = posts.filter((p) => p.type === "evento");
-  const manifiestosPosts = posts.filter((p) => p.type === "escrito");
+  const letrasPosts       = posts.filter((p) => p.type === "escrito");
 
   const visiblePosts =
     activeTab === "obras"       ? obrasPosts :
     activeTab === "eventos"     ? eventosPosts :
-    manifiestosPosts;
+    letrasPosts;
 
   const initials    = getInitials(profile);
   const avatarBg    = profile.avatar_color ?? "#D85A30";
   const disciplines = profile.disciplines ?? [];
+  const casaTone = CASA_TONES[profile.casa_tone ?? "terracota"] ?? CASA_TONES.terracota;
+  const pinnedPosts = (profile.casa_pinned_post_ids ?? [])
+    .map((id) => posts.find((post) => post.id === id))
+    .filter((post): post is Post => Boolean(post));
+  const shelfItems = (profile.casa_shelf_items?.length ? profile.casa_shelf_items : ["radio", "cartel"])
+    .filter((item) => item in CASA_SHELF_ITEMS)
+    .slice(0, 2);
 
   return (
     <>
-      {/* Banner */}
-      <div style={{ backgroundColor: "#0f0d0b", height: "180px", overflow: "hidden" }}>
+      <div style={{ backgroundColor: "#0f0d0b", height: "118px", overflow: "hidden", position: "relative" }}>
         <BannerSVG />
+        <p style={{ bottom: "18px", color: "#5F5E5A", fontFamily: mono, fontSize: "9px", left: "max(24px, calc((100% - 1152px) / 2))", letterSpacing: "0.16em", position: "absolute", textTransform: "uppercase" }}>ficha de quien habita la casa</p>
       </div>
 
       {/* Profile header */}
       <div className="max-w-6xl mx-auto px-6">
-        <div style={{ marginTop: "-40px" }}>
-          {/* Avatar + action buttons */}
-          <div className="flex items-end justify-between">
-            <div
-              className="flex items-center justify-center text-xl font-bold shrink-0"
-              style={{
-                width: "80px",
-                height: "80px",
-                borderRadius: "4px",
-                backgroundColor: avatarBg,
-                color: "#0c0c0b",
-                fontFamily: syne,
-                border: "2px solid #0c0c0b",
-              }}
-            >
-              {initials}
-            </div>
-
-            <div className="flex items-center gap-3 pb-1">
-              {isOwnProfile ? (
-                <Link
-                  href="/profile/edit"
-                  className="px-5 py-2 text-xs tracking-widest uppercase border"
-                  style={{
-                    borderColor: "#D85A30",
-                    color: "#D85A30",
-                    backgroundColor: "transparent",
-                    fontFamily: mono,
-                    textDecoration: "none",
-                  }}
-                >
-                  editar perfil
-                </Link>
-              ) : (
-                <>
-                  <button
-                    onClick={handleMessage}
-                    disabled={messagingLoading}
-                    className="px-5 py-2 text-xs tracking-widest uppercase border cursor-pointer hover:opacity-80 disabled:opacity-50"
-                    style={{ borderColor: "#2a2a28", color: "#888780", backgroundColor: "transparent", fontFamily: mono }}
+        <div className="py-8">
+          {/* Name, house and participation */}
+          <div className="grid gap-8 lg:grid-cols-[1fr_330px] lg:items-start">
+            <div>
+              <div className="flex items-start justify-between gap-5">
+                <div className="flex items-center gap-4 min-w-0">
+                  <div
+                    className="flex items-center justify-center text-base font-bold shrink-0"
+                    style={{ width: "54px", height: "54px", borderRadius: "3px", backgroundColor: avatarBg, color: "#0c0c0b", fontFamily: syne }}
                   >
-                    {messagingLoading ? "..." : "mensaje"}
-                  </button>
-                  <button
-                    className="px-5 py-2 text-xs tracking-widest uppercase cursor-pointer"
-                    style={{ backgroundColor: "#D85A30", color: "#0c0c0b", fontFamily: mono, border: "none" }}
-                  >
-                    seguir
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Name, handle, bio, disciplines */}
-          <div className="mt-4">
-            <h1 className="leading-tight" style={{ fontSize: "26px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800 }}>
-              {profile.display_name ?? `@${profile.username}`}
-            </h1>
-            <p className="mt-1 text-xs" style={{ color: "#5F5E5A", fontFamily: mono }}>
-              @{profile.username}{profile.location ? ` · ${profile.location}` : ""}
-            </p>
+                    {initials}
+                  </div>
+                  <div className="min-w-0">
+                    <h1 className="leading-tight" style={{ fontSize: "clamp(34px, 4vw, 48px)", color: "#e8e4dc", fontFamily: syne, fontWeight: 800, letterSpacing: "-0.055em" }}>
+                      {profile.display_name ?? `@${profile.username}`}
+                    </h1>
+                    <p className="mt-1 text-xs" style={{ color: "#5F5E5A", fontFamily: mono }}>@{profile.username}{profile.location ? ` · ${profile.location}` : ""}</p>
+                  </div>
+                </div>
+                {isOwnProfile ? (
+                  <Link href="/profile/edit" className="px-3 py-2 text-xs tracking-widest uppercase border shrink-0" style={{ borderColor: "#D85A30", color: "#D85A30", backgroundColor: "transparent", fontFamily: mono, fontSize: "9px", textDecoration: "none" }}>editar casa</Link>
+                ) : (
+                  <button onClick={handleMessage} disabled={messagingLoading} className="px-3 py-2 text-xs tracking-widest uppercase border cursor-pointer hover:opacity-80 disabled:opacity-50 shrink-0" style={{ borderColor: "#D85A30", color: "#D85A30", backgroundColor: "transparent", fontFamily: mono, fontSize: "9px" }}>{messagingLoading ? "..." : "dejar una nota"}</button>
+                )}
+              </div>
             {profile.bio && (
               <p className="mt-3 text-[13px] leading-relaxed" style={{ color: "#888780", fontFamily: mono, maxWidth: "560px" }}>
                 {profile.bio}
@@ -452,27 +519,27 @@ export function ProfileView({
               </div>
             )}
 
-            {/* Stats — real counts per tab */}
-            <div style={{ display: "flex", gap: "32px", marginTop: "24px", paddingBottom: "24px", borderBottom: "0.5px solid #2a2a28" }}>
-              {[
-                { value: formatStat(obrasPosts.length),       label: "obras"      },
-                { value: formatStat(eventosPosts.length),     label: "eventos"    },
-                { value: formatStat(manifiestosPosts.length), label: "manifiestos" },
-              ].map(({ value, label }) => (
-                <div
-                  key={label}
-                  onClick={() => setActiveTab(label as Tab)}
-                  style={{ cursor: "pointer" }}
-                >
-                  <p style={{ margin: 0, fontSize: "18px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800, lineHeight: 1 }}>
-                    {value}
-                  </p>
-                  <p style={{ margin: "3px 0 0 0", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.1em", color: activeTab === label ? "#D85A30" : "#444441", fontFamily: mono }}>
-                    {label}
-                  </p>
+            <section style={{ background: casaTone.wash, borderLeft: `2px solid ${casaTone.accent}`, marginTop: "24px", maxWidth: "620px", padding: "14px 16px" }}>
+              <p style={{ color: casaTone.accent, fontFamily: mono, fontSize: "9px", letterSpacing: "0.15em", marginBottom: "7px", textTransform: "uppercase" }}>casa de @{profile.username}</p>
+              <p style={{ color: "#e8e4dc", fontFamily: syne, fontSize: "20px", fontWeight: 800, lineHeight: 1.05, marginBottom: profile.casa_welcome ? "8px" : 0 }}>{profile.casa_name || "una casa en construcción"}</p>
+              {profile.casa_welcome && <p style={{ color: "#888780", fontFamily: mono, fontSize: "11px", lineHeight: 1.55 }}>{profile.casa_welcome}</p>}
+            </section>
+
+            <section style={{ marginTop: "18px", maxWidth: "620px" }}>
+              <div className="flex items-end justify-between gap-4" style={{ marginBottom: "9px" }}>
+                <div>
+                  <p style={{ color: casaTone.accent, fontFamily: mono, fontSize: "9px", letterSpacing: "0.15em", textTransform: "uppercase" }}>repisa de la casa</p>
+                  <p style={{ color: "#5F5E5A", fontFamily: mono, fontSize: "9px", marginTop: "4px" }}>pequeñas cosas que hacen este cuarto suyo</p>
                 </div>
-              ))}
+                {isOwnProfile && <Link href="/profile/edit" style={{ color: "#888780", fontFamily: mono, fontSize: "9px", textDecoration: "underline", textUnderlineOffset: "4px" }}>acomodar</Link>}
+              </div>
+              <div className="grid grid-cols-2 gap-2" style={{ borderTop: `1px solid ${casaTone.accent}`, paddingTop: "8px" }}>
+                {shelfItems.map((item) => <ShelfObject key={item} item={item} accent={casaTone.accent} linkedPost={item === "cartel" ? cartelPost : radioPost} />)}
+              </div>
+            </section>
+
             </div>
+            <LaTrama shared={posts.length} events={eventosPosts.length} comments={laTrama.comments} colectivos={laTrama.colectivos} isOwnProfile={isOwnProfile} />
           </div>
 
           {/* Colectivos badges */}
@@ -500,6 +567,39 @@ export function ProfileView({
               </div>
             </div>
           )}
+
+          <section style={{ borderTop: "0.5px solid #2a2a28", marginTop: "22px", paddingTop: "22px" }}>
+            <div className="flex items-end justify-between gap-4 mb-4">
+              <div>
+                <p style={{ color: casaTone.accent, fontFamily: mono, fontSize: "9px", letterSpacing: "0.15em", marginBottom: "6px", textTransform: "uppercase" }}>muro principal</p>
+                <p style={{ color: "#888780", fontFamily: mono, fontSize: "10px" }}>las cosas que esta persona quiere dejar a la vista</p>
+              </div>
+              {isOwnProfile && <Link href="/profile/edit" style={{ color: "#888780", fontFamily: mono, fontSize: "9px", letterSpacing: "0.1em", textDecoration: "underline", textUnderlineOffset: "4px", textTransform: "uppercase" }}>editar mi casa</Link>}
+            </div>
+            {pinnedPosts.length > 0 ? (
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                {pinnedPosts.map((post) => {
+                  const src = post.type === "música" ? post.cover_url : post.media_url ?? post.media_base64;
+                  return <Link key={post.id} href={`/post/${post.id}`} style={{ background: "#141412", border: "0.5px solid #2a2a28", color: "inherit", minHeight: "132px", overflow: "hidden", position: "relative", textDecoration: "none" }}>
+                    {src && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={src} alt={post.title ?? "Obra fijada"} style={{ height: "100%", inset: 0, objectFit: "cover", position: "absolute", width: "100%" }} />
+                    )}
+                    <span style={{ background: "rgba(12,12,11,0.82)", bottom: 0, color: "#e8e4dc", display: "block", fontFamily: mono, fontSize: "10px", left: 0, padding: "8px 9px", position: "absolute", right: 0 }}>{post.title ?? "sin título"}</span>
+                  </Link>;
+                })}
+              </div>
+            ) : (
+              <div style={{ border: "0.5px dashed #2a2a28", color: "#5F5E5A", fontFamily: mono, fontSize: "10px", padding: "26px 16px" }}>
+                {isOwnProfile ? (
+                  <>
+                    <p>todavía no hay obras colgadas aquí.</p>
+                    <p style={{ marginTop: "8px" }}><Link href="/subir" style={{ color: casaTone.accent, textDecoration: "underline", textUnderlineOffset: "4px" }}>subir primera obra</Link><span> · después podrás elegir hasta tres para este muro.</span></p>
+                  </>
+                ) : "el muro todavía se está armando"}
+              </div>
+            )}
+          </section>
         </div>
 
         {/* Works grid */}
@@ -574,10 +674,12 @@ export function ProfileView({
               </div>
             )
           ) : visiblePosts.length === 0 ? (
-            <div className="py-24 text-center text-xs tracking-widest uppercase" style={{ color: "#444441", fontFamily: mono }}>
-              sin publicaciones
+            <div className="py-24 text-center" style={{ border: "0.5px dashed #2a2a28" }}>
+              <p style={{ color: "#888780", fontFamily: syne, fontSize: "21px", fontWeight: 800, marginBottom: "8px" }}>esta habitación está por llenarse</p>
+              <p style={{ color: "#5F5E5A", fontFamily: mono, fontSize: "10px", lineHeight: 1.6, margin: "0 auto 18px", maxWidth: "350px" }}>Una obra, una nota o un evento es una forma de dejar la puerta abierta.</p>
+              {isOwnProfile && <Link href="/upload" style={{ color: "#D85A30", fontFamily: mono, fontSize: "10px", letterSpacing: "0.1em", textDecoration: "underline", textUnderlineOffset: "4px", textTransform: "uppercase" }}>dejar algo en casa →</Link>}
             </div>
-          ) : activeTab === "manifiestos" ? (
+          ) : activeTab === "letras" ? (
             <div className="grid grid-cols-3" style={{ gridAutoRows: "200px", gridAutoFlow: "dense" }}>
               {visiblePosts.map((post) => (
                 <ManifiestoCard key={post.id} post={post} />

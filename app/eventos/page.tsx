@@ -1,44 +1,34 @@
-import { createClient } from "@/lib/supabase-server";
 import { EventosClient } from "./EventosClient";
-import type { Post } from "@/app/components/card-art";
 
 export default async function EventosPage() {
-  const supabase = await createClient();
-
-  const { data } = await supabase
-    .from("posts")
-    .select("*, profiles(username, display_name)")
-    .eq("type", "evento")
-    .order("event_date", { ascending: true });
-
-  const eventos: Post[] = data ?? [];
-  if (process.env.NODE_ENV !== 'production') console.log("[EventosPage] eventos.length:", eventos.length, "sample:", eventos[0]?.id ?? "none");
-
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#0c0c0b" }}>
 
 
       <main className="max-w-6xl mx-auto px-6 pb-20">
-        {/* Page header */}
-        <div className="pt-10 pb-8">
+        <div className="pt-10 pb-8" style={{ borderBottom: "0.5px solid #2a2a28" }}>
+          <p style={{ fontSize: "9px", color: "#D85A30", fontFamily: "var(--font-space-mono), monospace", letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: "12px" }}>
+            cdmx · carteles que siguen hablando
+          </p>
           <h1
             style={{
-              fontSize: "32px",
+              fontSize: "clamp(36px, 7vw, 76px)",
               color: "#e8e4dc",
               fontFamily: "var(--font-syne), sans-serif",
               fontWeight: 800,
               lineHeight: 1,
-              marginBottom: "8px",
+              letterSpacing: "-0.05em",
+              marginBottom: "12px",
             }}
           >
-            eventos
+            cartelera
           </h1>
-          <p style={{ fontSize: "11px", color: "#5F5E5A", fontFamily: "var(--font-space-mono), monospace", letterSpacing: "0.05em" }}>
-            lo que está pasando en la ciudad
+          <p style={{ maxWidth: "580px", fontSize: "12px", lineHeight: 1.7, color: "#888780", fontFamily: "var(--font-space-mono), monospace" }}>
+            como encontrar una pared llena de flyers camino a casa. Aquí se quedan un poco más: para llegar, recordar y volver a encontrarse.
           </p>
         </div>
 
-        <EventosClient eventos={eventos} />
+        <EventosClient />
       </main>
     </div>
   );

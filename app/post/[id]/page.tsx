@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-server";
 import { CommentsSection, type Comment } from "@/app/components/CommentsSection";
@@ -6,8 +6,12 @@ import { PostActions } from "./PostActions";
 import { BookmarkButton } from "@/app/components/BookmarkButton";
 import { CollabProposalButton } from "./CollabProposalButton";
 import { ShareToColectivoButton } from "@/app/components/ShareToColectivoButton";
+import { EventReflection } from "./EventReflection";
 import type { Post } from "@/app/components/card-art";
 import { sanitizeHtml } from "@/lib/sanitize";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -127,6 +131,19 @@ function EventoView({ post, comments, currentUserId, currentProfile }: {
           {formatDate(post.event_date)} · {formatTime(post.event_date)}
         </p>
       )}
+
+      {post.event_date && (
+        <Link
+          href={`/post/${post.id}/sala`}
+          className="inline-flex items-center gap-2 hover:opacity-80"
+          style={{ margin: "4px 0 20px", padding: "9px 12px", border: "0.5px solid #D85A30", color: "#D85A30", fontFamily: mono, fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.12em", textDecoration: "none" }}
+        >
+          <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "#D85A30" }} />
+          entrar a la sala
+        </Link>
+      )}
+
+      {post.event_date && <EventReflection eventId={post.id} currentUserId={currentUserId} />}
 
       {(post.venue || post.address) && (
         <p style={{ ...labelStyle, marginBottom: "16px", fontSize: "11px" }}>
@@ -354,25 +371,34 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const supabase = await createClient();
 
-  const [{ data: postData }, { data: commentsData }, { data: { user } }] = await Promise.all([
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) redirect(`/auth/login?redirectTo=/post/${id}`);
+
+  const [{ data: postData, error: postError }, { data: commentsData, error: commentsError }] = await Promise.all([
     supabase
       .from("posts")
-      .select("*, profiles(username, display_name), content")
+      .select("*, profiles!posts_author_id_fkey(username, display_name)")
       .eq("id", id)
-      .single(),
+      .maybeSingle(),
     supabase
       .from("comments")
       .select("*, profiles(username, display_name)")
       .eq("post_id", id)
       .order("created_at", { ascending: true }),
-    supabase.auth.getUser(),
   ]);
 
+  if (postError) {
+    console.error("[post detail] failed to fetch post", { id, code: postError.code, message: postError.message });
+    throw new Error("No se pudo cargar la publicación.");
+  }
+  if (commentsError) {
+    console.error("[post detail] failed to fetch comments", { id, code: commentsError.code, message: commentsError.message });
+  }
   if (!postData) notFound();
 
   const post = postData as Post;
   const comments = (commentsData ?? []) as Comment[];
-  const currentUserId = user?.id ?? null;
+  const currentUserId = user.id;
 
   let currentProfile: { username: string; display_name: string | null } | null = null;
   if (currentUserId) {

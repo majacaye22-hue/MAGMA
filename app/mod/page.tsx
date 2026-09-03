@@ -24,7 +24,7 @@ export default async function ModPage() {
   // Fetch pending reports with joins
   const { data: reportsData } = await supabase
     .from("reports")
-    .select("id, reason, details, status, created_at, post_id, comment_id, posts(id, title), comments(id, body), profiles(username)")
+    .select("id, reason, details, status, created_at, post_id, comment_id, posts(id, title, is_hidden), comments(id, body, is_hidden), profiles(username)")
     .eq("status", "pending")
     .order("created_at", { ascending: false });
 
@@ -37,10 +37,10 @@ export default async function ModPage() {
         <div className="pt-10 pb-8 flex items-end justify-between">
           <div className="flex flex-col gap-2">
             <span style={{ fontSize: "9px", color: "#5F5E5A", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.16em" }}>
-              moderación
+              cuidadorxs de la casa
             </span>
             <h1 style={{ fontSize: "28px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800, lineHeight: 1 }}>
-              reportes pendientes
+              reportes por cuidar
             </h1>
           </div>
           <span style={{ fontSize: "11px", color: "#5F5E5A", fontFamily: mono }}>

@@ -63,6 +63,7 @@ const mono = "var(--font-space-mono), monospace";
 
 const NAV_LINKS = [
   { href: "/manifiesto", label: "manifiesto" },
+  { href: "/eventos",    label: "cartelera" },
   { href: "/radio",      label: "radio" },
   { href: "/colectivos", label: "colectivos" },
   { href: "/tianguis",   label: "tianguis" },

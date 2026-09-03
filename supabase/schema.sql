@@ -34,6 +34,14 @@ CREATE TABLE profiles (
   avatar_url       text,
   avatar_color     text DEFAULT '#D85A30',
   is_moderator     boolean DEFAULT false NOT NULL,
+  casa_name        text,
+  casa_tone        text,
+  casa_welcome     text,
+  casa_pinned_post_ids uuid[] NOT NULL DEFAULT '{}',
+  casa_shelf_items text[] NOT NULL DEFAULT ARRAY['radio', 'cartel', 'objeto']::text[],
+  casa_cartel_post_id uuid,
+  casa_radio_post_id uuid,
+  casa_objeto_post_id uuid,
   created_at       timestamp DEFAULT now()
 );
 
@@ -59,20 +67,30 @@ CREATE TABLE posts (
   title          text,
   body           text,           -- plain text or excerpt
   content        text,           -- sanitised rich HTML (type = "escrito" only)
-  type           text NOT NULL,  -- arte | fotografía | música | evento | escrito
+  type           text NOT NULL,  -- arte | fotografía | música | video | evento | escrito
   media_url      text,
   media_type     text,
   media_base64   text,           -- legacy; new uploads go to storage
   cover_url      text,           -- album art for música
   tags           text[],
   upvotes        int DEFAULT 0,
+  event_date     timestamptz,
+  venue          text,
+  address        text,
+  is_free        boolean,
+  price          text,
+  open_collab    boolean NOT NULL DEFAULT false,
+  collab_description text,
+  is_hidden      boolean DEFAULT false NOT NULL,
   created_at     timestamp DEFAULT now()
 );
 
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "posts: public read"
-  ON posts FOR SELECT USING (auth.uid() IS NOT NULL);
+CREATE POLICY "posts: community read, owner and cuidadorx hidden read"
+  ON posts FOR SELECT USING (
+    auth.uid() IS NOT NULL AND (is_hidden = false OR author_id = auth.uid() OR EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_moderator = true))
+  );
 
 CREATE POLICY "posts: authenticated insert"
   ON posts FOR INSERT
@@ -80,8 +98,12 @@ CREATE POLICY "posts: authenticated insert"
 
 CREATE POLICY "posts: owner update"
   ON posts FOR UPDATE
-  USING (auth.uid() = author_id)
-  WITH CHECK (auth.uid() = author_id);
+  USING (auth.uid() = author_id AND is_hidden = false)
+  WITH CHECK (auth.uid() = author_id AND is_hidden = false);
+
+CREATE POLICY "posts: cuidadorx update" ON posts FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_moderator = true))
+  WITH CHECK (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_moderator = true));
 
 CREATE POLICY "posts: owner or moderator delete"
   ON posts FOR DELETE
@@ -125,6 +147,138 @@ CREATE POLICY "collection_posts_insert" ON collection_posts FOR INSERT
   WITH CHECK (EXISTS (SELECT 1 FROM collections c WHERE c.id = collection_id AND c.user_id = auth.uid()));
 CREATE POLICY "collection_posts_delete" ON collection_posts FOR DELETE
   USING (EXISTS (SELECT 1 FROM collections c WHERE c.id = collection_id AND c.user_id = auth.uid()));
+
+-- ─── EVENT ATTENDANCE + NOTES ───────────────────────────────────────────────
+
+CREATE TABLE event_attendances (
+  event_id    uuid REFERENCES posts(id) ON DELETE CASCADE NOT NULL,
+  user_id     uuid REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (event_id, user_id)
+);
+
+CREATE TABLE event_notes (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id    uuid REFERENCES posts(id) ON DELETE CASCADE NOT NULL,
+  user_id     uuid REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  body        text NOT NULL CHECK (char_length(trim(body)) > 0),
+  is_public   boolean NOT NULL DEFAULT false,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  updated_at  timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (event_id, user_id)
+);
+
+ALTER TABLE event_attendances ENABLE ROW LEVEL SECURITY;
+ALTER TABLE event_notes ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "event attendances: owner read" ON event_attendances FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "event attendances: owner insert" ON event_attendances FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "event attendances: owner delete" ON event_attendances FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "event notes: owner or public read" ON event_notes FOR SELECT
+  USING (auth.uid() IS NOT NULL AND (auth.uid() = user_id OR is_public = true));
+CREATE POLICY "event notes: owner insert" ON event_notes FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "event notes: owner update" ON event_notes FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "event notes: owner delete" ON event_notes FOR DELETE USING (auth.uid() = user_id);
+
+-- ─── BLOCKED USERS ───────────────────────────────────────────────────────────
+
+CREATE TABLE blocked_users (
+  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  blocker_id uuid REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  blocked_id uuid REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  created_at timestamp DEFAULT now(),
+  UNIQUE (blocker_id, blocked_id)
+);
+
+ALTER TABLE blocked_users ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "blocked_users: owner read" ON blocked_users FOR SELECT USING (auth.uid() = blocker_id);
+CREATE POLICY "blocked_users: owner insert" ON blocked_users FOR INSERT WITH CHECK (auth.uid() = blocker_id);
+CREATE POLICY "blocked_users: owner delete" ON blocked_users FOR DELETE USING (auth.uid() = blocker_id);
+
+-- ─── EVENT SALAS ─────────────────────────────────────────────────────────────
+
+CREATE TABLE event_sala_messages (
+  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id   uuid NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  user_id    uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  body       text NOT NULL CHECK (char_length(trim(body)) BETWEEN 1 AND 600),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX event_sala_messages_event_created_at_idx
+  ON event_sala_messages (event_id, created_at);
+
+CREATE OR REPLACE FUNCTION public.can_send_event_sala_message(target_event_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT count(*) < 12
+  FROM public.event_sala_messages
+  WHERE event_id = target_event_id
+    AND user_id = auth.uid()
+    AND created_at > now() - interval '1 minute';
+$$;
+
+CREATE OR REPLACE FUNCTION public.event_sala_users_are_blocked(other_user_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.blocked_users b
+    WHERE (b.blocker_id = auth.uid() AND b.blocked_id = other_user_id)
+       OR (b.blocker_id = other_user_id AND b.blocked_id = auth.uid())
+  );
+$$;
+
+ALTER TABLE event_sala_messages ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "event_sala_messages: authenticated read, block aware"
+  ON event_sala_messages FOR SELECT
+  USING (
+    auth.uid() IS NOT NULL
+    AND NOT public.event_sala_users_are_blocked(event_sala_messages.user_id)
+  );
+
+CREATE POLICY "event_sala_messages: active window insert, block aware"
+  ON event_sala_messages FOR INSERT
+  WITH CHECK (
+    auth.uid() = user_id
+    AND public.can_send_event_sala_message(event_id)
+    AND EXISTS (
+      SELECT 1
+      FROM posts p
+      WHERE p.id = event_sala_messages.event_id
+        AND p.type = 'evento'
+        AND p.event_date IS NOT NULL
+        AND now() >= p.event_date - interval '48 hours'
+        AND now() <= p.event_date + interval '72 hours'
+    )
+  );
+
+CREATE POLICY "event_sala_messages: sender, host, or moderator delete"
+  ON event_sala_messages FOR DELETE
+  USING (
+    auth.uid() = user_id
+    OR EXISTS (
+      SELECT 1 FROM posts p
+      WHERE p.id = event_sala_messages.event_id
+        AND p.author_id = auth.uid()
+    )
+    OR EXISTS (
+      SELECT 1 FROM profiles p
+      WHERE p.id = auth.uid() AND p.is_moderator = true
+    )
+  );
+
+ALTER PUBLICATION supabase_realtime ADD TABLE event_sala_messages;
 
 -- ─── COLECTIVOS ──────────────────────────────────────────────────────────────
 
@@ -205,13 +359,22 @@ CREATE TABLE comments (
   post_id    uuid REFERENCES posts(id) ON DELETE CASCADE NOT NULL,
   author_id  uuid REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
   body       text NOT NULL,
+  is_hidden boolean DEFAULT false NOT NULL,
   created_at timestamp DEFAULT now()
 );
 
 ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "comments: public read" ON comments FOR SELECT USING (auth.uid() IS NOT NULL);
+CREATE POLICY "comments: community read, owner and cuidadorx hidden read" ON comments FOR SELECT USING (
+  auth.uid() IS NOT NULL AND (is_hidden = false OR author_id = auth.uid() OR EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_moderator = true))
+);
 CREATE POLICY "comments: authenticated insert" ON comments FOR INSERT WITH CHECK (auth.uid() = author_id);
+CREATE POLICY "comments: owner update" ON comments FOR UPDATE
+  USING (auth.uid() = author_id AND is_hidden = false)
+  WITH CHECK (auth.uid() = author_id AND is_hidden = false);
+CREATE POLICY "comments: cuidadorx update" ON comments FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_moderator = true))
+  WITH CHECK (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_moderator = true));
 CREATE POLICY "comments: owner or moderator delete" ON comments FOR DELETE
   USING (auth.uid() = author_id OR EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_moderator = true));
 
@@ -233,24 +396,11 @@ ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "reports: reporter or moderator read" ON reports FOR SELECT
   USING (auth.uid() = reporter_id OR EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_moderator = true));
 CREATE POLICY "reports: authenticated insert" ON reports FOR INSERT WITH CHECK (auth.uid() = reporter_id);
+CREATE POLICY "reports: cuidadorx update" ON reports FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_moderator = true))
+  WITH CHECK (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_moderator = true));
 CREATE POLICY "reports: moderator delete" ON reports FOR DELETE
   USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_moderator = true));
-
--- ─── BLOCKED USERS ───────────────────────────────────────────────────────────
-
-CREATE TABLE blocked_users (
-  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  blocker_id uuid REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
-  blocked_id uuid REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
-  created_at timestamp DEFAULT now(),
-  UNIQUE (blocker_id, blocked_id)
-);
-
-ALTER TABLE blocked_users ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "blocked_users: owner read" ON blocked_users FOR SELECT USING (auth.uid() = blocker_id);
-CREATE POLICY "blocked_users: owner insert" ON blocked_users FOR INSERT WITH CHECK (auth.uid() = blocker_id);
-CREATE POLICY "blocked_users: owner delete" ON blocked_users FOR DELETE USING (auth.uid() = blocker_id);
 
 -- ─── MESSAGING ───────────────────────────────────────────────────────────────
 
