@@ -9,6 +9,7 @@ export type Project = {
   description: string | null;
   cover_image_url: string | null;
   links: { spotify?: string; instagram?: string; website?: string } | null;
+  creator?: { username: string; display_name: string | null } | null;
 };
 
 function SpotifyIcon() {
@@ -83,6 +84,11 @@ export function ProjectCard({ project }: { project: Project }) {
         <p style={{ fontSize: "13px", color: "#e8e4dc", fontFamily: syne, fontWeight: 700, lineHeight: 1.2, marginBottom: "4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {project.title}
         </p>
+        {project.creator && (
+          <p style={{ color: "#D85A30", fontFamily: mono, fontSize: "9px", marginBottom: project.description ? "7px" : 0 }}>
+            por @{project.creator.username}
+          </p>
+        )}
         {project.description && (
           <p style={{
             fontSize: "10px",

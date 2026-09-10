@@ -466,11 +466,36 @@ export function ProfileView({
     .filter((item) => item in CASA_SHELF_ITEMS)
     .slice(0, 2);
 
+  const projectsSection = (projects.length > 0 || isOwnProfile) && (
+    <section style={{ borderTop: "0.5px solid #2a2a28", marginTop: "24px", paddingTop: "22px" }}>
+      <div className="flex items-end justify-between gap-4" style={{ marginBottom: "16px" }}>
+        <div>
+          <p style={{ color: "#D85A30", fontFamily: mono, fontSize: "9px", letterSpacing: "0.15em", marginBottom: "6px", textTransform: "uppercase" }}>proyectos personales</p>
+          <p style={{ color: "#888780", fontFamily: mono, fontSize: "10px", lineHeight: 1.5 }}>lo que {isOwnProfile ? "estás" : "esta persona está"} construyendo ahora</p>
+        </div>
+        {isOwnProfile && (
+          <button onClick={() => setShowCreateProject(true)} style={{ background: "none", border: "0.5px solid #D85A30", color: "#D85A30", cursor: "pointer", fontFamily: mono, fontSize: "9px", letterSpacing: "0.12em", padding: "7px 10px", textTransform: "uppercase" }}>
+            + nuevo proyecto
+          </button>
+        )}
+      </div>
+      {projects.length > 0 ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {projects.map((project) => <ProjectCard key={project.id} project={project} />)}
+        </div>
+      ) : (
+        <div style={{ border: "0.5px dashed #2a2a28", color: "#5F5E5A", fontFamily: mono, fontSize: "10px", padding: "28px 16px" }}>
+          Este espacio es para ese proyecto que siempre explicas cuando alguien pregunta “¿en qué andas?”.
+        </div>
+      )}
+    </section>
+  );
+
   return (
     <>
       <div style={{ backgroundColor: "#0f0d0b", height: "118px", overflow: "hidden", position: "relative" }}>
         <BannerSVG />
-        <p style={{ bottom: "18px", color: "#5F5E5A", fontFamily: mono, fontSize: "9px", left: "max(24px, calc((100% - 1152px) / 2))", letterSpacing: "0.16em", position: "absolute", textTransform: "uppercase" }}>ficha de quien habita la casa</p>
+        <p style={{ bottom: "18px", color: "#5F5E5A", fontFamily: mono, fontSize: "9px", left: "max(24px, calc((100% - 1152px) / 2))", letterSpacing: "0.16em", position: "absolute", textTransform: "uppercase" }}>perfil creativo · cdmx</p>
       </div>
 
       {/* Profile header */}
@@ -495,7 +520,7 @@ export function ProfileView({
                   </div>
                 </div>
                 {isOwnProfile ? (
-                  <Link href="/profile/edit" className="px-3 py-2 text-xs tracking-widest uppercase border shrink-0" style={{ borderColor: "#D85A30", color: "#D85A30", backgroundColor: "transparent", fontFamily: mono, fontSize: "9px", textDecoration: "none" }}>editar casa</Link>
+                  <Link href="/profile/edit" className="px-3 py-2 text-xs tracking-widest uppercase border shrink-0" style={{ borderColor: "#D85A30", color: "#D85A30", backgroundColor: "transparent", fontFamily: mono, fontSize: "9px", textDecoration: "none" }}>editar perfil</Link>
                 ) : (
                   <button onClick={handleMessage} disabled={messagingLoading} className="px-3 py-2 text-xs tracking-widest uppercase border cursor-pointer hover:opacity-80 disabled:opacity-50 shrink-0" style={{ borderColor: "#D85A30", color: "#D85A30", backgroundColor: "transparent", fontFamily: mono, fontSize: "9px" }}>{messagingLoading ? "..." : "dejar una nota"}</button>
                 )}
@@ -518,6 +543,8 @@ export function ProfileView({
                 })}
               </div>
             )}
+
+            {projectsSection}
 
             <section style={{ background: casaTone.wash, borderLeft: `2px solid ${casaTone.accent}`, marginTop: "24px", maxWidth: "620px", padding: "14px 16px" }}>
               <p style={{ color: casaTone.accent, fontFamily: mono, fontSize: "9px", letterSpacing: "0.15em", marginBottom: "7px", textTransform: "uppercase" }}>casa de @{profile.username}</p>
@@ -612,7 +639,7 @@ export function ProfileView({
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className="px-5 py-3 text-xs tracking-widest uppercase cursor-pointer"
+                  className="min-w-0 flex-1 px-1 py-3 text-[9px] tracking-wide uppercase cursor-pointer sm:px-5 sm:text-xs sm:tracking-widest"
                   style={{
                     fontFamily: mono,
                     color: isActive ? "#e8e4dc" : "#888780",
@@ -694,43 +721,6 @@ export function ProfileView({
           )}
         </div>
       </div>
-
-      {/* Projects section */}
-      {(projects.length > 0 || isOwnProfile) && (
-        <div className="max-w-6xl mx-auto px-6 pb-12" style={{ borderTop: "0.5px solid #2a2a28", paddingTop: "32px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
-            <p style={{ fontSize: "9px", color: "#444441", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.14em" }}>
-              proyectos
-            </p>
-            {isOwnProfile && (
-              <button
-                onClick={() => setShowCreateProject(true)}
-                style={{
-                  fontSize: "9px", color: "#D85A30", fontFamily: mono, textTransform: "uppercase",
-                  letterSpacing: "0.12em", background: "none", border: "0.5px solid #D85A30",
-                  padding: "4px 10px", cursor: "pointer",
-                }}
-              >
-                + nuevo
-              </button>
-            )}
-          </div>
-
-          {projects.length === 0 ? (
-            <div style={{ paddingTop: "16px", paddingBottom: "8px" }}>
-              <p style={{ fontSize: "10px", color: "#2a2a28", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.1em" }}>
-                sin proyectos todavía
-              </p>
-            </div>
-          ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "12px" }}>
-              {projects.map((project) => (
-                <ProjectCard key={project.id} project={project} />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       {showCreateProject && currentUserId && (
         <CreateProjectModal

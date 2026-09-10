@@ -6,6 +6,8 @@ import Link from "next/link";
 
 import { PostCard } from "@/app/components/card-art";
 import type { Post } from "@/app/components/card-art";
+import { createClient } from "@/lib/supabase-server";
+import { ProjectEditor } from "./ProjectEditor";
 
 const mono = "var(--font-space-mono), monospace";
 const syne = "var(--font-syne), sans-serif";
@@ -17,6 +19,7 @@ type Project = {
   cover_image_url: string | null;
   links: { spotify?: string; instagram?: string; website?: string } | null;
   author_id: string;
+  profiles: { username: string; display_name: string | null } | { username: string; display_name: string | null }[] | null;
 };
 
 function GlobeIcon() {
@@ -50,21 +53,17 @@ function MusicIcon() {
 
 export default async function ProyectoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { createClient: createSupabaseClient } = await import("@supabase/supabase-js");
-  const supabase = createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-
-  const currentUserId = null;
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) notFound();
+  const currentUserId = user.id;
 
   // Fetch project
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: projectData, error: projectError } = await (supabase as any)
+  const { data: projectData, error: projectError } = await supabase
     .from("projects")
-    .select("id, title, description, cover_image_url, links, author_id")
+    .select("id, title, description, cover_image_url, links, author_id, profiles!projects_author_id_fkey(username, display_name)")
     .eq("id", id)
-    .single();
+    .maybeSingle();
 
   if (projectError || !projectData) {
     console.error("Project fetch error:", projectError, "id:", id);
@@ -73,8 +72,7 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
   const project = projectData as Project;
 
   // Fetch post IDs for this project
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: ppData } = await (supabase as any)
+  const { data: ppData } = await supabase
     .from("post_projects")
     .select("post_id")
     .eq("project_id", id);
@@ -84,10 +82,9 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
   if (ppData && ppData.length > 0) {
     const postIds = ppData.map((r: { post_id: string }) => r.post_id);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: postsData } = await (supabase as any)
+    const { data: postsData } = await supabase
       .from("posts")
-      .select("*, profiles(username, display_name)")
+      .select("*, profiles!posts_author_id_fkey(username, display_name)")
       .in("id", postIds);
 
     posts = (postsData ?? []) as Post[];
@@ -95,6 +92,7 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
 
   const links = project.links ?? {};
   const isOwner = currentUserId === project.author_id;
+  const creator = Array.isArray(project.profiles) ? project.profiles[0] : project.profiles;
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#0c0c0b" }}>
@@ -118,10 +116,10 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
         {/* Back link */}
         <div style={{ position: "absolute", top: "20px", left: "24px" }}>
           <Link
-            href="/"
+            href="/proyectos"
             style={{ fontSize: "10px", color: "rgba(232,228,220,0.5)", fontFamily: mono, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.14em" }}
           >
-            ← volver
+            ← proyectos
           </Link>
         </div>
 
@@ -133,13 +131,14 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
           <h1 style={{ fontSize: "clamp(24px, 4vw, 40px)", color: "#e8e4dc", fontFamily: syne, fontWeight: 800, lineHeight: 1, letterSpacing: "-0.01em" }}>
             {project.title}
           </h1>
+          {creator && <Link href={`/profile/${creator.username}`} style={{ color: "rgba(232,228,220,0.7)", display: "inline-block", fontFamily: mono, fontSize: "10px", marginTop: "9px", textDecoration: "none" }}>por @{creator.username}</Link>}
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-6">
 
         {/* Description + links row */}
-        <div style={{ paddingTop: "24px", paddingBottom: "28px", borderBottom: "0.5px solid #2a2a28", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "32px" }}>
+        <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between" style={{ paddingTop: "24px", paddingBottom: "28px", borderBottom: "0.5px solid #2a2a28" }}>
           <div style={{ flex: 1 }}>
             {project.description && (
               <p style={{ fontSize: "13px", color: "#888780", fontFamily: mono, lineHeight: 1.8, maxWidth: "600px" }}>
@@ -188,21 +187,24 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
           </div>
 
           {/* Right: obra count + owner CTA */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "10px", flexShrink: 0 }}>
+          <div className="items-start md:items-end" style={{ display: "flex", flexDirection: "column", gap: "10px", flexShrink: 0 }}>
             <span style={{ fontSize: "10px", color: "#444441", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.1em" }}>
               {posts.length} {posts.length === 1 ? "obra" : "obras"}
             </span>
             {isOwner && (
-              <Link
-                href={`/upload?proyecto=${id}`}
-                style={{
-                  fontSize: "10px", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em",
-                  padding: "8px 14px", border: "0.5px solid #D85A30", color: "#D85A30",
-                  textDecoration: "none",
-                }}
-              >
-                + agregar obra
-              </Link>
+              <div className="flex flex-wrap gap-2 md:justify-end">
+                <ProjectEditor project={project} />
+                <Link
+                  href={`/upload?proyecto=${id}`}
+                  style={{
+                    fontSize: "10px", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em",
+                    padding: "8px 14px", border: "0.5px solid #D85A30", color: "#D85A30",
+                    textDecoration: "none",
+                  }}
+                >
+                  + agregar obra
+                </Link>
+              </div>
             )}
           </div>
         </div>
@@ -228,7 +230,7 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
               )}
             </div>
           ) : (
-            <div style={{ columns: 3, columnGap: "1px" }}>
+            <div className="[column-count:1] sm:[column-count:2] lg:[column-count:3]" style={{ columnGap: "1px" }}>
               {posts.map((post, i) => (
                 <div key={post.id} style={{ breakInside: "avoid", marginBottom: "1px" }}>
                   <PostCard post={post} index={i} total={posts.length} currentUserId={currentUserId} />
