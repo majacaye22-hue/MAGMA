@@ -17,7 +17,7 @@ type Project = {
   title: string;
   description: string | null;
   cover_image_url: string | null;
-  links: { spotify?: string; instagram?: string; website?: string } | null;
+  links: { spotify?: string; soundcloud?: string; instagram?: string; website?: string } | null;
   author_id: string;
   profiles: { username: string; display_name: string | null } | { username: string; display_name: string | null }[] | null;
 };
@@ -47,6 +47,14 @@ function MusicIcon() {
       <path d="M9 18V5l12-2v13"/>
       <circle cx="6" cy="18" r="3"/>
       <circle cx="18" cy="16" r="3"/>
+    </svg>
+  );
+}
+
+function SoundCloudIcon() {
+  return (
+    <svg width="16" height="12" viewBox="0 0 28 18" fill="currentColor" aria-hidden="true">
+      <path d="M1 10h1v5H1zm3-3h1v8H4zm3-2h1v10H7zm3-3h1v13h-1zm3 2.2A7 7 0 0 1 25.8 9H26a3 3 0 0 1 0 6H13z" />
     </svg>
   );
 }
@@ -161,7 +169,7 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
             {!project.description && <p style={{ color: "#5F5E5A", fontFamily: mono, fontSize: "11px" }}>este proyecto todavía está encontrando las palabras para presentarse.</p>}
 
             {/* Link icons */}
-            {(links.spotify || links.instagram || links.website) && (
+            {(links.spotify || links.soundcloud || links.instagram || links.website) && (
               <div className="flex flex-wrap" style={{ gap: "20px", marginTop: "20px" }}>
                 {links.spotify && (
                   <a
@@ -172,6 +180,11 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
                     className="hover:opacity-70 transition-opacity"
                   >
                     <MusicIcon /> música
+                  </a>
+                )}
+                {links.soundcloud && (
+                  <a href={links.soundcloud} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "10px", color: "#D85A30", fontFamily: mono, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.1em" }} className="hover:opacity-70 transition-opacity">
+                    <SoundCloudIcon /> soundcloud
                   </a>
                 )}
                 {links.instagram && (

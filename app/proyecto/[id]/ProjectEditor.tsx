@@ -13,7 +13,7 @@ type EditableProject = {
   title: string;
   description: string | null;
   cover_image_url: string | null;
-  links: { spotify?: string; instagram?: string; website?: string } | null;
+  links: { spotify?: string; soundcloud?: string; instagram?: string; website?: string } | null;
 };
 
 const inputStyle: React.CSSProperties = {
@@ -44,6 +44,7 @@ export function ProjectEditor({ project }: { project: EditableProject }) {
   const [title, setTitle] = useState(project.title);
   const [description, setDescription] = useState(project.description ?? "");
   const [spotify, setSpotify] = useState(project.links?.spotify ?? "");
+  const [soundcloud, setSoundcloud] = useState(project.links?.soundcloud ?? "");
   const [instagram, setInstagram] = useState(project.links?.instagram ?? "");
   const [website, setWebsite] = useState(project.links?.website ?? "");
   const [coverFile, setCoverFile] = useState<File | null>(null);
@@ -69,7 +70,7 @@ export function ProjectEditor({ project }: { project: EditableProject }) {
       }
 
       const links = Object.fromEntries(
-        Object.entries({ spotify: spotify.trim(), instagram: instagram.trim(), website: website.trim() }).filter(([, value]) => value),
+        Object.entries({ spotify: spotify.trim(), soundcloud: soundcloud.trim(), instagram: instagram.trim(), website: website.trim() }).filter(([, value]) => value),
       );
       const supabase = getSupabaseClient();
       const { error: updateError } = await supabase
@@ -116,8 +117,9 @@ export function ProjectEditor({ project }: { project: EditableProject }) {
               </div>
               <div><label style={labelStyle}>título</label><input value={title} maxLength={120} onChange={(event) => setTitle(event.target.value)} style={inputStyle} required /></div>
               <div><label style={labelStyle}>descripción</label><textarea value={description} maxLength={600} rows={4} onChange={(event) => setDescription(event.target.value)} style={{ ...inputStyle, lineHeight: 1.6, resize: "vertical" }} /></div>
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <div><label style={labelStyle}>spotify</label><input type="url" value={spotify} onChange={(event) => setSpotify(event.target.value)} style={inputStyle} /></div>
+                <div><label style={labelStyle}>soundcloud</label><input type="url" value={soundcloud} onChange={(event) => setSoundcloud(event.target.value)} style={inputStyle} /></div>
                 <div><label style={labelStyle}>instagram</label><input type="url" value={instagram} onChange={(event) => setInstagram(event.target.value)} style={inputStyle} /></div>
                 <div><label style={labelStyle}>sitio web</label><input type="url" value={website} onChange={(event) => setWebsite(event.target.value)} style={inputStyle} /></div>
               </div>

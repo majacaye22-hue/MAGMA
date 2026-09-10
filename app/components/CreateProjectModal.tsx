@@ -40,6 +40,7 @@ export function CreateProjectModal({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [spotify, setSpotify] = useState("");
+  const [soundcloud, setSoundcloud] = useState("");
   const [instagram, setInstagram] = useState("");
   const [website, setWebsite] = useState("");
   const [coverFile, setCoverFile] = useState<File | null>(null);
@@ -73,6 +74,7 @@ export function CreateProjectModal({
 
       const links: Record<string, string> = {};
       if (spotify.trim()) links.spotify = spotify.trim();
+      if (soundcloud.trim()) links.soundcloud = soundcloud.trim();
       if (instagram.trim()) links.instagram = instagram.trim();
       if (website.trim()) links.website = website.trim();
 
@@ -195,6 +197,10 @@ export function CreateProjectModal({
             <div style={{ position: "relative" }}>
               <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", fontSize: "9px", color: "#5DCAA5", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.1em", pointerEvents: "none" }}>spotify</span>
               <input type="url" value={spotify} onChange={(e) => setSpotify(e.target.value)} placeholder="https://open.spotify.com/..." style={{ ...inputStyle, paddingLeft: "72px" }} />
+            </div>
+            <div style={{ position: "relative" }}>
+              <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", fontSize: "9px", color: "#D85A30", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.1em", pointerEvents: "none" }}>soundcloud</span>
+              <input type="url" value={soundcloud} onChange={(e) => setSoundcloud(e.target.value)} placeholder="https://soundcloud.com/..." style={{ ...inputStyle, paddingLeft: "94px" }} />
             </div>
             <div style={{ position: "relative" }}>
               <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", fontSize: "9px", color: "#888780", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.1em", pointerEvents: "none" }}>ig</span>

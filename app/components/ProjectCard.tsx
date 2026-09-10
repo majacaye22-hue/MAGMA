@@ -8,7 +8,7 @@ export type Project = {
   title: string;
   description: string | null;
   cover_image_url: string | null;
-  links: { spotify?: string; instagram?: string; website?: string } | null;
+  links: { spotify?: string; soundcloud?: string; instagram?: string; website?: string } | null;
   creator?: { username: string; display_name: string | null } | null;
 };
 
@@ -33,6 +33,14 @@ function WebIcon() {
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square">
       <circle cx="12" cy="12" r="10" />
       <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+    </svg>
+  );
+}
+
+function SoundCloudIcon() {
+  return (
+    <svg width="14" height="12" viewBox="0 0 28 18" fill="currentColor" aria-hidden="true">
+      <path d="M1 10h1v5H1zm3-3h1v8H4zm3-2h1v10H7zm3-3h1v13h-1zm3 2.2A7 7 0 0 1 25.8 9H26a3 3 0 0 1 0 6H13z" />
     </svg>
   );
 }
@@ -106,7 +114,7 @@ export function ProjectCard({ project }: { project: Project }) {
         )}
 
         {/* Link icons */}
-        {(links.spotify || links.instagram || links.website) && (
+        {(links.spotify || links.soundcloud || links.instagram || links.website) && (
           <div style={{ display: "flex", gap: "10px", marginTop: project.description ? 0 : "8px" }}>
             {links.spotify && (
               <a
@@ -118,6 +126,11 @@ export function ProjectCard({ project }: { project: Project }) {
                 className="hover:opacity-70 transition-opacity"
               >
                 <SpotifyIcon />
+              </a>
+            )}
+            {links.soundcloud && (
+              <a href={links.soundcloud} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: "#D85A30" }} className="hover:opacity-70 transition-opacity" aria-label="SoundCloud">
+                <SoundCloudIcon />
               </a>
             )}
             {links.instagram && (
