@@ -165,6 +165,7 @@ function UploadPageInner() {
   const [location, setLocation] = useState("");
   const [openCollab, setOpenCollab] = useState(false);
   const [collabDescription, setCollabDescription] = useState("");
+  const [commentsEnabled, setCommentsEnabled] = useState(true);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverFileName, setCoverFileName] = useState<string | null>(null);
   const [coverDragOver, setCoverDragOver] = useState(false);
@@ -318,6 +319,7 @@ function UploadPageInner() {
           cover_url: coverUrl,
           open_collab: openCollab,
           collab_description: openCollab && collabDescription.trim() ? collabDescription.trim() : null,
+          comments_enabled: commentsEnabled,
           tags: tags ? tags.split(',').map(t => t.trim()) : [],
           author_id: userId,
           event_date: eventDate && eventTime ? `${eventDate}T${eventTime}` : null,
@@ -697,6 +699,45 @@ function UploadPageInner() {
               className="focus:outline-none placeholder:text-[#444441]"
             />
           )}
+
+          {/* Comments toggle */}
+          <button
+            type="button"
+            onClick={() => setCommentsEnabled((v) => !v)}
+            className="flex items-start gap-3 cursor-pointer text-left w-full"
+            style={{ background: "none", border: "none", padding: 0 }}
+            aria-pressed={commentsEnabled}
+          >
+            <div
+              style={{
+                marginTop: "2px",
+                width: "16px",
+                height: "16px",
+                flexShrink: 0,
+                border: `0.5px solid ${commentsEnabled ? "#D85A30" : "#2a2a28"}`,
+                backgroundColor: commentsEnabled ? "rgba(216,90,48,0.12)" : "transparent",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {commentsEnabled && (
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                  <path d="M1.5 5L4 7.5L8.5 2.5" stroke="#D85A30" strokeWidth="1.2" strokeLinecap="square" />
+                </svg>
+              )}
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <span style={{ fontSize: "11px", color: commentsEnabled ? "#D85A30" : "#888780", fontFamily: "var(--font-space-mono), monospace", textTransform: "uppercase", letterSpacing: "0.12em" }}>
+                permitir comentarios
+              </span>
+              <span style={{ fontSize: "10px", color: "#444441", fontFamily: "var(--font-space-mono), monospace", lineHeight: 1.5 }}>
+                {commentsEnabled
+                  ? "otras personas pueden responder a esta publicación"
+                  : "la conversación queda cerrada; los comentarios existentes seguirán visibles"}
+              </span>
+            </div>
+          </button>
 
           {/* Agregar a proyecto */}
           {userProjects.length > 0 && (

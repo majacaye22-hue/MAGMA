@@ -186,7 +186,7 @@ function EventoView({ post, comments, currentUserId, currentProfile }: {
         </div>
       )}
 
-      <CommentsSection postId={post.id} initialComments={comments} currentUserId={currentUserId} currentProfile={currentProfile} />
+      <CommentsSection postId={post.id} initialComments={comments} currentUserId={currentUserId} currentProfile={currentProfile} commentsEnabled={post.comments_enabled !== false} />
     </div>
   );
 }
@@ -261,7 +261,7 @@ function EscritoView({ post, comments, currentUserId, currentProfile }: {
         </div>
       )}
 
-      <CommentsSection postId={post.id} initialComments={comments} currentUserId={currentUserId} currentProfile={currentProfile} />
+      <CommentsSection postId={post.id} initialComments={comments} currentUserId={currentUserId} currentProfile={currentProfile} commentsEnabled={post.comments_enabled !== false} />
     </div>
   );
 }
@@ -360,7 +360,7 @@ function WorkView({ post, comments, currentUserId, currentProfile }: {
         </div>
       )}
 
-      <CommentsSection postId={post.id} initialComments={comments} currentUserId={currentUserId} currentProfile={currentProfile} />
+      <CommentsSection postId={post.id} initialComments={comments} currentUserId={currentUserId} currentProfile={currentProfile} commentsEnabled={post.comments_enabled !== false} />
     </div>
   );
 }

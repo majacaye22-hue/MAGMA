@@ -31,6 +31,7 @@ export interface Post {
   price: string | null;
   open_collab: boolean | null;
   collab_description: string | null;
+  comments_enabled: boolean | null;
 }
 
 export interface CardData {

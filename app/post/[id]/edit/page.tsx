@@ -54,6 +54,7 @@ interface PostData {
   is_free: boolean | null;
   price: string | null;
   open_collab: boolean | null;
+  comments_enabled: boolean | null;
 }
 
 export default function EditPostPage() {
@@ -84,6 +85,7 @@ export default function EditPostPage() {
   const [price, setPrice] = useState("");
   const [openCollab, setOpenCollab] = useState(false);
   const [collabDescription, setCollabDescription] = useState("");
+  const [commentsEnabled, setCommentsEnabled] = useState(true);
 
   // File upload
   const [newFile, setNewFile] = useState<File | null>(null);
@@ -138,6 +140,7 @@ export default function EditPostPage() {
       setIsFree(p.is_free ?? true);
       setPrice(p.price ?? "");
       setOpenCollab(p.open_collab ?? false);
+      setCommentsEnabled(p.comments_enabled !== false);
       setCollabDescription((p as PostData & { collab_description?: string | null }).collab_description ?? "");
 
       // Fetch user's projects and this post's current project link
@@ -202,6 +205,7 @@ export default function EditPostPage() {
         tags: tags ? tags.split(",").map((t) => t.trim()).filter(Boolean) : null,
         open_collab: openCollab,
         collab_description: openCollab && collabDescription.trim() ? collabDescription.trim() : null,
+        comments_enabled: commentsEnabled,
       };
 
       if (postType === "evento") {
@@ -519,6 +523,45 @@ export default function EditPostPage() {
               className="focus:outline-none placeholder:text-[#444441]"
             />
           )}
+
+          {/* Comments toggle */}
+          <button
+            type="button"
+            onClick={() => setCommentsEnabled((v) => !v)}
+            className="flex items-start gap-3 cursor-pointer text-left w-full"
+            style={{ background: "none", border: "none", padding: 0 }}
+            aria-pressed={commentsEnabled}
+          >
+            <div
+              style={{
+                marginTop: "2px",
+                width: "16px",
+                height: "16px",
+                flexShrink: 0,
+                border: `0.5px solid ${commentsEnabled ? "#D85A30" : "#2a2a28"}`,
+                backgroundColor: commentsEnabled ? "rgba(216,90,48,0.12)" : "transparent",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {commentsEnabled && (
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                  <path d="M1.5 5L4 7.5L8.5 2.5" stroke="#D85A30" strokeWidth="1.2" strokeLinecap="square" />
+                </svg>
+              )}
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <span style={{ fontSize: "11px", color: commentsEnabled ? "#D85A30" : "#888780", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em" }}>
+                permitir comentarios
+              </span>
+              <span style={{ fontSize: "10px", color: "#444441", fontFamily: mono, lineHeight: 1.5 }}>
+                {commentsEnabled
+                  ? "otras personas pueden responder a esta publicación"
+                  : "la conversación queda cerrada; los comentarios existentes seguirán visibles"}
+              </span>
+            </div>
+          </button>
 
           {/* Agregar a proyecto */}
           {userProjects.length > 0 && (

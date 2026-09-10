@@ -81,6 +81,7 @@ CREATE TABLE posts (
   price          text,
   open_collab    boolean NOT NULL DEFAULT false,
   collab_description text,
+  comments_enabled boolean NOT NULL DEFAULT true,
   is_hidden      boolean DEFAULT false NOT NULL,
   created_at     timestamp DEFAULT now()
 );
@@ -368,7 +369,14 @@ ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "comments: community read, owner and cuidadorx hidden read" ON comments FOR SELECT USING (
   auth.uid() IS NOT NULL AND (is_hidden = false OR author_id = auth.uid() OR EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_moderator = true))
 );
-CREATE POLICY "comments: authenticated insert" ON comments FOR INSERT WITH CHECK (auth.uid() = author_id);
+CREATE POLICY "comments: authenticated insert" ON comments FOR INSERT WITH CHECK (
+  auth.uid() = author_id
+  AND EXISTS (
+    SELECT 1 FROM posts
+    WHERE posts.id = comments.post_id
+      AND posts.comments_enabled = true
+  )
+);
 CREATE POLICY "comments: owner update" ON comments FOR UPDATE
   USING (auth.uid() = author_id AND is_hidden = false)
   WITH CHECK (auth.uid() = author_id AND is_hidden = false);

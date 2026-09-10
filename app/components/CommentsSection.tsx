@@ -226,11 +226,13 @@ export function CommentsSection({
   initialComments,
   currentUserId,
   currentProfile,
+  commentsEnabled,
 }: {
   postId: string;
   initialComments: Comment[];
   currentUserId: string | null;
   currentProfile: { username: string; display_name: string | null } | null;
+  commentsEnabled: boolean;
 }) {
   const supabase = getSupabaseClient();
   const [comments, setComments] = useState<Comment[]>(initialComments);
@@ -240,6 +242,7 @@ export function CommentsSection({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!commentsEnabled) return;
     const trimmed = body.trim();
     if (!trimmed || submitting) return;
 
@@ -329,7 +332,11 @@ export function CommentsSection({
 
       <div style={{ height: "0.5px", backgroundColor: "#2a2a28", marginBottom: "24px" }} />
 
-      {currentUserId ? (
+      {!commentsEnabled ? (
+        <p style={{ fontSize: "11px", color: "#5F5E5A", fontFamily: mono, lineHeight: 1.6 }}>
+          comentarios cerrados por la persona que publicó
+        </p>
+      ) : currentUserId ? (
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <textarea
             rows={3}

@@ -248,7 +248,14 @@ CREATE POLICY "comments: public read"
 
 CREATE POLICY "comments: authenticated insert"
   ON comments FOR INSERT
-  WITH CHECK (auth.uid() = author_id);
+  WITH CHECK (
+    auth.uid() = author_id
+    AND EXISTS (
+      SELECT 1 FROM posts
+      WHERE posts.id = comments.post_id
+        AND posts.comments_enabled = true
+    )
+  );
 
 CREATE POLICY "comments: owner or moderator delete"
   ON comments FOR DELETE
