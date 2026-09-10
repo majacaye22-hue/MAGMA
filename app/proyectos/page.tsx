@@ -32,7 +32,7 @@ export default async function ProyectosPage() {
             <h1 style={{ color: "#e8e4dc", fontFamily: syne, fontSize: "clamp(38px, 7vw, 76px)", fontWeight: 800, letterSpacing: "-0.055em", lineHeight: 0.95 }}>proyectos personales</h1>
           </div>
           <div>
-            <p style={{ color: "#888780", fontFamily: mono, fontSize: "11px", lineHeight: 1.7, marginBottom: "14px" }}>Discos, editoriales, películas, archivos, talleres y experimentos que todavía están tomando forma.</p>
+            <p style={{ color: "#888780", fontFamily: mono, fontSize: "11px", lineHeight: 1.7, marginBottom: "14px" }}>Cuadernos abiertos de discos, editoriales, películas, archivos, talleres y experimentos que todavía están tomando forma.</p>
             <Link href="/profile/edit" style={{ color: "#D85A30", fontFamily: mono, fontSize: "10px", letterSpacing: "0.1em", textDecoration: "underline", textTransform: "uppercase", textUnderlineOffset: "4px" }}>ir a mi perfil →</Link>
           </div>
         </header>

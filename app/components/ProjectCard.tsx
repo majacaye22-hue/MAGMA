@@ -86,7 +86,7 @@ export function ProjectCard({ project }: { project: Project }) {
         </p>
         {project.creator && (
           <p style={{ color: "#D85A30", fontFamily: mono, fontSize: "9px", marginBottom: project.description ? "7px" : 0 }}>
-            por @{project.creator.username}
+            cuaderno de @{project.creator.username}
           </p>
         )}
         {project.description && (

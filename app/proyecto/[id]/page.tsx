@@ -51,6 +51,14 @@ function MusicIcon() {
   );
 }
 
+function formatEntryDate(date: string) {
+  return new Date(date).toLocaleDateString("es-MX", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 export default async function ProyectoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
@@ -93,12 +101,13 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
   const links = project.links ?? {};
   const isOwner = currentUserId === project.author_id;
   const creator = Array.isArray(project.profiles) ? project.profiles[0] : project.profiles;
+  const journalPosts = [...posts].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#0c0c0b" }}>
 
-      {/* Cover + title overlay */}
-      <div style={{ position: "relative", height: "280px", overflow: "hidden", backgroundColor: "#141412" }}>
+      {/* Project title page */}
+      <div className="min-h-[420px] md:min-h-[520px]" style={{ position: "relative", overflow: "hidden", backgroundColor: "#141412" }}>
         {project.cover_image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -111,7 +120,7 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
         )}
 
         {/* Scrim */}
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(12,12,11,0.92) 0%, rgba(12,12,11,0.3) 50%, transparent 100%)" }} />
+        <div style={{ position: "absolute", inset: 0, background: project.cover_image_url ? "linear-gradient(to top, rgba(12,12,11,0.96) 0%, rgba(12,12,11,0.38) 58%, rgba(12,12,11,0.1) 100%)" : "repeating-linear-gradient(0deg, transparent 0, transparent 31px, rgba(232,228,220,0.035) 32px), linear-gradient(135deg, #1e1e1c 0%, #0c0c0b 100%)" }} />
 
         {/* Back link */}
         <div style={{ position: "absolute", top: "20px", left: "24px" }}>
@@ -124,31 +133,36 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
         </div>
 
         {/* Title overlaid at bottom */}
-        <div className="max-w-6xl mx-auto px-6" style={{ position: "absolute", bottom: "24px", left: 0, right: 0 }}>
+        <div className="max-w-6xl mx-auto px-6" style={{ position: "absolute", bottom: "38px", left: 0, right: 0 }}>
           <p style={{ fontSize: "10px", color: "#D85A30", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "6px" }}>
-            proyecto
+            cuaderno de proyecto · {String(journalPosts.length).padStart(2, "0")} entradas
           </p>
-          <h1 style={{ fontSize: "clamp(24px, 4vw, 40px)", color: "#e8e4dc", fontFamily: syne, fontWeight: 800, lineHeight: 1, letterSpacing: "-0.01em" }}>
+          <h1 style={{ fontSize: "clamp(42px, 8vw, 88px)", color: "#e8e4dc", fontFamily: syne, fontWeight: 800, lineHeight: 0.9, letterSpacing: "-0.055em", maxWidth: "880px" }}>
             {project.title}
           </h1>
-          {creator && <Link href={`/profile/${creator.username}`} style={{ color: "rgba(232,228,220,0.7)", display: "inline-block", fontFamily: mono, fontSize: "10px", marginTop: "9px", textDecoration: "none" }}>por @{creator.username}</Link>}
+          {creator && <Link href={`/profile/${creator.username}`} style={{ color: "rgba(232,228,220,0.7)", display: "inline-block", fontFamily: mono, fontSize: "10px", marginTop: "16px", textDecoration: "none" }}>una mirada dentro de @{creator.username} →</Link>}
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-6">
 
-        {/* Description + links row */}
-        <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between" style={{ paddingTop: "24px", paddingBottom: "28px", borderBottom: "0.5px solid #2a2a28" }}>
-          <div style={{ flex: 1 }}>
+        {/* Opening note */}
+        <div className="grid gap-8 py-10 md:grid-cols-[150px_1fr_auto] md:items-start" style={{ borderBottom: "0.5px solid #2a2a28" }}>
+          <div>
+            <p style={{ color: "#D85A30", fontFamily: mono, fontSize: "9px", letterSpacing: "0.16em", textTransform: "uppercase" }}>nota de apertura</p>
+            <p style={{ color: "#444441", fontFamily: mono, fontSize: "9px", lineHeight: 1.5, marginTop: "7px" }}>esto puede cambiar<br />mientras se hace</p>
+          </div>
+          <div style={{ maxWidth: "680px" }}>
             {project.description && (
-              <p style={{ fontSize: "13px", color: "#888780", fontFamily: mono, lineHeight: 1.8, maxWidth: "600px" }}>
+              <p style={{ fontSize: "clamp(17px, 2.5vw, 24px)", color: "#e8e4dc", fontFamily: syne, fontStyle: "italic", fontWeight: 600, lineHeight: 1.45 }}>
                 {project.description}
               </p>
             )}
+            {!project.description && <p style={{ color: "#5F5E5A", fontFamily: mono, fontSize: "11px" }}>este proyecto todavía está encontrando las palabras para presentarse.</p>}
 
             {/* Link icons */}
             {(links.spotify || links.instagram || links.website) && (
-              <div style={{ display: "flex", gap: "20px", marginTop: project.description ? "16px" : 0 }}>
+              <div className="flex flex-wrap" style={{ gap: "20px", marginTop: "20px" }}>
                 {links.spotify && (
                   <a
                     href={links.spotify}
@@ -186,11 +200,8 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
             )}
           </div>
 
-          {/* Right: obra count + owner CTA */}
+          {/* Owner tools */}
           <div className="items-start md:items-end" style={{ display: "flex", flexDirection: "column", gap: "10px", flexShrink: 0 }}>
-            <span style={{ fontSize: "10px", color: "#444441", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.1em" }}>
-              {posts.length} {posts.length === 1 ? "obra" : "obras"}
-            </span>
             {isOwner && (
               <div className="flex flex-wrap gap-2 md:justify-end">
                 <ProjectEditor project={project} />
@@ -209,16 +220,20 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
           </div>
         </div>
 
-        {/* Obras section */}
-        <div style={{ paddingTop: "28px", paddingBottom: "80px" }}>
-          <p style={{ fontSize: "9px", color: "#444441", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "20px" }}>
-            obras
-          </p>
+        {/* Journal entries */}
+        <div style={{ paddingTop: "44px", paddingBottom: "100px" }}>
+          <div className="flex items-end justify-between gap-4" style={{ marginBottom: "38px" }}>
+            <div>
+              <p style={{ fontSize: "9px", color: "#D85A30", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "8px" }}>proceso abierto</p>
+              <h2 style={{ color: "#e8e4dc", fontFamily: syne, fontSize: "32px", fontWeight: 800, letterSpacing: "-0.04em" }}>entradas del cuaderno</h2>
+            </div>
+            <span style={{ color: "#444441", fontFamily: mono, fontSize: "10px" }}>{journalPosts.length} total</span>
+          </div>
 
-          {posts.length === 0 ? (
+          {journalPosts.length === 0 ? (
             <div style={{ paddingTop: "48px", textAlign: "center" }}>
               <p style={{ fontSize: "11px", color: "#444441", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em" }}>
-                sin obras todavía
+                la primera página sigue en blanco
               </p>
               {isOwner && (
                 <Link
@@ -230,11 +245,18 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
               )}
             </div>
           ) : (
-            <div className="[column-count:1] sm:[column-count:2] lg:[column-count:3]" style={{ columnGap: "1px" }}>
-              {posts.map((post, i) => (
-                <div key={post.id} style={{ breakInside: "avoid", marginBottom: "1px" }}>
-                  <PostCard post={post} index={i} total={posts.length} currentUserId={currentUserId} />
-                </div>
+            <div>
+              {journalPosts.map((post, i) => (
+                <article key={post.id} className="grid gap-5 py-8 md:grid-cols-[150px_minmax(0,680px)] md:gap-8" style={{ borderTop: "0.5px solid #2a2a28" }}>
+                  <aside>
+                    <p style={{ color: "#D85A30", fontFamily: mono, fontSize: "9px", letterSpacing: "0.14em", textTransform: "uppercase" }}>entrada {String(i + 1).padStart(2, "0")}</p>
+                    <p style={{ color: "#5F5E5A", fontFamily: mono, fontSize: "9px", lineHeight: 1.5, marginTop: "7px" }}>{formatEntryDate(post.created_at)}</p>
+                    <p style={{ color: "#444441", fontFamily: mono, fontSize: "9px", marginTop: "4px", textTransform: "uppercase" }}>{post.type}</p>
+                  </aside>
+                  <div style={{ minWidth: 0 }}>
+                    <PostCard post={post} index={i} total={journalPosts.length} currentUserId={currentUserId} />
+                  </div>
+                </article>
               ))}
             </div>
           )}
