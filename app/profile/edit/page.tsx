@@ -43,22 +43,6 @@ const AVATAR_COLORS = [
   { value: "#2D0020", label: "ciruela"    },
 ];
 
-const CASA_TONES = [
-  { value: "terracota", label: "terracota", color: "#D85A30" },
-  { value: "jade", label: "jade", color: "#5DCAA5" },
-  { value: "noche", label: "noche", color: "#4A7FA5" },
-  { value: "ciruela", label: "ciruela", color: "#7F77DD" },
-];
-
-const CASA_SHELF_OPTIONS = [
-  { value: "radio", label: "radio", detail: "algo sonando" },
-  { value: "cartel", label: "cartel", detail: "algo por pasar" },
-];
-
-type PinnedPost = { id: string; title: string | null; type: string };
-type CartelPost = { id: string; title: string | null };
-type RadioPost = { id: string; title: string | null };
-
 export default function EditProfilePage() {
   const router = useRouter();
   const supabase = getSupabaseClient();
@@ -74,17 +58,6 @@ export default function EditProfilePage() {
   const [location, setLocation] = useState("");
   const [disciplines, setDisciplines] = useState<string[]>([]);
   const [avatarColor, setAvatarColor] = useState("#D85A30");
-  const [casaName, setCasaName] = useState("");
-  const [casaTone, setCasaTone] = useState("terracota");
-  const [casaWelcome, setCasaWelcome] = useState("");
-  const [pinnedPostIds, setPinnedPostIds] = useState<string[]>([]);
-  const [availablePosts, setAvailablePosts] = useState<PinnedPost[]>([]);
-  const [shelfItems, setShelfItems] = useState<string[]>(["radio", "cartel"]);
-  const [cartelPostId, setCartelPostId] = useState("");
-  const [cartelPosts, setCartelPosts] = useState<CartelPost[]>([]);
-  const [radioPostId, setRadioPostId] = useState("");
-  const [radioPosts, setRadioPosts] = useState<RadioPost[]>([]);
-
   useEffect(() => {
     void (async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -96,7 +69,7 @@ export default function EditProfilePage() {
 
       const { data } = await supabase
         .from("profiles")
-        .select("username, display_name, bio, location, disciplines, avatar_color, casa_name, casa_tone, casa_welcome, casa_pinned_post_ids, casa_shelf_items, casa_cartel_post_id, casa_radio_post_id")
+        .select("username, display_name, bio, location, disciplines, avatar_color")
         .eq("id", user.id)
         .single();
 
@@ -107,36 +80,6 @@ export default function EditProfilePage() {
         setLocation(data.location ?? "");
         setDisciplines(data.disciplines ?? []);
         setAvatarColor(data.avatar_color ?? "#D85A30");
-        setCasaName(data.casa_name ?? "");
-        setCasaTone(data.casa_tone ?? "terracota");
-        setCasaWelcome(data.casa_welcome ?? "");
-        setPinnedPostIds(data.casa_pinned_post_ids ?? []);
-        setShelfItems((data.casa_shelf_items ?? ["radio", "cartel"]).filter((item: string) => item === "radio" || item === "cartel"));
-        setCartelPostId(data.casa_cartel_post_id ?? "");
-        setRadioPostId(data.casa_radio_post_id ?? "");
-
-        const { data: ownPosts } = await supabase
-          .from("posts")
-          .select("id, title, type")
-          .eq("author_id", user.id)
-          .order("created_at", { ascending: false });
-        setAvailablePosts(ownPosts ?? []);
-
-        const { data: events } = await supabase
-          .from("posts")
-          .select("id, title")
-          .eq("type", "evento")
-          .order("event_date", { ascending: false })
-          .limit(24);
-        setCartelPosts(events ?? []);
-
-        const { data: music } = await supabase
-          .from("posts")
-          .select("id, title")
-          .eq("type", "música")
-          .order("created_at", { ascending: false })
-          .limit(24);
-        setRadioPosts(music ?? []);
       }
 
       setLoading(false);
@@ -171,13 +114,6 @@ export default function EditProfilePage() {
         location: location.trim() || null,
         disciplines: disciplines.length > 0 ? disciplines : null,
         avatar_color: avatarColor,
-        casa_name: casaName.trim() || null,
-        casa_tone: casaTone,
-        casa_welcome: casaWelcome.trim() || null,
-        casa_pinned_post_ids: pinnedPostIds,
-        casa_shelf_items: shelfItems,
-        casa_cartel_post_id: cartelPostId || null,
-        casa_radio_post_id: radioPostId || null,
       })
       .eq("id", userId);
 
@@ -352,70 +288,6 @@ export default function EditProfilePage() {
               })}
             </div>
           </div>
-
-          {/* Divider */}
-          <div style={{ height: "0.5px", backgroundColor: "#2a2a28" }} />
-
-          <section>
-            <p style={{ ...labelStyle, color: "#D85A30", marginBottom: "12px" }}>Mi casa</p>
-            <div className="flex flex-col gap-5">
-              <div>
-                <label style={labelStyle}>Nombre de la casa</label>
-                <input value={casaName} onChange={(e) => setCasaName(e.target.value.slice(0, 48))} placeholder="ej. casa de luz baja" style={inputStyle} />
-              </div>
-              <div>
-                <label style={labelStyle}>Tono de la casa</label>
-                <div className="flex flex-wrap gap-2">
-                  {CASA_TONES.map((tone) => (
-                    <button key={tone.value} type="button" onClick={() => setCasaTone(tone.value)} style={{ background: casaTone === tone.value ? tone.color : "transparent", border: `0.5px solid ${tone.color}`, color: casaTone === tone.value ? "#0c0c0b" : tone.color, cursor: "pointer", fontFamily: mono, fontSize: "9px", letterSpacing: "0.1em", padding: "6px 10px", textTransform: "uppercase" }}>{tone.label}</button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label style={labelStyle}>Nota de bienvenida <span style={{ color: "#444441", textTransform: "none", letterSpacing: 0, marginLeft: "8px" }}>{casaWelcome.length}/140</span></label>
-                <textarea rows={3} value={casaWelcome} onChange={(e) => e.target.value.length <= 140 && setCasaWelcome(e.target.value)} placeholder="algo que quieres que encuentre quien entra..." style={{ ...inputStyle, lineHeight: 1.6, resize: "vertical" }} />
-              </div>
-              <div>
-                <label style={labelStyle}>Muro principal <span style={{ color: "#444441", textTransform: "none", letterSpacing: 0, marginLeft: "8px" }}>hasta 3 obras</span></label>
-                {availablePosts.length === 0 ? (
-                  <p style={{ color: "#5F5E5A", fontFamily: mono, fontSize: "10px" }}>primero <Link href="/subir" style={{ color: "#D85A30", textDecoration: "underline", textUnderlineOffset: "3px" }}>sube una obra</Link>; después aparecerá aquí para colgarla.</p>
-                ) : (
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {availablePosts.map((post) => {
-                      const selected = pinnedPostIds.includes(post.id);
-                      return <button key={post.id} type="button" onClick={() => setPinnedPostIds((current) => selected ? current.filter((id) => id !== post.id) : current.length < 3 ? [...current, post.id] : current)} style={{ background: selected ? "rgba(216,90,48,0.08)" : "#141412", border: `0.5px solid ${selected ? "#D85A30" : "#2a2a28"}`, color: selected ? "#e8e4dc" : "#888780", cursor: "pointer", fontFamily: mono, fontSize: "10px", padding: "10px", textAlign: "left" }}>{selected ? "✓ " : ""}{post.title ?? "sin título"} <span style={{ color: "#5F5E5A" }}>· {post.type}</span></button>;
-                    })}
-                  </div>
-                )}
-              </div>
-              <div>
-                <label style={labelStyle}>Repisa de la casa</label>
-                <p style={{ color: "#5F5E5A", fontFamily: mono, fontSize: "10px", lineHeight: 1.5, marginBottom: "10px" }}>elige las pequeñas cosas que reciben a quien entra. Por ahora son libres; después podrán crecer con lo que haces en Magma.</p>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {CASA_SHELF_OPTIONS.map((item) => {
-                    const selected = shelfItems.includes(item.value);
-                    return <button key={item.value} type="button" onClick={() => setShelfItems((current) => selected ? current.filter((value) => value !== item.value) : [...current, item.value])} style={{ background: selected ? "rgba(216,90,48,0.08)" : "#141412", border: `0.5px solid ${selected ? "#D85A30" : "#2a2a28"}`, color: selected ? "#e8e4dc" : "#888780", cursor: "pointer", fontFamily: mono, fontSize: "10px", minHeight: "72px", padding: "10px", textAlign: "left" }}><span style={{ color: selected ? "#D85A30" : "#5F5E5A", display: "block", fontSize: "9px", letterSpacing: "0.1em", marginBottom: "7px", textTransform: "uppercase" }}>{selected ? "✓ " : ""}{item.label}</span>{item.detail}</button>;
-                  })}
-                </div>
-              </div>
-              <div>
-                <label style={labelStyle}>Cartel fijado</label>
-                <p style={{ color: "#5F5E5A", fontFamily: mono, fontSize: "10px", lineHeight: 1.5, marginBottom: "10px" }}>elige un evento de Magma. El cartel de tu repisa se volverá un enlace para entrar a su página y Sala.</p>
-                <select value={cartelPostId} onChange={(e) => setCartelPostId(e.target.value)} style={inputStyle}>
-                  <option value="">sin cartel fijado</option>
-                  {cartelPosts.map((post) => <option key={post.id} value={post.id}>{post.title ?? "evento sin título"}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={labelStyle}>Radio de la casa</label>
-                <p style={{ color: "#5F5E5A", fontFamily: mono, fontSize: "10px", lineHeight: 1.5, marginBottom: "10px" }}>elige una pieza de música de Magma. La radio abrirá esa publicación.</p>
-                <select value={radioPostId} onChange={(e) => setRadioPostId(e.target.value)} style={inputStyle}>
-                  <option value="">sin radio fijada</option>
-                  {radioPosts.map((post) => <option key={post.id} value={post.id}>{post.title ?? "música sin título"}</option>)}
-                </select>
-              </div>
-            </div>
-          </section>
 
           {error && (
             <p style={{ fontSize: "11px", color: "#D85A30", fontFamily: mono }}>

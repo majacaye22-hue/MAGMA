@@ -26,7 +26,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
   const isOwnProfile = currentUserId === profile.id;
 
   // Fetch posts with profiles join — author_id matches profile.id (= auth uid)
-  const [{ data: postsData, error: postsError }, { count: commentCount }, { count: colectivoCount }, { data: cartelPostData }, { data: radioPostData }] = await Promise.all([
+  const [{ data: postsData, error: postsError }, { count: commentCount }, { count: colectivoCount }] = await Promise.all([
     supabase
       .from("posts")
       .select("*, profiles!posts_author_id_fkey(username, display_name)")
@@ -34,12 +34,6 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
       .order("created_at", { ascending: false }),
     supabase.from("comments").select("id", { count: "exact", head: true }).eq("author_id", profile.id),
     supabase.from("colectivo_members").select("colectivo_id", { count: "exact", head: true }).eq("user_id", profile.id),
-    profile.casa_cartel_post_id
-      ? supabase.from("posts").select("*, profiles!posts_author_id_fkey(username, display_name)").eq("id", profile.casa_cartel_post_id).maybeSingle()
-      : Promise.resolve({ data: null }),
-    profile.casa_radio_post_id
-      ? supabase.from("posts").select("*, profiles!posts_author_id_fkey(username, display_name)").eq("id", profile.casa_radio_post_id).maybeSingle()
-      : Promise.resolve({ data: null }),
   ]);
 
   if (postsError) throw new Error(`No se pudieron cargar las obras: ${postsError.message}`);
@@ -54,8 +48,6 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
         isOwnProfile={isOwnProfile}
         currentUserId={currentUserId}
         laTrama={{ comments: commentCount ?? 0, colectivos: colectivoCount ?? 0 }}
-        cartelPost={cartelPostData as Post | null}
-        radioPost={radioPostData as Post | null}
       />
     </div>
   );
