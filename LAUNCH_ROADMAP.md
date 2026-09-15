@@ -27,6 +27,7 @@ That's real, working functionality — not scaffolding. The technical foundation
 - ~~**No staging environment**~~ — **Done.** Separate `magma-staging` Supabase project exists, `.env.local` points at it for local dev, production keys backed up in `.env.production.local`. Workflow established: build/test against staging first, push code (Vercel auto-deploys), then apply matching SQL changes to production manually.
 - **No rate limiting beyond login** — post creation, uploads, messages, and listings can all be spammed without friction. Registration also has no rate limiting, worth pairing with the login limiter.
 - **No terms of service or privacy policy** — needed before real users' data is involved.
+- **Moderation structure and posting rules** — define what belongs on Magma, what is prohibited, how warnings/removals/appeals work, who can moderate, and how reports are reviewed consistently. The report dashboard exists technically, but the human policy and governance around it still need to be designed before launch.
 - **Event-gating system** (single-use codes from live events → verified member tier, per the `AGENTS.md` product notes) — not built. Fine to leave for post-MVP, but it's the actual differentiator for the physical-club angle, not a nice-to-have forever.
 
 ### Since this was first written
