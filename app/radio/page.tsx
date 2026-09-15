@@ -530,6 +530,18 @@ export default function RadioPage() {
           <OfflineHero />
         )}
 
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-6">
+          <p style={{ color: "#5F5E5A", fontFamily: mono, fontSize: "10px", lineHeight: 1.5 }}>
+            ¿tienes un set, sesión o transmisión que compartir?
+          </p>
+          <Link
+            href="/radio/solicitar"
+            style={{ border: "0.5px solid #5DCAA5", color: "#5DCAA5", fontFamily: mono, fontSize: "10px", letterSpacing: "0.12em", padding: "9px 14px", textDecoration: "none", textTransform: "uppercase" }}
+          >
+            solicitar un slot →
+          </Link>
+        </div>
+
         <div style={{ height: "0.5px", backgroundColor: "#2a2a28", marginBottom: "40px" }} />
 
         {/* Schedule + Chat */}

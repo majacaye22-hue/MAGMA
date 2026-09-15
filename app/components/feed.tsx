@@ -57,7 +57,17 @@ const UPLOAD_TYPE: Partial<Record<Filter, string>> = {
 
 const mono = "var(--font-space-mono), monospace";
 
-export function Feed({ posts }: { posts: Post[] }) {
+export function Feed({
+  posts,
+  showFilters = true,
+  limit,
+  emptyMessage,
+}: {
+  posts: Post[];
+  showFilters?: boolean;
+  limit?: number;
+  emptyMessage?: string;
+}) {
   const router = useRouter();
   const [active, setActive] = useState<Filter>("todo");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -69,16 +79,29 @@ export function Feed({ posts }: { posts: Post[] }) {
     })();
   }, []);
 
-  const visible = posts.filter((p) => {
+  const filtered = posts.filter((p) => {
     if (active === "colaboración") return p.open_collab === true;
     const mapped = TYPE_MAP[active];
     return mapped === null || p.type === mapped;
   });
+  const visible = typeof limit === "number" ? filtered.slice(0, limit) : filtered;
+
+  function renderGrid(items: Post[]) {
+    return (
+      <div className="[column-count:1] sm:[column-count:2] lg:[column-count:3]" style={{ columnGap: "12px" }}>
+        {items.map((post, i) => (
+          <CardWrapper key={post.id}>
+            <PostCard post={post} index={i} total={items.length} currentUserId={currentUserId} />
+          </CardWrapper>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <>
       {/* Filter pills */}
-      <div className="flex flex-wrap items-center gap-2 py-6">
+      {showFilters && <div className="flex flex-wrap items-center gap-2 py-6">
         {FILTERS.map((f) => {
           const isActive = f === active;
           const accent = PILL_ACCENT[f];
@@ -105,7 +128,7 @@ export function Feed({ posts }: { posts: Post[] }) {
         >
           ver la cartelera →
         </Link>
-      </div>
+      </div>}
 
       {/* Grid or empty state */}
       {visible.length === 0 ? (
@@ -114,21 +137,13 @@ export function Feed({ posts }: { posts: Post[] }) {
           style={{ color: "#888780", fontFamily: "var(--font-space-mono), monospace" }}
         >
           {posts.length === 0
-            ? "sin obras todavía — sé el primero en publicar"
+            ? (emptyMessage ?? "sin obras todavía — sé el primero en publicar")
             : "sin resultados"}
         </div>
-      ) : (
-        <div style={{ columns: 3, columnGap: "12px", padding: "0 24px" }}>
-          {visible.map((post, i) => (
-            <CardWrapper key={post.id}>
-              <PostCard post={post} index={i} total={visible.length} currentUserId={currentUserId} />
-            </CardWrapper>
-          ))}
-        </div>
-      )}
+      ) : renderGrid(visible)}
 
       {/* Floating upload button — only when a specific category is active */}
-      {active !== "todo" && UPLOAD_TYPE[active] && (
+      {showFilters && active !== "todo" && UPLOAD_TYPE[active] && (
         <button
           onClick={() => router.push(`/upload?type=${UPLOAD_TYPE[active]}`)}
           style={{

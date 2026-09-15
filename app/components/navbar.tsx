@@ -62,12 +62,11 @@ function HamburgerIcon({ open }: { open: boolean }) {
 const mono = "var(--font-space-mono), monospace";
 
 const NAV_LINKS = [
-  { href: "/manifiesto", label: "manifiesto" },
+  { href: "/explorar",   label: "explorar" },
   { href: "/proyectos",  label: "proyectos" },
   { href: "/eventos",    label: "cartelera" },
   { href: "/radio",      label: "radio" },
   { href: "/colectivos", label: "colectivos" },
-  { href: "/tianguis",   label: "tianguis" },
   { href: "/upload",     label: "subir obra" },
 ];
 
@@ -202,19 +201,6 @@ export function Navbar() {
 
           {profile ? (
             <>
-              <Link
-                href="/radio/solicitar"
-                className="text-xs"
-                style={{
-                  color: "#5DCAA5",
-                  fontFamily: mono,
-                  border: "0.5px solid #5DCAA5",
-                  padding: "4px 10px",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                ir en vivo
-              </Link>
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setDropdownOpen((o) => !o)}
@@ -259,28 +245,12 @@ export function Navbar() {
                       {unreadBadge}
                     </Link>
                     <Link
-                      href="/tianguis/mis-listings"
-                      onClick={() => setDropdownOpen(false)}
-                      className="px-4 py-3 text-xs hover:bg-[#1e1e1b] transition-colors border-t"
-                      style={{ color: "#e8e4dc", fontFamily: mono, borderColor: "#2a2a28" }}
-                    >
-                      mi tianguis
-                    </Link>
-                    <Link
                       href="/upload"
                       onClick={() => setDropdownOpen(false)}
                       className="px-4 py-3 text-xs hover:bg-[#1e1e1b] transition-colors border-t"
                       style={{ color: "#e8e4dc", fontFamily: mono, borderColor: "#2a2a28" }}
                     >
                       subir obra
-                    </Link>
-                    <Link
-                      href="/manifiesto"
-                      onClick={() => setDropdownOpen(false)}
-                      className="px-4 py-3 text-xs hover:bg-[#1e1e1b] transition-colors border-t"
-                      style={{ color: "#5F5E5A", fontFamily: mono, borderColor: "#2a2a28" }}
-                    >
-                      manifiesto
                     </Link>
                     <button
                       onClick={handleSignOut}
@@ -362,14 +332,6 @@ export function Navbar() {
           {profile ? (
             <>
               <Link
-                href="/radio/solicitar"
-                onClick={() => setMobileOpen(false)}
-                className="px-6 py-4 text-xs border-b"
-                style={{ color: "#5DCAA5", fontFamily: mono, borderColor: "#1e1e1e", letterSpacing: "0.1em" }}
-              >
-                ir en vivo
-              </Link>
-              <Link
                 href={`/profile/${profile.username}`}
                 onClick={() => setMobileOpen(false)}
                 className="px-6 py-4 text-xs border-b"
@@ -385,14 +347,6 @@ export function Navbar() {
               >
                 mensajes
                 {unreadBadge}
-              </Link>
-              <Link
-                href="/tianguis/mis-listings"
-                onClick={() => setMobileOpen(false)}
-                className="px-6 py-4 text-xs border-b"
-                style={{ color: "#e8e4dc", fontFamily: mono, borderColor: "#1e1e1e", letterSpacing: "0.1em" }}
-              >
-                mi tianguis
               </Link>
               <button
                 onClick={handleSignOut}
