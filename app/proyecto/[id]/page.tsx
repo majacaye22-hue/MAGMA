@@ -226,7 +226,7 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
                     textDecoration: "none",
                   }}
                 >
-                  + agregar obra
+                  + nueva entrada
                 </Link>
               </div>
             )}
@@ -238,7 +238,7 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
           <div className="flex items-end justify-between gap-4" style={{ marginBottom: "38px" }}>
             <div>
               <p style={{ fontSize: "9px", color: "#D85A30", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "8px" }}>proceso abierto</p>
-              <h2 style={{ color: "#e8e4dc", fontFamily: syne, fontSize: "32px", fontWeight: 800, letterSpacing: "-0.04em" }}>entradas del cuaderno</h2>
+              <h2 style={{ color: "#e8e4dc", fontFamily: syne, fontSize: "32px", fontWeight: 800, letterSpacing: "-0.04em" }}>entradas del proceso</h2>
             </div>
             <span style={{ color: "#444441", fontFamily: mono, fontSize: "10px" }}>{journalPosts.length} total</span>
           </div>
@@ -253,7 +253,7 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
                   href={`/upload?proyecto=${id}`}
                   style={{ display: "inline-block", marginTop: "12px", fontSize: "10px", color: "#D85A30", fontFamily: mono, textDecoration: "underline" }}
                 >
-                  subir primera obra →
+                  escribir la primera entrada →
                 </Link>
               )}
             </div>

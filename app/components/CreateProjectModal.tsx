@@ -129,9 +129,10 @@ export function CreateProjectModal({
       >
         {/* Header */}
         <div style={{ padding: "20px 24px 16px", borderBottom: "0.5px solid #2a2a28", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <h2 style={{ fontSize: "16px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800, margin: 0 }}>
-            nuevo proyecto
-          </h2>
+          <div>
+            <p style={{ color: "#D85A30", fontFamily: mono, fontSize: "8px", letterSpacing: "0.16em", marginBottom: "5px", textTransform: "uppercase" }}>abrir un cuaderno</p>
+            <h2 style={{ fontSize: "18px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800, margin: 0 }}>nuevo proyecto</h2>
+          </div>
           <button
             onClick={onClose}
             style={{ background: "none", border: "none", color: "#5F5E5A", cursor: "pointer", fontSize: "18px", lineHeight: 1, padding: "0 4px" }}
@@ -143,7 +144,7 @@ export function CreateProjectModal({
         <form onSubmit={handleSubmit} style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "20px" }}>
           {/* Cover image */}
           <div>
-            <label style={labelStyle}>portada — opcional</label>
+            <label style={labelStyle}>imagen de portada — opcional</label>
             <div
               role="button"
               tabIndex={0}
@@ -174,17 +175,17 @@ export function CreateProjectModal({
 
           {/* Title */}
           <div>
-            <label style={labelStyle}>título</label>
-            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="nombre del proyecto" maxLength={120} style={inputStyle} required />
+            <label style={labelStyle}>nombre del proyecto</label>
+            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="¿cómo llamas a esto por ahora?" maxLength={120} style={inputStyle} required />
           </div>
 
           {/* Description */}
           <div>
-            <label style={labelStyle}>descripción — opcional</label>
+            <label style={labelStyle}>nota de apertura — opcional</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="¿de qué trata este proyecto?"
+              placeholder="¿qué estás buscando, haciendo o intentando entender? Puede cambiar después."
               maxLength={600}
               rows={3}
               style={{ ...inputStyle, resize: "vertical", lineHeight: 1.6 }}
@@ -230,7 +231,7 @@ export function CreateProjectModal({
               width: "100%",
             }}
           >
-            {submitting ? "creando..." : "crear proyecto →"}
+            {submitting ? "abriendo..." : "abrir proyecto →"}
           </button>
         </form>
       </div>

@@ -217,6 +217,8 @@ function UploadPageInner() {
   }, [searchParams]);
 
   const activeOption = TYPE_OPTIONS.find((t) => t.id === selectedType);
+  const selectedProjectTitle = userProjects.find((project) => project.id === selectedProject)?.title ?? null;
+  const isProjectEntry = Boolean(selectedProject);
   const isEscrito = selectedType === "escrito";
   const isVideo = selectedType === "video";
 
@@ -376,23 +378,31 @@ function UploadPageInner() {
         {/* Header */}
         <div className="pt-10 pb-8 flex items-center gap-4">
           <Link
-            href="/"
+            href={isProjectEntry ? `/proyecto/${selectedProject}` : "/"}
             className="flex items-center justify-center shrink-0"
             style={{ width: "28px", height: "28px", border: "0.5px solid #2a2a28", color: "#888780" }}
-            aria-label="Volver al feed"
+            aria-label={isProjectEntry ? "Volver al proyecto" : "Volver al inicio"}
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M7.5 2L3.5 6L7.5 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="square" />
             </svg>
           </Link>
           <h1 style={{ fontSize: "22px", color: "#e8e4dc", fontFamily: "var(--font-syne), sans-serif", fontWeight: 800, lineHeight: 1 }}>
-            subir obra
+            {isProjectEntry ? "nueva entrada" : "subir obra"}
           </h1>
         </div>
 
+        {isProjectEntry && (
+          <div className="mb-8" style={{ borderLeft: "2px solid #D85A30", padding: "12px 14px" }}>
+            <p style={{ color: "#D85A30", fontFamily: "var(--font-space-mono), monospace", fontSize: "9px", letterSpacing: "0.14em", marginBottom: "5px", textTransform: "uppercase" }}>entrada para el proyecto</p>
+            <p style={{ color: "#e8e4dc", fontFamily: "var(--font-syne), sans-serif", fontSize: "18px", fontWeight: 700 }}>{selectedProjectTitle ?? "cargando cuaderno..."}</p>
+            <p style={{ color: "#5F5E5A", fontFamily: "var(--font-space-mono), monospace", fontSize: "10px", lineHeight: 1.5, marginTop: "5px" }}>Comparte un avance, hallazgo, prueba, duda o pieza terminada. No tiene que sentirse final.</p>
+          </div>
+        )}
+
         {/* Type selector */}
         <section className="mb-8">
-          <p style={{ ...labelStyle, marginBottom: "12px" }}>tipo de obra</p>
+          <p style={{ ...labelStyle, marginBottom: "12px" }}>{isProjectEntry ? "formato de esta entrada" : "tipo de obra"}</p>
           <div className="grid grid-cols-2 md:grid-cols-3" style={{ gap: "1px", backgroundColor: "#2a2a28" }}>
             {TYPE_OPTIONS.map((opt) => {
               const isSelected = selectedType === opt.id;
@@ -418,7 +428,7 @@ function UploadPageInner() {
             </label>
             <input
               type="text"
-              placeholder={isEscrito ? "sin título" : "nombre de la obra"}
+              placeholder={isEscrito ? "sin título" : isProjectEntry ? "nombre de esta entrada" : "nombre de la obra"}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required={!isEscrito}
@@ -742,7 +752,7 @@ function UploadPageInner() {
           {/* Agregar a proyecto */}
           {userProjects.length > 0 && (
             <div>
-              <label style={labelStyle}>Agregar a proyecto <span style={{ color: "#444441" }}>— opcional</span></label>
+              <label style={labelStyle}>{isProjectEntry ? "cuaderno del proyecto" : "guardar en un proyecto"} <span style={{ color: "#444441" }}>{isProjectEntry ? "" : "— opcional"}</span></label>
               <select
                 value={selectedProject}
                 onChange={(e) => { if (isDev) console.log("selectedProject changed to:", e.target.value); setSelectedProject(e.target.value); }}
@@ -783,7 +793,7 @@ function UploadPageInner() {
               marginTop: "4px",
             }}
           >
-            {submitting ? "publicando..." : isEscrito ? "publicar manifiesto" : isVideo ? "publicar video" : "publicar obra"}
+            {submitting ? "publicando..." : isProjectEntry ? "publicar entrada" : isEscrito ? "publicar letra" : isVideo ? "publicar video" : "publicar obra"}
           </button>
         </form>
       </main>
