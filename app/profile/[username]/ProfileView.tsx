@@ -33,6 +33,7 @@ export interface ProfileData {
   location: string | null;
   disciplines: string[] | null;
   avatar_color: string | null;
+  cover_image_url: string | null;
 }
 
 const mono = "var(--font-space-mono), monospace";
@@ -236,52 +237,36 @@ function BannerSVG() {
 
 const TABS: Tab[] = ["obras", "eventos", "letras", "colecciones"];
 
-function LaTrama({
+function Huellas({
   shared,
   events,
   comments,
   colectivos,
-  isOwnProfile,
 }: {
   shared: number;
   events: number;
   comments: number;
   colectivos: number;
-  isOwnProfile: boolean;
 }) {
-  const gestures = shared + events + comments + colectivos;
   const items = [
-    { value: shared, label: "obra compartida" },
-    { value: events, label: "evento abierto" },
-    { value: comments, label: "comentario dejado" },
-    { value: colectivos, label: "cuarto colectivo" },
-  ];
+    { value: shared, singular: "obra compartida", plural: "obras compartidas" },
+    { value: events, singular: "evento abierto", plural: "eventos abiertos" },
+    { value: comments, singular: "comentario dejado", plural: "comentarios dejados" },
+    { value: colectivos, singular: "colectivo", plural: "colectivos" },
+  ].filter((item) => item.value > 0);
 
-  if (gestures === 0) {
-    return (
-      <aside style={{ background: "#141412", border: "0.5px solid #2a2a28", padding: "18px" }}>
-        <p style={{ color: "#D85A30", fontFamily: mono, fontSize: "9px", letterSpacing: "0.15em", marginBottom: "8px", textTransform: "uppercase" }}>la trama</p>
-        <p style={{ color: "#e8e4dc", fontFamily: syne, fontSize: "17px", fontWeight: 800, lineHeight: 1.15, marginBottom: "8px" }}>todo empieza con un gesto.</p>
-        <p style={{ color: "#888780", fontFamily: mono, fontSize: "10px", lineHeight: 1.55 }}>{isOwnProfile ? "cuando compartas, abras un evento o dejes una nota, tu actividad aparecerá aquí." : "la actividad creativa de esta persona aparecerá aquí."}</p>
-      </aside>
-    );
-  }
+  if (items.length === 0) return null;
 
   return (
-    <aside style={{ background: "#141412", border: "0.5px solid #2a2a28", padding: "17px 18px" }}>
-      <div className="flex items-start justify-between gap-4" style={{ borderBottom: "0.5px solid #2a2a28", paddingBottom: "13px" }}>
-        <div>
-          <p style={{ color: "#D85A30", fontFamily: mono, fontSize: "9px", letterSpacing: "0.15em", marginBottom: "5px", textTransform: "uppercase" }}>la trama</p>
-          <p style={{ color: "#888780", fontFamily: mono, fontSize: "10px", lineHeight: 1.5 }}>actividad dentro de magma</p>
-        </div>
-        <p style={{ color: "#e8e4dc", fontFamily: syne, fontSize: "28px", fontWeight: 800, lineHeight: 1 }}>{formatStat(gestures)}</p>
-      </div>
-      <div className="grid grid-cols-2 gap-x-5 gap-y-3 pt-4">
+    <aside className="flex flex-wrap items-center gap-x-5 gap-y-2" style={{ borderTop: "0.5px solid #2a2a28", marginTop: "26px", paddingTop: "14px" }}>
+      <p style={{ color: "#D85A30", fontFamily: mono, fontSize: "9px", letterSpacing: "0.15em", textTransform: "uppercase" }}>
+        huellas en magma
+      </p>
+      <div className="flex flex-wrap gap-x-4 gap-y-2">
         {items.map((item) => (
-          <div key={item.label}>
-            <p style={{ color: "#e8e4dc", fontFamily: syne, fontSize: "17px", fontWeight: 800, lineHeight: 1 }}>{formatStat(item.value)}</p>
-            <p style={{ color: "#5F5E5A", fontFamily: mono, fontSize: "9px", lineHeight: 1.35, marginTop: "4px", textTransform: "uppercase" }}>{item.label}{item.value === 1 ? "" : "s"}</p>
-          </div>
+          <p key={item.singular} style={{ color: "#5F5E5A", fontFamily: mono, fontSize: "9px", letterSpacing: "0.04em", textTransform: "uppercase" }}>
+            <span style={{ color: "#e8e4dc" }}>{formatStat(item.value)}</span>{" "}{item.value === 1 ? item.singular : item.plural}
+          </p>
         ))}
       </div>
     </aside>
@@ -309,7 +294,6 @@ export function ProfileView({
   const [collections, setCollections] = useState<Collection[]>([]);
   const [collectionsLoaded, setCollectionsLoaded] = useState(false);
   const [colectivos, setColectivos] = useState<{ id: string; name: string; slug: string; avatar_color: string }[]>([]);
-  const [listings, setListings] = useState<{ id: string; title: string; price: number; currency: string; images: string[] }[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [showCreateProject, setShowCreateProject] = useState(false);
 
@@ -324,21 +308,6 @@ export function ProfileView({
           .map((m) => m.colectivos)
           .filter((c): c is { id: string; name: string; slug: string; avatar_color: string } => c !== null);
         setColectivos(cols);
-      });
-  }, [profile.id]);
-
-  useEffect(() => {
-    const supabase = getSupabaseClient();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (supabase as any)
-      .from("listings")
-      .select("id, title, price, currency, images")
-      .eq("user_id", profile.id)
-      .eq("is_available", true)
-      .order("created_at", { ascending: false })
-      .limit(6)
-      .then(({ data }: { data: { id: string; title: string; price: number; currency: string; images: string[] }[] | null }) => {
-        setListings(data ?? []);
       });
   }, [profile.id]);
 
@@ -442,16 +411,22 @@ export function ProfileView({
 
   return (
     <>
-      <div style={{ backgroundColor: "#0f0d0b", height: "118px", overflow: "hidden", position: "relative" }}>
-        <BannerSVG />
-        <p style={{ bottom: "18px", color: "#5F5E5A", fontFamily: mono, fontSize: "9px", left: "max(24px, calc((100% - 1152px) / 2))", letterSpacing: "0.16em", position: "absolute", textTransform: "uppercase" }}>perfil creativo · cdmx</p>
+      <div className="h-[150px] sm:h-[190px]" style={{ backgroundColor: "#0f0d0b", overflow: "hidden", position: "relative" }}>
+        {profile.cover_image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={profile.cover_image_url} alt={`Portada de @${profile.username}`} style={{ display: "block", height: "100%", objectFit: "cover", width: "100%" }} />
+        ) : (
+          <BannerSVG />
+        )}
+        <div style={{ background: "linear-gradient(to top, rgba(12,12,11,0.72) 0%, rgba(12,12,11,0.08) 70%, transparent 100%)", inset: 0, position: "absolute" }} />
+        <p style={{ bottom: "18px", color: profile.cover_image_url ? "#e8e4dc" : "#5F5E5A", fontFamily: mono, fontSize: "9px", left: "max(24px, calc((100% - 1152px) / 2))", letterSpacing: "0.16em", position: "absolute", textShadow: profile.cover_image_url ? "0 1px 12px rgba(0,0,0,0.75)" : "none", textTransform: "uppercase" }}>perfil creativo · cdmx</p>
       </div>
 
       {/* Profile header */}
       <div className="max-w-6xl mx-auto px-6">
         <div className="py-8">
-          {/* Name, house and participation */}
-          <div className="grid gap-8 lg:grid-cols-[1fr_330px] lg:items-start">
+          {/* Identity and personal projects */}
+          <div>
             <div>
               <div className="flex items-start justify-between gap-5">
                 <div className="flex items-center gap-4 min-w-0">
@@ -496,7 +471,7 @@ export function ProfileView({
             {projectsSection}
 
             </div>
-            <LaTrama shared={posts.length} events={eventosPosts.length} comments={laTrama.comments} colectivos={laTrama.colectivos} isOwnProfile={isOwnProfile} />
+            <Huellas shared={obrasPosts.length + letrasPosts.length} events={eventosPosts.length} comments={laTrama.comments} colectivos={laTrama.colectivos} />
           </div>
 
           {/* Colectivos badges */}
@@ -631,44 +606,6 @@ export function ProfileView({
         />
       )}
 
-      {/* Tianguis section */}
-      {listings.length > 0 && (
-        <div className="max-w-6xl mx-auto px-6 pb-16" style={{ borderTop: "0.5px solid #2a2a28", paddingTop: "32px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
-            <p style={{ fontSize: "9px", color: "#444441", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.14em" }}>
-              tianguis
-            </p>
-            <Link href={`/tianguis?seller=${profile.username}`} style={{ fontSize: "9px", color: "#5F5E5A", fontFamily: mono, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.1em" }}>
-              ver todo →
-            </Link>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: "1px", backgroundColor: "#2a2a28" }}>
-            {listings.map((listing) => {
-              const img = listing.images?.[0] ?? null;
-              return (
-                <Link key={listing.id} href={`/tianguis/${listing.id}`} style={{ textDecoration: "none", display: "block", backgroundColor: "#0c0c0b" }}>
-                  <div style={{ backgroundColor: "#0c0c0b" }}>
-                    <div style={{ aspectRatio: "1", backgroundColor: "#141412", position: "relative", overflow: "hidden" }}>
-                      {img && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={img} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" />
-                      )}
-                    </div>
-                    <div style={{ padding: "10px 12px" }}>
-                      <p style={{ fontSize: "12px", color: "#e8e4dc", fontFamily: syne, fontWeight: 700, lineHeight: 1.2, marginBottom: "3px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {listing.title}
-                      </p>
-                      <p style={{ fontSize: "11px", color: "#D85A30", fontFamily: mono }}>
-                        ${listing.price} <span style={{ fontSize: "9px", color: "#5F5E5A" }}>{listing.currency}</span>
-                      </p>
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      )}
     </>
   );
 }

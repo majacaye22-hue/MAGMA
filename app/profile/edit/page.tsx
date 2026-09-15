@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getSupabaseClient } from "@/lib/supabase";
@@ -58,6 +58,15 @@ export default function EditProfilePage() {
   const [location, setLocation] = useState("");
   const [disciplines, setDisciplines] = useState<string[]>([]);
   const [avatarColor, setAvatarColor] = useState("#D85A30");
+  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => () => {
+    if (coverPreview) URL.revokeObjectURL(coverPreview);
+  }, [coverPreview]);
+
   useEffect(() => {
     void (async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -69,7 +78,7 @@ export default function EditProfilePage() {
 
       const { data } = await supabase
         .from("profiles")
-        .select("username, display_name, bio, location, disciplines, avatar_color")
+        .select("username, display_name, bio, location, disciplines, avatar_color, cover_image_url")
         .eq("id", user.id)
         .single();
 
@@ -80,6 +89,7 @@ export default function EditProfilePage() {
         setLocation(data.location ?? "");
         setDisciplines(data.disciplines ?? []);
         setAvatarColor(data.avatar_color ?? "#D85A30");
+        setCoverImageUrl(data.cover_image_url ?? null);
       }
 
       setLoading(false);
@@ -90,6 +100,21 @@ export default function EditProfilePage() {
     setDisciplines((prev) =>
       prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]
     );
+  }
+
+  function selectCover(file: File | null) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("la portada debe ser una imagen");
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      setError("la portada no puede pesar más de 15 MB");
+      return;
+    }
+    setError(null);
+    setCoverFile(file);
+    setCoverPreview(URL.createObjectURL(file));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -105,6 +130,20 @@ export default function EditProfilePage() {
     setSaving(true);
     setError(null);
 
+    let nextCoverImageUrl = coverImageUrl;
+    if (coverFile) {
+      const formData = new FormData();
+      formData.append("file", coverFile);
+      const uploadResponse = await fetch("/api/upload", { method: "POST", body: formData });
+      const uploadData = await uploadResponse.json().catch(() => ({}));
+      if (!uploadResponse.ok || !uploadData.url) {
+        setError(uploadData.error ?? "no se pudo subir la portada");
+        setSaving(false);
+        return;
+      }
+      nextCoverImageUrl = uploadData.url as string;
+    }
+
     const { error: updateError } = await supabase
       .from("profiles")
       .update({
@@ -114,6 +153,7 @@ export default function EditProfilePage() {
         location: location.trim() || null,
         disciplines: disciplines.length > 0 ? disciplines : null,
         avatar_color: avatarColor,
+        cover_image_url: nextCoverImageUrl,
       })
       .eq("id", userId);
 
@@ -199,6 +239,44 @@ export default function EditProfilePage() {
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+          {/* Profile cover */}
+          <div>
+            <label style={labelStyle}>Portada del perfil</label>
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              onChange={(e) => selectCover(e.target.files?.[0] ?? null)}
+              style={{ display: "none" }}
+            />
+            <button
+              type="button"
+              onClick={() => coverInputRef.current?.click()}
+              className="group relative block w-full cursor-pointer overflow-hidden text-left"
+              style={{ aspectRatio: "16 / 5", backgroundColor: "#0f0d0b", border: "0.5px solid #2a2a28", padding: 0 }}
+            >
+              {(coverPreview || coverImageUrl) ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={coverPreview ?? coverImageUrl ?? ""} alt="Vista previa de la portada" style={{ display: "block", height: "100%", objectFit: "cover", width: "100%" }} />
+              ) : (
+                <div className="flex h-full items-center justify-center" style={{ backgroundImage: "linear-gradient(#1e1e1c 0.5px, transparent 0.5px), linear-gradient(90deg, #1e1e1c 0.5px, transparent 0.5px)", backgroundSize: "30px 30px", color: "#444441", fontFamily: mono, fontSize: "10px", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                  sin portada todavía
+                </div>
+              )}
+              <span className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100" style={{ backgroundColor: "rgba(12,12,11,0.72)", color: "#e8e4dc", fontFamily: mono, fontSize: "10px", letterSpacing: "0.12em", textTransform: "uppercase" }}>
+                {coverImageUrl || coverPreview ? "cambiar portada" : "subir portada"}
+              </span>
+            </button>
+            <div className="mt-2 flex items-center justify-between gap-3">
+              <p style={{ color: "#444441", fontFamily: mono, fontSize: "9px" }}>JPG, PNG, GIF o WEBP · máximo 15 MB · formato horizontal</p>
+              {(coverImageUrl || coverPreview) && (
+                <button type="button" onClick={() => { setCoverFile(null); setCoverPreview(null); setCoverImageUrl(null); }} style={{ background: "none", border: "none", color: "#5F5E5A", cursor: "pointer", fontFamily: mono, fontSize: "9px", padding: 0, textDecoration: "underline" }}>
+                  quitar
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Display name */}
           <div>
             <label style={labelStyle}>Nombre artístico</label>

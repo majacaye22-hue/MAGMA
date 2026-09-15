@@ -33,6 +33,7 @@ CREATE TABLE profiles (
   disciplines      text[],
   avatar_url       text,
   avatar_color     text DEFAULT '#D85A30',
+  cover_image_url  text,
   is_moderator     boolean DEFAULT false NOT NULL,
   casa_name        text,
   casa_tone        text,
