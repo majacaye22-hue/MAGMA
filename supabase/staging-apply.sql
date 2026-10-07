@@ -54,6 +54,7 @@ CREATE TABLE posts (
   type           text NOT NULL,
   media_url      text,
   media_type     text,
+  soundcloud_url text,
   media_base64   text,
   cover_url      text,
   tags           text[],
