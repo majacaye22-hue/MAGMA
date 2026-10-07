@@ -58,7 +58,7 @@ function LetraCard({ post }: { post: EscritoPost }) {
         {/* Type badge + timestamp */}
         <div className="flex items-center justify-between">
           <span style={{
-            fontSize: "9px",
+            fontSize: "var(--magma-text-small)",
             color: "#7F77DD",
             fontFamily: mono,
             textTransform: "uppercase",
@@ -68,21 +68,21 @@ function LetraCard({ post }: { post: EscritoPost }) {
           }}>
             letra
           </span>
-          <span style={{ fontSize: "10px", color: "#444441", fontFamily: mono }}>
+          <span style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono }}>
             {relativeTime(post.created_at)}
           </span>
         </div>
 
         {/* Title */}
         {post.title && (
-          <h2 style={{ fontSize: "18px", color: "#e8e4dc", fontFamily: syne, fontWeight: 700, lineHeight: 1.2, margin: 0 }}>
+          <h2 style={{ fontSize: "18px", color: "#F2F4F8", fontFamily: syne, fontWeight: 700, lineHeight: 1.2, margin: 0 }}>
             {post.title}
           </h2>
         )}
 
         {/* Preview */}
         {preview && (
-          <p style={{ fontSize: "13px", color: "#888780", fontFamily: mono, lineHeight: 1.7, margin: 0 }}>
+          <p style={{ fontSize: "var(--magma-text-body)", color: "var(--magma-muted)", fontFamily: mono, lineHeight: 1.7, margin: 0 }}>
             {preview}
           </p>
         )}
@@ -90,7 +90,7 @@ function LetraCard({ post }: { post: EscritoPost }) {
         {/* Footer */}
         <div className="flex items-center justify-between" style={{ marginTop: "4px" }}>
           <div className="flex items-center gap-3">
-            <span style={{ fontSize: "11px", color: "#5F5E5A", fontFamily: mono }}>
+            <span style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono }}>
               @{post.profiles?.username ?? "anon"}
             </span>
             {post.tags && post.tags.length > 0 && (
@@ -99,8 +99,8 @@ function LetraCard({ post }: { post: EscritoPost }) {
                   <span
                     key={tag}
                     style={{
-                      fontSize: "9px",
-                      color: "#5F5E5A",
+                      fontSize: "var(--magma-text-small)",
+                      color: "var(--magma-muted)",
                       fontFamily: mono,
                       textTransform: "uppercase",
                       letterSpacing: "0.08em",
@@ -115,11 +115,11 @@ function LetraCard({ post }: { post: EscritoPost }) {
             )}
           </div>
           <div className="flex items-center gap-4">
-            <span style={{ fontSize: "10px", color: "#444441", fontFamily: mono }}>
+            <span style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono }}>
               ↑ {post.upvotes}
             </span>
             {(post.comment_count ?? 0) > 0 && (
-              <span style={{ fontSize: "10px", color: "#444441", fontFamily: mono }}>
+              <span style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono }}>
                 {post.comment_count} comentarios
               </span>
             )}
@@ -143,6 +143,7 @@ export default async function LetrasPage({ searchParams }: PageProps) {
   let query = supabase
     .from("posts")
     .select("*, profiles(username, display_name)")
+    .is("audience_colectivo_id", null)
     .eq("type", "escrito")
     .order("created_at", { ascending: false });
 
@@ -158,10 +159,10 @@ export default async function LetrasPage({ searchParams }: PageProps) {
       <main className="max-w-3xl mx-auto px-6 pb-24">
         {/* Header */}
         <div className="pt-10 pb-6">
-          <h1 style={{ fontSize: "32px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800, lineHeight: 1, marginBottom: "6px" }}>
+          <h1 className="magma-page-title" style={{ color: "#F2F4F8", fontFamily: syne, fontWeight: 800, marginBottom: "6px" }}>
             letras
           </h1>
-          <p style={{ fontSize: "11px", color: "#5F5E5A", fontFamily: mono, letterSpacing: "0.05em" }}>
+          <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, letterSpacing: "0.05em" }}>
             palabras, poemas, ensayos, pensamientos
           </p>
         </div>
@@ -172,14 +173,14 @@ export default async function LetrasPage({ searchParams }: PageProps) {
             const isActive = (f.tag ?? "") === (tag ?? "");
             const href = f.tag ? `/letras?tag=${f.tag}` : "/letras";
             return (
-              <Link
+              <Link data-magma-glow={/magma-(red|orange|hot)|#E12120|#7f77dd/i.test(String(isActive ? "#7F77DD" : "transparent"))}
                 key={f.label}
                 href={href}
                 className="px-4 py-1.5 text-xs tracking-widest uppercase border transition-colors duration-150"
                 style={{
                   fontFamily: mono,
                   borderColor: isActive ? "#7F77DD" : "#2a2a28",
-                  color: isActive ? "#0c0c0b" : "#888780",
+                  color: isActive ? "#0c0c0b" : "var(--magma-muted)",
                   backgroundColor: isActive ? "#7F77DD" : "transparent",
                   textDecoration: "none",
                 }}
@@ -192,7 +193,7 @@ export default async function LetrasPage({ searchParams }: PageProps) {
 
         {/* Feed */}
         {posts.length === 0 ? (
-          <div className="py-24 text-center text-xs tracking-widest uppercase" style={{ color: "#888780", fontFamily: mono }}>
+          <div className="py-24 text-center text-xs tracking-widest uppercase" style={{ color: "var(--magma-muted)", fontFamily: mono }}>
             sin letras todavía — sé el primero en publicar
           </div>
         ) : (

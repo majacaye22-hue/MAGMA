@@ -9,6 +9,7 @@ export async function GET() {
   const { data: events, error } = await authClient
     .from("posts")
     .select("*, profiles!posts_author_id_fkey(username, display_name)")
+    .is("audience_colectivo_id", null)
     .eq("type", "evento")
     .order("event_date", { ascending: true });
 

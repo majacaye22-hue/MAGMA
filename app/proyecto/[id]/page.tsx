@@ -8,6 +8,9 @@ import { PostCard } from "@/app/components/card-art";
 import type { Post } from "@/app/components/card-art";
 import { createClient } from "@/lib/supabase-server";
 import { ProjectEditor } from "./ProjectEditor";
+import { projectCoverShape, projectCoverStyle } from "@/lib/project-cover";
+import cards from "@/app/components/archive-card-preview.module.css";
+import styles from "./project.module.css";
 
 const mono = "var(--font-space-mono), monospace";
 const syne = "var(--font-syne), sans-serif";
@@ -17,7 +20,7 @@ type Project = {
   title: string;
   description: string | null;
   cover_image_url: string | null;
-  links: { spotify?: string; soundcloud?: string; instagram?: string; website?: string } | null;
+  links: { spotify?: string; soundcloud?: string; instagram?: string; website?: string; cover_shape?: string } | null;
   author_id: string;
   profiles: { username: string; display_name: string | null } | { username: string; display_name: string | null }[] | null;
 };
@@ -101,6 +104,7 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
     const { data: postsData } = await supabase
       .from("posts")
       .select("*, profiles!posts_author_id_fkey(username, display_name)")
+      .is("audience_colectivo_id", null)
       .in("id", postIds);
 
     posts = (postsData ?? []) as Post[];
@@ -110,80 +114,66 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
   const isOwner = currentUserId === project.author_id;
   const creator = Array.isArray(project.profiles) ? project.profiles[0] : project.profiles;
   const journalPosts = [...posts].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  const compactPreview = id === "e7a09280-0000-4000-8000-000000000001";
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#0c0c0b" }}>
+    <div className={`${styles.page} ${compactPreview ? styles.compactPreview : ""} min-h-screen`} style={{ backgroundColor: "var(--magma-obsidian)" }}>
 
       {/* Project title page */}
-      <div className="min-h-[420px] md:min-h-[520px]" style={{ position: "relative", overflow: "hidden", backgroundColor: "#141412" }}>
-        {project.cover_image_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={project.cover_image_url}
-            alt={project.title}
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-          />
-        ) : (
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, #1e1e1c 0%, #0c0c0b 100%)" }} />
-        )}
-
-        {/* Scrim */}
-        <div style={{ position: "absolute", inset: 0, background: project.cover_image_url ? "linear-gradient(to top, rgba(12,12,11,0.96) 0%, rgba(12,12,11,0.38) 58%, rgba(12,12,11,0.1) 100%)" : "repeating-linear-gradient(0deg, transparent 0, transparent 31px, rgba(232,228,220,0.035) 32px), linear-gradient(135deg, #1e1e1c 0%, #0c0c0b 100%)" }} />
-
+      <div className="mx-auto max-w-6xl px-6 pt-4 pb-4">
         {/* Back link */}
-        <div style={{ position: "absolute", top: "20px", left: "24px" }}>
+        <div className="mb-4">
           <Link
             href="/proyectos"
-            style={{ fontSize: "10px", color: "rgba(232,228,220,0.5)", fontFamily: mono, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.14em" }}
+            style={{ fontSize: "var(--magma-text-small)", color: "#fff", fontFamily: mono, textDecoration: "none" }}
           >
             ← proyectos
           </Link>
         </div>
 
-        {/* Title overlaid at bottom */}
-        <div className="max-w-6xl mx-auto px-6" style={{ position: "absolute", bottom: "38px", left: 0, right: 0 }}>
-          <p style={{ fontSize: "10px", color: "#D85A30", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "6px" }}>
-            cuaderno de proyecto · {String(journalPosts.length).padStart(2, "0")} entradas
-          </p>
-          <h1 style={{ fontSize: "clamp(42px, 8vw, 88px)", color: "#e8e4dc", fontFamily: syne, fontWeight: 800, lineHeight: 0.9, letterSpacing: "-0.055em", maxWidth: "880px" }}>
+        <div className={`grid items-center gap-4 md:gap-6 ${project.cover_image_url ? (projectCoverShape(project.links) === "horizontal" ? "md:grid-cols-[320px_minmax(0,1fr)]" : "md:grid-cols-[240px_minmax(0,1fr)]") : ""}`}>
+        {project.cover_image_url && (
+          <div style={projectCoverStyle(projectCoverShape(project.links))} className="w-full max-w-[400px] overflow-hidden rounded-[2px]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={project.cover_image_url}
+              alt={project.title}
+              className="block h-full w-full object-cover"
+            />
+          </div>
+        )}
+        <div className="min-w-0">
+          <h1 className="magma-page-title" style={{ color: "#fff", fontFamily: syne, fontWeight: 800, letterSpacing: "-0.055em", maxWidth: "880px", overflowWrap: "anywhere" }}>
             {project.title}
           </h1>
-          {creator && <Link href={`/profile/${creator.username}`} style={{ color: "rgba(232,228,220,0.7)", display: "inline-block", fontFamily: mono, fontSize: "10px", marginTop: "16px", textDecoration: "none" }}>una mirada dentro de @{creator.username} →</Link>}
+          {creator && <Link href={`/profile/${creator.username}`} style={{ color: "#fff", display: "inline-block", fontFamily: mono, fontSize: "13px", marginTop: "8px", textDecoration: "none" }}>@{creator.username}</Link>}
+          {project.description && <p className="mt-3 max-w-[680px] whitespace-pre-wrap break-words text-sm leading-relaxed" style={{ fontFamily: mono }}>{project.description}</p>}
+        </div>
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-6">
 
         {/* Opening note */}
-        <div className="grid gap-8 py-10 md:grid-cols-[150px_1fr_auto] md:items-start" style={{ borderBottom: "0.5px solid #2a2a28" }}>
-          <div>
-            <p style={{ color: "#D85A30", fontFamily: mono, fontSize: "9px", letterSpacing: "0.16em", textTransform: "uppercase" }}>nota de apertura</p>
-            <p style={{ color: "#444441", fontFamily: mono, fontSize: "9px", lineHeight: 1.5, marginTop: "7px" }}>esto puede cambiar<br />mientras se hace</p>
-          </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-4">
           <div style={{ maxWidth: "680px" }}>
-            {project.description && (
-              <p style={{ fontSize: "clamp(17px, 2.5vw, 24px)", color: "#e8e4dc", fontFamily: syne, fontStyle: "italic", fontWeight: 600, lineHeight: 1.45 }}>
-                {project.description}
-              </p>
-            )}
-            {!project.description && <p style={{ color: "#5F5E5A", fontFamily: mono, fontSize: "11px" }}>este proyecto todavía está encontrando las palabras para presentarse.</p>}
 
             {/* Link icons */}
             {(links.spotify || links.soundcloud || links.instagram || links.website) && (
-              <div className="flex flex-wrap" style={{ gap: "20px", marginTop: "20px" }}>
+              <div className={`${styles.links} flex flex-wrap gap-4`}>
                 {links.spotify && (
                   <a
                     href={links.spotify}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "10px", color: "#5DCAA5", fontFamily: mono, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.1em" }}
+                    style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "var(--magma-text-small)", color: "var(--magma-ash)", fontFamily: mono, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.1em" }}
                     className="hover:opacity-70 transition-opacity"
                   >
                     <MusicIcon /> música
                   </a>
                 )}
                 {links.soundcloud && (
-                  <a href={links.soundcloud} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "10px", color: "#D85A30", fontFamily: mono, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.1em" }} className="hover:opacity-70 transition-opacity">
+                  <a href={links.soundcloud} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "var(--magma-text-small)", color: "var(--magma-ash)", fontFamily: mono, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.1em" }} className="hover:opacity-70 transition-opacity">
                     <SoundCloudIcon /> soundcloud
                   </a>
                 )}
@@ -192,7 +182,7 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
                     href={links.instagram}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "10px", color: "#888780", fontFamily: mono, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.1em" }}
+                    style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.1em" }}
                     className="hover:opacity-70 transition-opacity"
                   >
                     <InstagramIcon /> instagram
@@ -203,7 +193,7 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
                     href={links.website}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "10px", color: "#888780", fontFamily: mono, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.1em" }}
+                    style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.1em" }}
                     className="hover:opacity-70 transition-opacity"
                   >
                     <GlobeIcon /> web
@@ -216,13 +206,13 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
           {/* Owner tools */}
           <div className="items-start md:items-end" style={{ display: "flex", flexDirection: "column", gap: "10px", flexShrink: 0 }}>
             {isOwner && (
-              <div className="flex flex-wrap gap-2 md:justify-end">
+              <div className={`${styles.actions} flex flex-wrap gap-2 md:justify-end`}>
                 <ProjectEditor project={project} />
                 <Link
                   href={`/upload?proyecto=${id}`}
                   style={{
-                    fontSize: "10px", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em",
-                    padding: "8px 14px", border: "0.5px solid #D85A30", color: "#D85A30",
+                    fontSize: "var(--magma-text-small)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em",
+                    padding: "8px 14px", border: "0.5px solid #E12120", color: "var(--magma-ash)",
                     textDecoration: "none",
                   }}
                 >
@@ -234,41 +224,39 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
         </div>
 
         {/* Journal entries */}
-        <div style={{ paddingTop: "44px", paddingBottom: "100px" }}>
-          <div className="flex items-end justify-between gap-4" style={{ marginBottom: "38px" }}>
-            <div>
-              <p style={{ fontSize: "9px", color: "#D85A30", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "8px" }}>proceso abierto</p>
-              <h2 style={{ color: "#e8e4dc", fontFamily: syne, fontSize: "32px", fontWeight: 800, letterSpacing: "-0.04em" }}>entradas del proceso</h2>
-            </div>
-            <span style={{ color: "#444441", fontFamily: mono, fontSize: "10px" }}>{journalPosts.length} total</span>
-          </div>
+        <div className={`mx-auto ${compactPreview ? "max-w-[640px]" : "max-w-[800px]"} pb-16 pt-2`}>
+          <h2 className="mb-3 text-xl" style={{ fontFamily: syne }}>entradas</h2>
 
           {journalPosts.length === 0 ? (
-            <div style={{ paddingTop: "48px", textAlign: "center" }}>
-              <p style={{ fontSize: "11px", color: "#444441", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em" }}>
+            <div style={{ paddingTop: "24px", textAlign: "center" }}>
+              <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em" }}>
                 la primera página sigue en blanco
               </p>
               {isOwner && (
                 <Link
                   href={`/upload?proyecto=${id}`}
-                  style={{ display: "inline-block", marginTop: "12px", fontSize: "10px", color: "#D85A30", fontFamily: mono, textDecoration: "underline" }}
+                  style={{ display: "inline-block", marginTop: "12px", fontSize: "var(--magma-text-small)", color: "var(--magma-ash)", fontFamily: mono, textDecoration: "underline" }}
                 >
                   escribir la primera entrada →
                 </Link>
               )}
             </div>
           ) : (
-            <div>
+            <div className="grid gap-3">
               {journalPosts.map((post, i) => (
-                <article key={post.id} className="grid gap-5 py-8 md:grid-cols-[150px_minmax(0,680px)] md:gap-8" style={{ borderTop: "0.5px solid #2a2a28" }}>
-                  <aside>
-                    <p style={{ color: "#D85A30", fontFamily: mono, fontSize: "9px", letterSpacing: "0.14em", textTransform: "uppercase" }}>entrada {String(i + 1).padStart(2, "0")}</p>
-                    <p style={{ color: "#5F5E5A", fontFamily: mono, fontSize: "9px", lineHeight: 1.5, marginTop: "7px" }}>{formatEntryDate(post.created_at)}</p>
-                    <p style={{ color: "#444441", fontFamily: mono, fontSize: "9px", marginTop: "4px", textTransform: "uppercase" }}>{post.type}</p>
-                  </aside>
+                <article key={post.id} className={cards.card}>
+                  <header className={cards.label}>
+                    <div className={cards.byline}>
+                      {post.profiles && <Link href={`/profile/${post.profiles.username}`}>@{post.profiles.username}</Link>}
+                      <time dateTime={post.created_at}>{formatEntryDate(post.created_at)}</time>
+                    </div>
+                  </header>
                   <div style={{ minWidth: 0 }}>
-                    <PostCard post={post} index={i} total={journalPosts.length} currentUserId={currentUserId} />
+                    <PostCard post={post} index={i} total={journalPosts.length} currentUserId={currentUserId} stream editorialSize="archive" fitMedia />
                   </div>
+                  <footer className="pt-3 pb-1 text-center text-xs tabular-nums text-white" style={{ fontFamily: mono }}>
+                    <span aria-label={`página ${i + 1}`}>{String(i + 1).padStart(2, "0")}</span>
+                  </footer>
                 </article>
               ))}
             </div>

@@ -1,0 +1,72 @@
+.page {
+  color: #fff;
+}
+
+.page form {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.page form label > span {
+  color: #fff;
+  font-family: var(--font-space-mono), monospace;
+  font-size: 14px;
+}
+
+.page form input,
+.page form select {
+  border: 1px solid #49463f;
+  border-radius: 2px;
+  color: #fff;
+}
+
+.page form input::placeholder {
+  color: #fff;
+  opacity: 1;
+}
+
+.page form button {
+  border: 1px solid var(--magma-red);
+  border-radius: 2px;
+  background: transparent;
+  color: #fff;
+}
+
+.page form button:hover {
+  background: var(--magma-red);
+}
+
+.cards > [role="button"] {
+  padding: 10px;
+  border: 1px solid #49463f !important;
+  border-radius: 2px !important;
+  background: #10100f !important;
+  box-shadow: none !important;
+  color: #fff;
+}
+
+.cards > [role="button"]:hover,
+.cards > [role="button"]:focus-visible {
+  border-color: var(--magma-red) !important;
+}
+
+.cards > [role="button"] > div:last-child {
+  padding: 10px 0 0 !important;
+}
+
+.cards p,
+.cards a {
+  color: #fff !important;
+}
+
+.cards p:first-child {
+  font-size: 16px !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+}
+
+.cards a:hover {
+  color: var(--magma-red) !important;
+  opacity: 1;
+}
