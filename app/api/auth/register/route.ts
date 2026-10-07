@@ -6,7 +6,17 @@ const db = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 )
 
+// Best-effort per-process guard; configure distributed limits at the edge before launch.
+const attempts = new Map<string, { count: number; until: number }>()
+
 export async function POST(req: NextRequest) {
+  const now = Date.now()
+  for (const [key, value] of attempts) if (value.until < now) attempts.delete(key)
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown'
+  const attempt = attempts.get(ip) ?? { count: 0, until: now + 15 * 60_000 }
+  if (attempt.count >= 5) return NextResponse.json({ error: 'demasiados intentos; espera 15 minutos' }, { status: 429 })
+  attempt.count++
+  attempts.set(ip, attempt)
   let body: { email?: unknown; password?: unknown; username?: unknown; displayName?: unknown; location?: unknown }
   try {
     body = await req.json()
@@ -23,12 +33,15 @@ export async function POST(req: NextRequest) {
   ) {
     return NextResponse.json({ error: 'missing required fields' }, { status: 400 })
   }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) || email.length > 254 || password.length < 8 || password.length > 128 || !/^[a-z0-9_]{3,30}$/.test(username.trim().toLowerCase())) {
+    return NextResponse.json({ error: 'usa un email válido, contraseña de 8–128 caracteres y usuario de 3–30 letras, números o guiones bajos' }, { status: 400 })
+  }
 
-  // Create auth user server-side — auto-confirmed, no email verification needed
+  // Never verify ownership or return a sign-in token before email confirmation.
   const { data: { user }, error: createErr } = await db.auth.admin.createUser({
     email: email.trim(),
     password,
-    email_confirm: true,
+    email_confirm: false,
   })
 
   if (createErr || !user) {
@@ -49,15 +62,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: profileErr.message }, { status: 400 })
   }
 
-  // Generate a one-time sign-in token so the client doesn't need to call
-  // signInWithPassword (which can fail if the email provider isn't fully configured)
-  const { data: linkData } = await db.auth.admin.generateLink({
-    type: 'magiclink',
+  const { error: deliveryError } = await db.auth.resend({
+    type: 'signup',
     email: email.trim(),
+    options: { emailRedirectTo: `${req.nextUrl.origin}/auth/login` },
   })
 
   return NextResponse.json({
     ok: true,
-    token_hash: linkData?.properties?.hashed_token ?? null,
+    requires_confirmation: true,
+    delivery_failed: Boolean(deliveryError),
   })
 }

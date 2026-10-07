@@ -2,25 +2,25 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase"
+import { MagmaWordmark } from "@/app/components/MagmaWordmark";
 const supabase = getSupabaseClient();
 
 const inputStyle: React.CSSProperties = {
   backgroundColor: "#141412",
   border: "0.5px solid #2a2a28",
-  color: "#e8e4dc",
+  color: "#F2F4F8",
   fontFamily: "var(--font-space-mono), monospace",
-  fontSize: "13px",
+  fontSize: "var(--magma-text-body)",
   outline: "none",
   width: "100%",
   padding: "10px 12px",
 };
 
 const labelStyle: React.CSSProperties = {
-  color: "#5F5E5A",
+  color: "var(--magma-muted)",
   fontFamily: "var(--font-space-mono), monospace",
-  fontSize: "10px",
+  fontSize: "var(--magma-text-small)",
   textTransform: "uppercase",
   letterSpacing: "0.12em",
   display: "block",
@@ -28,24 +28,10 @@ const labelStyle: React.CSSProperties = {
 };
 
 function MagmaLogo() {
-  return (
-    <span
-      style={{ fontFamily: "var(--font-syne), sans-serif", fontWeight: 800 }}
-      className="text-3xl tracking-tight select-none"
-    >
-      {"MAGMA".split("").map((l, i) =>
-        l === "A" ? (
-          <span key={i} style={{ color: "#D85A30" }}>{l}</span>
-        ) : (
-          <span key={i} style={{ color: "#e8e4dc" }}>{l}</span>
-        )
-      )}
-    </span>
-  );
+  return <MagmaWordmark className="text-3xl" />;
 }
 
 export default function RegisterPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
@@ -53,12 +39,14 @@ export default function RegisterPage() {
   const [colonia, setColonia] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
+  const [notice, setNotice] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
-
+    try {
     // Create auth user + profile server-side in one shot
     const res = await fetch("/api/auth/register", {
       method: "POST",
@@ -79,28 +67,32 @@ export default function RegisterPage() {
       return;
     }
 
-    // Establish the session using the one-time token the server generated,
-    // falling back to password sign-in if the token isn't available
-    const { token_hash } = await res.json().catch(() => ({}));
-    if (token_hash) {
-      const { error: otpErr } = await supabase.auth.verifyOtp({ token_hash, type: "magiclink" });
-      if (otpErr) {
-        setError(otpErr.message);
-        setLoading(false);
-        return;
-      }
-    } else {
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-      if (signInError) {
-        setError(signInError.message);
-        setLoading(false);
-        return;
-      }
-    }
-
-    router.push("/");
-    router.refresh();
+    const result = await res.json();
+    setAwaitingConfirmation(true);
+    setPassword("");
+    setNotice(result.delivery_failed ? "cuenta creada, pero no se pudo enviar el correo. reintenta el envío abajo." : "revisa tu correo y confirma tu dirección antes de iniciar sesión.");
+    } catch { setError("no se pudo completar la solicitud; revisa tu conexión"); }
+    finally { setLoading(false); }
   }
+
+  async function resendConfirmation() {
+    if (loading) return;
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resend({ type: "signup", email: email.trim(), options: { emailRedirectTo: `${window.location.origin}/auth/login` } });
+      setNotice(error ? "no se pudo enviar el correo; espera un minuto y reintenta" : "correo enviado; revisa también spam");
+    } catch { setNotice("no se pudo enviar el correo; revisa tu conexión"); }
+    finally { setLoading(false); }
+  }
+
+  if (awaitingConfirmation) return (
+    <main className="mx-auto max-w-sm px-6 py-20">
+      <h1 className="magma-page-title mb-6">confirma tu email</h1>
+      <p role="status">{notice}</p>
+      <button type="button" disabled={loading} onClick={resendConfirmation} className="my-6 underline">{loading ? "enviando..." : "reenviar correo"}</button>
+      <Link href="/auth/login" className="block underline">iniciar sesión →</Link>
+    </main>
+  );
 
   return (
     <div
@@ -139,7 +131,9 @@ export default function RegisterPage() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="mínimo 6 caracteres"
+              placeholder="mínimo 8 caracteres"
+              minLength={8}
+              maxLength={128}
               style={inputStyle}
               className="focus:outline-none"
             />
@@ -148,12 +142,16 @@ export default function RegisterPage() {
           <div>
             <label style={labelStyle}>
               Nombre de usuario{" "}
-              <span style={{ color: "#444441" }}>sin espacios</span>
+              <span style={{ color: "var(--magma-muted)" }}>sin espacios</span>
             </label>
             <input
               type="text"
               required
               value={username}
+              minLength={3}
+              maxLength={30}
+              pattern="[a-zA-Z0-9_]{3,30}"
+              title="3–30 letras, números o guiones bajos"
               onChange={(e) => setUsername(e.target.value)}
               placeholder="lucioramirez"
               style={inputStyle}
@@ -188,8 +186,8 @@ export default function RegisterPage() {
           {error && (
             <p
               style={{
-                fontSize: "11px",
-                color: "#D85A30",
+                fontSize: "var(--magma-text-small)",
+                color: "var(--magma-ash)",
                 fontFamily: "var(--font-space-mono), monospace",
               }}
             >
@@ -197,13 +195,13 @@ export default function RegisterPage() {
             </p>
           )}
 
-          <button
+          <button data-magma-glow={/magma-(red|orange|hot)|#E12120|#7f77dd/i.test(String("var(--magma-red)"))}
             type="submit"
             disabled={loading}
             className="w-full py-3 text-xs tracking-widest uppercase cursor-pointer transition-opacity duration-150 hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
-              backgroundColor: "#D85A30",
-              color: "#0c0c0b",
+              backgroundColor: "var(--magma-red)",
+              color: "var(--magma-ash)",
               fontFamily: "var(--font-space-mono), monospace",
               marginTop: "4px",
             }}
@@ -215,12 +213,12 @@ export default function RegisterPage() {
         {/* Login link */}
         <p
           className="text-center text-xs"
-          style={{ color: "#5F5E5A", fontFamily: "var(--font-space-mono), monospace" }}
+          style={{ color: "var(--magma-muted)", fontFamily: "var(--font-space-mono), monospace" }}
         >
           ¿ya tienes cuenta?{" "}
           <Link
             href="/auth/login"
-            style={{ color: "#888780", textDecoration: "underline" }}
+            style={{ color: "var(--magma-muted)", textDecoration: "underline" }}
           >
             entra
           </Link>

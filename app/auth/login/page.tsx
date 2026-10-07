@@ -1,46 +1,32 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { MagmaLogo } from "@/app/components/MagmaLogo";
+import { getSupabaseClient } from "@/lib/supabase";
 
 const inputStyle: React.CSSProperties = {
   backgroundColor: "#141412",
   border: "0.5px solid #2a2a28",
-  color: "#e8e4dc",
+  color: "#F2F4F8",
   fontFamily: "var(--font-space-mono), monospace",
-  fontSize: "13px",
+  fontSize: "var(--magma-text-body)",
   outline: "none",
   width: "100%",
   padding: "10px 12px",
 };
 
 const labelStyle: React.CSSProperties = {
-  color: "#5F5E5A",
+  color: "var(--magma-muted)",
   fontFamily: "var(--font-space-mono), monospace",
-  fontSize: "10px",
+  fontSize: "var(--magma-text-small)",
   textTransform: "uppercase",
   letterSpacing: "0.12em",
   display: "block",
   marginBottom: "6px",
 };
 
-function MagmaLogo() {
-  return (
-    <span
-      style={{ fontFamily: "var(--font-syne), sans-serif", fontWeight: 800 }}
-      className="text-3xl tracking-tight select-none"
-    >
-      {"MAGMA".split("").map((l, i) =>
-        l === "A" ? (
-          <span key={i} style={{ color: "#D85A30" }}>{l}</span>
-        ) : (
-          <span key={i} style={{ color: "#e8e4dc" }}>{l}</span>
-        )
-      )}
-    </span>
-  );
-}
 
 function LoginForm() {
   const searchParams = useSearchParams();
@@ -48,6 +34,32 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [confirmation, setConfirmation] = useState<string | null>(null);
+  const confirmationCheck = useRef<Promise<string> | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    if (!confirmationCheck.current) {
+      const params = new URLSearchParams(window.location.hash.slice(1));
+      const token = params.get("access_token");
+      if (!token && !params.has("error") && !params.has("error_code")) return;
+      // Remove credentials from the address bar; never store or log them.
+      window.history.replaceState(window.history.state, "", window.location.pathname + window.location.search);
+      confirmationCheck.current = (async () => {
+        if (!token || params.has("error") || params.has("error_code")) {
+          return "este enlace no es válido o ya venció. solicita otro correo de confirmación.";
+        }
+        // Validate the token with Auth rather than trusting a URL success flag.
+        const { data, error } = await getSupabaseClient().auth.getUser(token);
+        if (error || !data.user?.email_confirmed_at) {
+          return "no pudimos verificar la confirmación. intenta iniciar sesión o solicita un nuevo enlace.";
+        }
+        return "email confirmado. ya puedes iniciar sesión en magma con tu email y contraseña.";
+      })().catch(() => "no pudimos comprobar tu email. revisa tu conexión e intenta iniciar sesión.");
+    }
+    confirmationCheck.current.then(message => { if (active) setConfirmation(message); });
+    return () => { active = false; };
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -84,10 +96,16 @@ function LoginForm() {
       <div className="w-full max-w-sm flex flex-col gap-8">
         {/* Logo */}
         <div className="flex justify-center">
-          <Link href="/">
+          <Link href="/" className="origin-center scale-[1.05]">
             <MagmaLogo />
           </Link>
         </div>
+
+        {confirmation && (
+          <p role="status" aria-live="polite" style={{ borderLeft: "3px solid #ff5638", padding: "12px 16px", color: "#fff", background: "#191513", fontSize: "14px", lineHeight: 1.6 }}>
+            {confirmation}
+          </p>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
@@ -122,8 +140,8 @@ function LoginForm() {
           {error && (
             <p
               style={{
-                fontSize: "11px",
-                color: "#D85A30",
+                fontSize: "var(--magma-text-small)",
+                color: "var(--magma-ash)",
                 fontFamily: "var(--font-space-mono), monospace",
               }}
             >
@@ -131,13 +149,13 @@ function LoginForm() {
             </p>
           )}
 
-          <button
+          <button data-magma-glow={/magma-(red|orange|hot)|#E12120|#7f77dd/i.test(String("var(--magma-red)"))}
             type="submit"
             disabled={loading}
             className="w-full py-3 text-xs tracking-widest uppercase cursor-pointer transition-opacity duration-150 hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
-              backgroundColor: "#D85A30",
-              color: "#0c0c0b",
+              backgroundColor: "var(--magma-red)",
+              color: "var(--magma-ash)",
               fontFamily: "var(--font-space-mono), monospace",
               marginTop: "4px",
             }}
@@ -150,23 +168,23 @@ function LoginForm() {
         <div className="flex flex-col gap-2 items-center">
           <p
             className="text-center text-xs"
-            style={{ color: "#5F5E5A", fontFamily: "var(--font-space-mono), monospace" }}
+            style={{ color: "var(--magma-muted)", fontFamily: "var(--font-space-mono), monospace" }}
           >
             ¿no tienes cuenta?{" "}
             <Link
               href="/auth/register"
-              style={{ color: "#888780", textDecoration: "underline" }}
+              style={{ color: "var(--magma-muted)", textDecoration: "underline" }}
             >
               únete
             </Link>
           </p>
           <p
             className="text-center text-xs"
-            style={{ color: "#5F5E5A", fontFamily: "var(--font-space-mono), monospace" }}
+            style={{ color: "var(--magma-muted)", fontFamily: "var(--font-space-mono), monospace" }}
           >
             <Link
               href="/auth/forgot-password"
-              style={{ color: "#888780", textDecoration: "underline" }}
+              style={{ color: "var(--magma-muted)", textDecoration: "underline" }}
             >
               ¿olvidaste tu contraseña?
             </Link>
