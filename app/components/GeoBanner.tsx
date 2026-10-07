@@ -29,10 +29,10 @@ export function GeoBanner() {
     <div
       style={{
         backgroundColor: "#1a1012",
-        borderBottom: "0.5px solid #D85A30",
-        color: "#D85A30",
+        borderBottom: "0.5px solid #E12120",
+        color: "var(--magma-ash)",
         fontFamily: mono,
-        fontSize: "11px",
+        fontSize: "var(--magma-text-small)",
         padding: "10px 24px",
         display: "flex",
         alignItems: "center",
@@ -47,10 +47,10 @@ export function GeoBanner() {
         style={{
           background: "none",
           border: "none",
-          color: "#D85A30",
+          color: "var(--magma-ash)",
           cursor: "pointer",
           fontFamily: "inherit",
-          fontSize: "11px",
+          fontSize: "var(--magma-text-small)",
           padding: 0,
         }}
       >

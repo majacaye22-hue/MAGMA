@@ -1,18 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import type { Post } from "./card-art";
-
-function isToday(dateStr: string | null): boolean {
-  if (!dateStr) return false;
-  const d = new Date(dateStr);
-  const now = new Date();
-  return (
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
-  );
-}
+import { FeedImage } from "./FeedImage";
+import { type EventPreview } from "@/lib/event-preview";
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
@@ -20,96 +10,84 @@ function formatDate(dateStr: string): string {
     weekday: "long",
     day: "numeric",
     month: "long",
+    timeZone: "America/Mexico_City",
   });
 }
 
 function formatTime(dateStr: string): string {
   const d = new Date(dateStr);
-  return d.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", hour12: false });
+  return d.toLocaleTimeString("es-MX", { timeZone: "America/Mexico_City", hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
-export function FlyerCard({ post, state }: { post: Post; state?: "sala" | "próximo" | "archivo" | "sin-fecha" }) {
-  const today = isToday(post.event_date);
-  const isLive = state === "sala";
+export function FlyerCard({ post, eager = false }: { post: EventPreview; state?: "sala" | "próximo" | "archivo" | "sin-fecha"; now: number; eager?: boolean }) {
 
   return (
-    <div
-      className="group relative break-inside-avoid cursor-pointer"
-      style={{ border: "0.5px solid #2a2a28", marginBottom: "8px", backgroundColor: "#141412" }}
+    <Link
+      href={`/post/${post.id}`}
+      aria-label={`Ver evento: ${post.title ?? "sin título"}`}
+      className="group relative block break-inside-avoid cursor-pointer overflow-hidden rounded-[2px] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--magma-red)]"
+      style={{ border: "1px solid #49463f", padding: "10px", backgroundColor: "#10100f" }}
     >
-      {/* Flyer image — natural portrait height, no cropping */}
+      {/* Consistent portrait frame; preserve every poster's full artwork. */}
+      <div style={{ width: "100%", aspectRatio: "3 / 4", backgroundColor: "#090909", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
       {post.media_url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <FeedImage
           src={post.media_url}
+          mediaType={post.media_type}
+          sizes="(max-width: 639px) calc(100vw - 40px), (max-width: 1023px) calc((100vw - 82px) / 2), (max-width: 1279px) calc((100vw - 100px) / 3), 394px"
           alt={post.title ?? ""}
-          style={{ width: "100%", display: "block", objectFit: "contain" }}
-          loading="lazy"
+          style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
+          loading={eager ? "eager" : "lazy"}
+          fetchPriority={eager ? "high" : "auto"}
         />
       ) : (
         <div
-          style={{ height: "320px", display: "flex", alignItems: "center", justifyContent: "center" }}
+          style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}
         >
-          <span style={{ fontSize: "9px", color: "#444441", fontFamily: "var(--font-space-mono), monospace", letterSpacing: "0.2em", textTransform: "uppercase" }}>
+          <span style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: "var(--font-space-mono), monospace", letterSpacing: "0.2em", textTransform: "uppercase" }}>
             sin flyer
           </span>
         </div>
       )}
 
-      {(today || isLive || state === "archivo") && (
-        <span
-          className="absolute top-3 right-3 px-2 py-0.5 text-[9px] tracking-widest uppercase"
-          style={{
-            backgroundColor: isLive ? "#5DCAA5" : state === "archivo" ? "#141412" : "#D85A30",
-            border: state === "archivo" ? "0.5px solid #5F5E5A" : "none",
-            color: isLive || today ? "#0c0c0b" : "#888780",
-            fontFamily: "var(--font-space-mono), monospace",
-          }}
-        >
-          {isLive ? "sala abierta" : state === "archivo" ? "archivo" : "hoy"}
-        </span>
-      )}
-
-      {/* Hover overlay */}
+      </div>
+      {/* Persistent archive caption: readable on touch and never covers the poster. */}
       <div
-        className="absolute inset-0 flex flex-col justify-end p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-        style={{ background: "linear-gradient(to top, rgba(12,12,11,0.96) 0%, rgba(12,12,11,0.6) 60%, transparent 100%)" }}
+        className="flex flex-col pt-3"
       >
         <p
           className="leading-tight mb-2"
-          style={{ fontSize: "15px", color: "#e8e4dc", fontFamily: "var(--font-syne), sans-serif", fontWeight: 800 }}
+          style={{ fontSize: "16px", color: "#ffffff", fontFamily: "var(--font-syne), sans-serif", fontWeight: 800 }}
         >
           {post.title}
         </p>
 
         {post.event_date && (
-          <p style={{ fontSize: "10px", color: "#EF9F27", fontFamily: "var(--font-space-mono), monospace", marginBottom: "2px" }}>
+          <p style={{ fontSize: "12px", color: "#ffffff", fontFamily: "var(--font-space-mono), monospace", marginBottom: "4px" }}>
             {formatDate(post.event_date)} · {formatTime(post.event_date)}
           </p>
         )}
 
         {(post.venue || post.address) && (
-          <p style={{ fontSize: "10px", color: "#888780", fontFamily: "var(--font-space-mono), monospace", marginBottom: "8px" }}>
+          <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: "var(--font-space-mono), monospace", marginBottom: "8px" }}>
             {[post.venue, post.address].filter(Boolean).join(" — ")}
           </p>
         )}
 
         <div className="flex items-center justify-between">
           {post.is_free != null && (
-            <span style={{ fontSize: "9px", color: post.is_free ? "#5DCAA5" : "#888780", fontFamily: "var(--font-space-mono), monospace", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+            <span style={{ fontSize: "var(--magma-text-small)", color: post.is_free ? "var(--magma-ash)" : "var(--magma-muted)", fontFamily: "var(--font-space-mono), monospace", textTransform: "uppercase", letterSpacing: "0.1em" }}>
               {post.is_free ? "entrada libre" : post.price ? `$${post.price}` : "de paga"}
             </span>
           )}
-          <Link
-            href={`/post/${post.id}`}
-            className="text-[9px] tracking-widest uppercase"
-            style={{ color: "#888780", fontFamily: "var(--font-space-mono), monospace", textDecoration: "underline" }}
-            onClick={(e) => e.stopPropagation()}
+          <span
+            className="text-xs tracking-widest uppercase"
+            style={{ color: "var(--magma-red)", fontWeight: 700, fontFamily: "var(--font-space-mono), monospace", textDecoration: "underline" }}
           >
             ver más
-          </Link>
+          </span>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }

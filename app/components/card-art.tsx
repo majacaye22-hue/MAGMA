@@ -1,23 +1,35 @@
 "use client";
 
 import { useState } from "react";
+import { PostImage } from "./PostImage";
 import Link from "next/link";
+import { MentionText } from "./MentionText";
 import { ReportModal } from "./ReportModal";
 import { BookmarkButton } from "./BookmarkButton";
+import { SensitiveContentGate } from "./SensitiveContentGate";
+import { PostInteractionBar } from "./PostInteractionBar";
+import { SoundCloudEmbed } from "./SoundCloudEmbed";
+import { PhotoCarousel } from "./PhotoCarousel";
+import { postImages } from "@/lib/post-images";
+import { FeedImage } from "./FeedImage";
+import { FeedVideo } from "./FeedVideo";
 
 export type CardType = "arte" | "música" | "foto" | "evento" | "video";
 
 // ─── Supabase post shape ─────────────────────────────────────────────────────
 
 export interface Post {
+  audience_colectivo_id?: string | null;
   id: string;
   title: string | null;
   body: string | null;
   content: string | null;
   type: string;
   media_url: string | null;
+  image_urls?: string[] | null;
   media_base64: string | null;
   media_type: string | null;
+  soundcloud_url: string | null;
   cover_url: string | null;
   tags: string[] | null;
   upvotes: number;
@@ -32,6 +44,9 @@ export interface Post {
   open_collab: boolean | null;
   collab_description: string | null;
   comments_enabled: boolean | null;
+  is_sensitive: boolean | null;
+  moderation_status?: "pending" | "approved" | "rejected";
+  moderation_note?: string | null;
 }
 
 export interface CardData {
@@ -79,19 +94,19 @@ export function ArteArt() {
       preserveAspectRatio="xMidYMid slice"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <circle cx="200" cy="200" r="148" fill="none" stroke="#D85A30" strokeOpacity="0.07" strokeWidth="0.5" />
-      <circle cx="200" cy="200" r="108" fill="none" stroke="#D85A30" strokeOpacity="0.09" strokeWidth="0.5" />
-      <circle cx="200" cy="200" r="68"  fill="none" stroke="#D85A30" strokeOpacity="0.11" strokeWidth="0.5" />
-      <circle cx="200" cy="200" r="28"  fill="none" stroke="#D85A30" strokeOpacity="0.14" strokeWidth="0.5" />
-      <circle cx="200" cy="200" r="6"   fill="#D85A30" fillOpacity="0.12" />
-      <circle cx="310" cy="105" r="52"  fill="none" stroke="#D85A30" strokeOpacity="0.06" strokeWidth="0.5" />
-      <rect x="130" y="130" width="140" height="140" fill="none" stroke="#D85A30" strokeOpacity="0.05" strokeWidth="0.5" transform="rotate(22 200 200)" />
-      <line x1="0"  y1="400" x2="400" y2="0"  stroke="#D85A30" strokeOpacity="0.04" strokeWidth="0.5" />
-      <line x1="0"  y1="340" x2="340" y2="0"  stroke="#D85A30" strokeOpacity="0.03" strokeWidth="0.5" />
-      <line x1="60" y1="400" x2="400" y2="60" stroke="#D85A30" strokeOpacity="0.03" strokeWidth="0.5" />
-      <circle cx="318" cy="298" r="4"   fill="#D85A30" fillOpacity="0.18" />
-      <circle cx="330" cy="290" r="2.5" fill="#D85A30" fillOpacity="0.11" />
-      <circle cx="312" cy="312" r="1.8" fill="#D85A30" fillOpacity="0.09" />
+      <circle cx="200" cy="200" r="148" fill="none" stroke="#C94B35" strokeOpacity="0.07" strokeWidth="0.5" />
+      <circle cx="200" cy="200" r="108" fill="none" stroke="#C94B35" strokeOpacity="0.09" strokeWidth="0.5" />
+      <circle cx="200" cy="200" r="68"  fill="none" stroke="#C94B35" strokeOpacity="0.11" strokeWidth="0.5" />
+      <circle cx="200" cy="200" r="28"  fill="none" stroke="#C94B35" strokeOpacity="0.14" strokeWidth="0.5" />
+      <circle cx="200" cy="200" r="6"   fill="#C94B35" fillOpacity="0.12" />
+      <circle cx="310" cy="105" r="52"  fill="none" stroke="#C94B35" strokeOpacity="0.06" strokeWidth="0.5" />
+      <rect x="130" y="130" width="140" height="140" fill="none" stroke="#C94B35" strokeOpacity="0.05" strokeWidth="0.5" transform="rotate(22 200 200)" />
+      <line x1="0"  y1="400" x2="400" y2="0"  stroke="#C94B35" strokeOpacity="0.04" strokeWidth="0.5" />
+      <line x1="0"  y1="340" x2="340" y2="0"  stroke="#C94B35" strokeOpacity="0.03" strokeWidth="0.5" />
+      <line x1="60" y1="400" x2="400" y2="60" stroke="#C94B35" strokeOpacity="0.03" strokeWidth="0.5" />
+      <circle cx="318" cy="298" r="4"   fill="#C94B35" fillOpacity="0.18" />
+      <circle cx="330" cy="290" r="2.5" fill="#C94B35" fillOpacity="0.11" />
+      <circle cx="312" cy="312" r="1.8" fill="#C94B35" fillOpacity="0.09" />
     </svg>
   );
 }
@@ -118,12 +133,12 @@ export function MusicaArt() {
       preserveAspectRatio="xMidYMid meet"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <line x1={startX} y1={centerY} x2={startX + heights.length * step - barGap} y2={centerY} stroke="#5DCAA5" strokeOpacity="0.15" strokeWidth="0.5" />
+      <line x1={startX} y1={centerY} x2={startX + heights.length * step - barGap} y2={centerY} stroke="var(--magma-orange)" strokeOpacity="0.15" strokeWidth="0.5" />
       {heights.map((h, i) => {
         const half = (h / 100) * maxHalf;
         const x = startX + i * step;
         return (
-          <rect key={i} x={x} y={centerY - half} width={barW} height={half * 2} fill="#5DCAA5" fillOpacity={0.3 + (h / 100) * 0.6} rx="0.5" />
+          <rect key={i} x={x} y={centerY - half} width={barW} height={half * 2} fill="var(--magma-orange)" fillOpacity={0.3 + (h / 100) * 0.6} rx="0.5" />
         );
       })}
     </svg>
@@ -178,16 +193,16 @@ export function EventoArt() {
       preserveAspectRatio="xMidYMid slice"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <text x="-8" y="236" fontSize="168" fontWeight="900" fill="#e8e4dc" fillOpacity="0.025" fontFamily="ui-sans-serif, system-ui, sans-serif" letterSpacing="-8">NOC</text>
+      <text x="-8" y="236" fontSize="168" fontWeight="900" fill="#F2F4F8" fillOpacity="0.025" fontFamily="ui-sans-serif, system-ui, sans-serif" letterSpacing="-8">NOC</text>
       <line x1="40" y1="162" x2="360" y2="162" stroke="#888780" strokeOpacity="0.18" strokeWidth="0.8" />
       <line x1="40" y1="165" x2="360" y2="165" stroke="#888780" strokeOpacity="0.08" strokeWidth="0.5" />
       <text x="40" y="194" fontSize="9.5" fill="#888780" fillOpacity="0.42" fontFamily="ui-monospace, monospace" letterSpacing="3.5">VIERNES 22.05.26</text>
       <text x="40" y="214" fontSize="9.5" fill="#888780" fillOpacity="0.28" fontFamily="ui-monospace, monospace" letterSpacing="3.5">22:00 — 04:00 HRS</text>
       <text x="40" y="238" fontSize="9.5" fill="#888780" fillOpacity="0.18" fontFamily="ui-monospace, monospace" letterSpacing="3.5">CDMX / COL. ROMA NORTE</text>
       <line x1="40" y1="252" x2="360" y2="252" stroke="#888780" strokeOpacity="0.1" strokeWidth="0.5" />
-      <rect x="40" y="274" width="9" height="9" fill="#D85A30" fillOpacity="0.18" />
-      <rect x="55" y="274" width="9" height="9" fill="#D85A30" fillOpacity="0.10" />
-      <rect x="70" y="274" width="9" height="9" fill="#D85A30" fillOpacity="0.05" />
+      <rect x="40" y="274" width="9" height="9" fill="#C94B35" fillOpacity="0.18" />
+      <rect x="55" y="274" width="9" height="9" fill="#C94B35" fillOpacity="0.10" />
+      <rect x="70" y="274" width="9" height="9" fill="#C94B35" fillOpacity="0.05" />
     </svg>
   );
 }
@@ -232,17 +247,17 @@ function EventoPlaceholder({ post }: { post: Post }) {
       </svg>
       <p
         className="relative text-center leading-tight"
-        style={{ fontSize: "24px", color: "#e8e4dc", fontFamily: "var(--font-syne), sans-serif", fontWeight: 800 }}
+        style={{ fontSize: "24px", color: "#F2F4F8", fontFamily: "var(--font-syne), sans-serif", fontWeight: 800 }}
       >
         {post.title}
       </p>
       {dateStr && (
-        <p className="relative text-xs tracking-widest uppercase" style={{ color: "#D85A30", fontFamily: "var(--font-space-mono), monospace" }}>
+        <p className="relative text-xs tracking-widest uppercase" style={{ color: "#C94B35", fontFamily: "var(--font-space-mono), monospace" }}>
           {dateStr}
         </p>
       )}
       {post.venue && (
-        <p className="relative text-xs" style={{ color: "#888780", fontFamily: "var(--font-space-mono), monospace" }}>
+        <p className="relative text-xs" style={{ color: "var(--magma-muted)", fontFamily: "var(--font-space-mono), monospace" }}>
           {post.venue}
         </p>
       )}
@@ -264,14 +279,13 @@ function MusicPostSurface({ post, audioSrc }: { post: Post; audioSrc: string }) 
     <div style={{ backgroundColor: "#141412", position: "relative" }}>
       <div style={{ aspectRatio: "1 / 1", overflow: "hidden", position: "relative" }}>
         {post.cover_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <FeedImage
             src={post.cover_url}
             alt={post.title ? `Portada de ${post.title}` : "Portada de música"}
             style={{ display: "block", height: "100%", objectFit: "cover", width: "100%" }}
           />
         ) : (
-          <div className="flex items-center justify-center" style={{ background: "#141412", color: "#5F5E5A", fontFamily: "var(--font-space-mono), monospace", fontSize: "10px", height: "100%", letterSpacing: "0.12em", textTransform: "uppercase" }}>
+          <div className="flex items-center justify-center" style={{ background: "#141412", color: "var(--magma-muted)", fontFamily: "var(--font-space-mono), monospace", fontSize: "var(--magma-text-small)", height: "100%", letterSpacing: "0.12em", textTransform: "uppercase" }}>
             sin portada
           </div>
         )}
@@ -280,7 +294,7 @@ function MusicPostSurface({ post, audioSrc }: { post: Post; audioSrc: string }) 
         <audio
           controls
           src={audioSrc}
-          style={{ accentColor: "#5DCAA5", display: "block", height: "28px", width: "100%" }}
+          style={{ accentColor: "var(--magma-orange)", display: "block", height: "28px", position: "relative", width: "100%", zIndex: 30 }}
           onClick={(event) => event.stopPropagation()}
         />
       </div>
@@ -299,15 +313,15 @@ function EventoHoverOverlay({ post, showFlag, onFlag, currentUserId }: { post: P
   return (
     <div
       className="absolute inset-0 z-20 flex flex-col justify-between p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-      style={{ background: "rgba(12,12,11,0.88)" }}
+      style={{ background: "rgba(12,12,11,0.88)", pointerEvents: "none" }}
     >
-      <div className="flex justify-end items-center gap-1">
+      <div className="flex justify-end items-center gap-1" style={{ pointerEvents: "auto" }}>
         <BookmarkButton postId={post.id} currentUserId={currentUserId ?? null} size={12} />
         {showFlag && (
           <button
             onClick={(e) => { e.stopPropagation(); onFlag(); }}
             className="cursor-pointer hover:opacity-70"
-            style={{ color: "#5F5E5A", background: "none", border: "none", padding: "2px", lineHeight: 0 }}
+            style={{ color: "var(--magma-muted)", background: "none", border: "none", padding: "2px", lineHeight: 0 }}
             title="reportar"
           >
             <FlagIcon />
@@ -315,23 +329,23 @@ function EventoHoverOverlay({ post, showFlag, onFlag, currentUserId }: { post: P
         )}
       </div>
       <div className="flex flex-col gap-1.5">
-        <p className="leading-snug" style={{ fontSize: "16px", color: "#e8e4dc", fontFamily: "var(--font-syne), sans-serif", fontWeight: 800 }}>
+        <p className="leading-snug" style={{ fontSize: "16px", color: "#F2F4F8", fontFamily: "var(--font-syne), sans-serif", fontWeight: 800 }}>
           {post.title}
         </p>
         {dateStr && (
-          <p className="text-[10px] tracking-wide" style={{ color: "#D85A30", fontFamily: "var(--font-space-mono), monospace" }}>
+          <p className="text-xs tracking-wide" style={{ color: "#C94B35", fontFamily: "var(--font-space-mono), monospace" }}>
             {dateStr}{timeStr ? ` · ${timeStr}` : ""}
           </p>
         )}
         {(post.venue || post.address) && (
-          <p className="text-[10px]" style={{ color: "#888780", fontFamily: "var(--font-space-mono), monospace" }}>
+          <p className="text-xs" style={{ color: "var(--magma-muted)", fontFamily: "var(--font-space-mono), monospace" }}>
             {[post.venue, post.address].filter(Boolean).join(" — ")}
           </p>
         )}
         <Link
           href={`/post/${post.id}`}
-          className="text-[9px] tracking-widest uppercase mt-1 self-start"
-          style={{ color: "#EF9F27", fontFamily: "var(--font-space-mono), monospace", textDecoration: "underline" }}
+          className="text-xs tracking-widest uppercase mt-1 self-start"
+          style={{ color: "#EF9F27", fontFamily: "var(--font-space-mono), monospace", pointerEvents: "auto", textDecoration: "underline" }}
           onClick={(e) => e.stopPropagation()}
         >
           ver evento →
@@ -343,56 +357,28 @@ function EventoHoverOverlay({ post, showFlag, onFlag, currentUserId }: { post: P
 
 // ─── Escrito card (text-only) ────────────────────────────────────────────────
 
-function EscritoCardInner({ post, currentUserId }: { post: Post; currentUserId?: string | null }) {
-  const [reporting, setReporting] = useState(false);
-
+function EscritoCardInner({ post, currentUserId, light = false }: { post: Post; currentUserId?: string | null; light?: boolean }) {
   const preview = post.content
     ? stripHtml(post.content).slice(0, 300)
     : (post.body?.slice(0, 300) ?? "");
 
   return (
-    <>
-    <Link href={`/post/${post.id}`} style={{ textDecoration: "none", display: "block" }}>
+    <div className="magma-vein-card relative overflow-hidden" style={{ borderRadius: light ? "10px" : "8px" }}>
+    <div className="relative">
+      <Link href={`/post/${post.id}`} aria-label={`abrir ${post.title || "letra"}`} className="absolute inset-0 z-10" />
       <div
         className="group relative cursor-pointer flex flex-col gap-3"
         style={{
-          backgroundColor: "#0e0e0d",
-          borderLeft: "2px solid #D85A30",
-          padding: "20px",
+          backgroundColor: "#e3e7ec",
+          padding: "24px",
           breakInside: "avoid",
         }}
       >
-        {/* Tag row */}
-        <div className="flex items-center justify-between">
-          <span style={{
-            fontSize: "9px",
-            color: "#D85A30",
-            fontFamily: "var(--font-space-mono), monospace",
-            textTransform: "uppercase",
-            letterSpacing: "0.16em",
-          }}>
-            letra
-          </span>
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <BookmarkButton postId={post.id} currentUserId={currentUserId ?? null} size={12} />
-            {currentUserId && (
-              <button
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setReporting(true); }}
-                className="cursor-pointer hover:opacity-70"
-                style={{ color: "#5F5E5A", background: "none", border: "none", padding: "2px", lineHeight: 0 }}
-                title="reportar"
-              >
-                <FlagIcon />
-              </button>
-            )}
-          </div>
-        </div>
-
         {/* Title */}
         {post.title && (
           <p style={{
-            fontSize: "17px",
-            color: "#e8e4dc",
+            fontSize: "18px",
+            color: "#000000",
             fontFamily: "var(--font-syne), sans-serif",
             fontWeight: 800,
             lineHeight: 1.15,
@@ -405,43 +391,61 @@ function EscritoCardInner({ post, currentUserId }: { post: Post; currentUserId?:
         {/* Preview */}
         {preview && (
           <p style={{
-            fontSize: "11px",
-            color: "#5F5E5A",
+            fontSize: "18px",
+            color: "#000000",
             fontFamily: "var(--font-space-mono), monospace",
+            whiteSpace: "pre-wrap",
             lineHeight: 1.7,
             display: "-webkit-box",
             WebkitLineClamp: 6,
             WebkitBoxOrient: "vertical",
             overflow: "hidden",
           }}>
-            {preview}{preview.length >= 300 ? "…" : ""}
+            <MentionText text={preview} />{preview.length >= 300 ? "…" : ""}
           </p>
         )}
 
         {/* Author */}
         <span style={{
-          fontSize: "10px",
-          color: "#2a2a28",
+          fontSize: "var(--magma-text-small)",
+          color: "#000000",
           fontFamily: "var(--font-space-mono), monospace",
           marginTop: "4px",
         }}>
           @{post.profiles?.username ?? "anon"}
         </span>
+        <span style={{ fontFamily: "var(--font-space-mono), monospace", fontSize: "12px", color: "#a12620", marginTop: "8px" }}>seguir leyendo →</span>
       </div>
-    </Link>
-    {reporting && currentUserId && (
-      <ReportModal postId={post.id} currentUserId={currentUserId} onClose={() => setReporting(false)} />
-    )}
-    </>
+    </div>
+    <div className="magma-editorial-actions" style={{ backgroundColor: "#111110", padding: "0 16px" }}>
+      <PostInteractionBar
+        echoAllowed={post.audience_colectivo_id === null && post.moderation_status === "approved"}
+        postId={post.id}
+        postAuthorId={post.author_id}
+        currentUserId={currentUserId ?? null}
+        initialAppreciations={post.upvotes}
+        commentsEnabled={post.comments_enabled !== false}
+        compact
+        light={light}
+        showDivider={false}
+      />
+    </div>
+    </div>
   );
 }
 
-export function PostCard({ post, index, total, currentUserId }: { post: Post; index: number; total: number; currentUserId?: string | null }) {
+export function PostCard({ post, index, total, currentUserId, stream = true, editorialSize = "archive", fitEvent = false, fitMedia = false }: { post: Post; index: number; total: number; currentUserId?: string | null; stream?: boolean; editorialSize?: "lead" | "support" | "archive"; fitEvent?: boolean; fitMedia?: boolean }) {
   const [reporting, setReporting] = useState(false);
+  const images = postImages(post);
+  const mediaSrc = post.media_url ?? post.media_base64 ?? null;
 
   // Escrito posts use their own card layout
   if (post.type === "escrito") {
-    return <EscritoCardInner post={post} currentUserId={currentUserId} />;
+    return (
+      <SensitiveContentGate enabled={post.is_sensitive === true} postId={post.id} compact>
+        <EscritoCardInner post={post} currentUserId={currentUserId} light={stream} />
+      </SensitiveContentGate>
+    );
   }
 
   // Single-card view: always render 1×1 so it sits in the top-left cell.
@@ -450,8 +454,8 @@ export function PostCard({ post, index, total, currentUserId }: { post: Post; in
   const cardType = postCardType(post.type);
   const isEvento = post.type === "evento";
   const isMusica = post.type === "música";
+  const hasSoundCloud = isMusica && !!post.soundcloud_url;
   const isVideoPost = post.type === "video";
-  const mediaSrc = post.media_url ?? post.media_base64 ?? null;
   const isAudio = !!mediaSrc && (post.media_type?.startsWith("audio/") || isMusica);
   const isVideoMedia = !!mediaSrc && (post.media_type?.startsWith("video/") || isVideoPost);
   const showImage =
@@ -459,7 +463,6 @@ export function PostCard({ post, index, total, currentUserId }: { post: Post; in
     !isAudio &&
     !isVideoMedia &&
     (post.type === "arte" || post.type === "fotografía" || isEvento);
-  const isGif = post.media_url?.toLowerCase().endsWith(".gif") ?? false;
 
   // Evento, image, and video cards always span 2 rows so portrait content isn't tiny.
   const rowSpan = (isEvento || isVideoMedia || (showImage && baseRowSpan < 2)) ? 2 as const : baseRowSpan;
@@ -468,80 +471,120 @@ export function PostCard({ post, index, total, currentUserId }: { post: Post; in
     post.profiles?.display_name ?? post.profiles?.username
       ? `@${post.profiles!.username}`
       : null;
+  const caption = post.body?.trim() || (post.content ? stripHtml(post.content) : "");
+  const compactEditorial = stream && editorialSize !== "lead";
 
   return (
     <>
     {/* min-w-0 / min-h-0 prevent the grid item from ever growing to fit
         the image's intrinsic dimensions — the grid row/column sizes win. */}
+    <SensitiveContentGate enabled={post.is_sensitive === true} postId={post.id} compact>
     <div
-      className="group relative overflow-hidden cursor-pointer"
+      className="magma-vein-card group relative overflow-hidden cursor-pointer"
       style={{
-        backgroundColor: "#141412",
-        border: "0.5px solid #2a2a28",
+        backgroundColor: stream ? "#111110" : "var(--magma-rock)",
+        border: `0.5px solid ${stream ? "#493d44" : "var(--magma-border)"}`,
+        borderRadius: "2px",
+        width: fitEvent && isEvento ? "fit-content" : undefined,
+        maxWidth: "100%",
       }}
-      onClick={() => { window.location.href = `/post/${post.id}`; }}
     >
+      <Link
+        href={`/post/${post.id}`}
+        aria-label={`Abrir ${post.title || "publicación"}`}
+        className="absolute inset-0 z-[15]"
+      />
       {/* Media layer */}
-      {isAudio && mediaSrc ? (
+      {hasSoundCloud ? (
+        <SoundCloudEmbed url={post.soundcloud_url!} compact={compactEditorial} />
+      ) : isAudio && mediaSrc ? (
         <MusicPostSurface post={post} audioSrc={mediaSrc} />
       ) : isVideoMedia && mediaSrc ? (
-        <div style={{ position: "relative", width: "100%", height: "480px", overflow: "hidden", backgroundColor: "#0c0c0b" }}>
-          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-          <video
-            src={mediaSrc}
-            autoPlay
-            muted
-            loop
-            playsInline
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-          />
+        <div style={{ position: "relative", width: "100%", overflow: "hidden", backgroundColor: "var(--magma-obsidian)" }}>
+          <FeedVideo key={mediaSrc} src={mediaSrc} />
         </div>
+      ) : images.length > 1 ? (
+        <PhotoCarousel key={images.join("|")} images={images} title={post.title ?? ""} href={`/post/${post.id}`} eager={index === 0} fitScreen={fitMedia} />
       ) : showImage ? (
-        isEvento ? (
-          <div style={{ position: "relative", width: "100%", height: "480px", overflow: "hidden" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+        fitMedia ? <PostImage src={mediaSrc!} alt={post.title ?? ""} mediaType={post.media_type} /> : isEvento ? (
+          <div style={{ position: "relative", width: "100%", overflow: "hidden" }}>
+            <FeedImage
               src={mediaSrc!}
               alt={post.title ?? ""}
-              style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" }}
-              {...(!isGif && { loading: "lazy" as const })}
+              style={{ display: "block", width: fitEvent ? "auto" : "100%", height: "auto", maxWidth: "100%", maxHeight: fitEvent ? "max(200px, calc(100svh - 220px))" : undefined, objectFit: "contain" }}
+              mediaType={post.media_type}
+              loading={index === 0 ? "eager" : "lazy"}
+              fetchPriority={index === 0 ? "high" : "auto"}
             />
           </div>
         ) : (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={mediaSrc!}
-            alt={post.title ?? ""}
-            style={{ width: "100%", height: "auto", display: "block" }}
-            {...(!isGif && { loading: "lazy" as const })}
-          />
+          <div style={{ position: "relative", width: "100%", height: "auto", overflow: "hidden", backgroundColor: stream ? "var(--magma-obsidian)" : undefined }}>
+            <FeedImage
+              src={mediaSrc!}
+              alt={post.title ?? ""}
+              style={{ width: "100%", height: "auto", objectFit: "contain", display: "block" }}
+              mediaType={post.media_type}
+              sizes={compactEditorial || !stream ? undefined : "(max-width: 767px) 100vw, 800px"}
+              loading={index === 0 ? "eager" : "lazy"}
+              fetchPriority={index === 0 ? "high" : "auto"}
+            />
+          </div>
         )
       ) : (
-        <div style={{ width: "100%", aspectRatio: "1/1" }}>
+        <div style={{ width: "100%", aspectRatio: "1/1", maxHeight: stream ? "min(70vh, 720px)" : undefined }}>
           <PostCardArt post={post} cardType={cardType} />
         </div>
       )}
 
-      {/* Type badge + collab badge */}
+      {stream && (showImage || isVideoMedia) && post.title && (
+        <div style={{ padding: "18px 16px 8px", position: "relative", zIndex: 20 }}>
+          <h2 style={{ color: "var(--magma-ash)", fontFamily: "var(--font-syne), sans-serif", fontSize: "16px", fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.3, margin: 0, overflowWrap: "anywhere" }}>
+            {post.title}
+          </h2>
+        </div>
+      )}
+
+      {stream && (
+        <div className="magma-editorial-actions" style={{ padding: "0 12px", position: "relative", zIndex: 30 }}>
+          <PostInteractionBar
+            echoAllowed={post.audience_colectivo_id === null && post.moderation_status === "approved"}
+            postId={post.id}
+            postAuthorId={post.author_id}
+            currentUserId={currentUserId ?? null}
+            initialAppreciations={post.upvotes}
+            commentsEnabled={post.comments_enabled !== false}
+            showDivider={false}
+            compact
+            light
+          />
+        </div>
+      )}
+
+      {stream && caption && (
+        <div style={{ padding: "8px 14px 14px", position: "relative", zIndex: 20 }}>
+          <p style={{ color: "var(--magma-muted)", fontFamily: "var(--font-space-mono), monospace", fontSize: "var(--magma-text-small)", lineHeight: 1.65, margin: 0 }}>
+            <Link href={`/profile/${post.profiles?.username ?? "anon"}`} style={{ color: "var(--magma-ash)", fontWeight: 700, marginRight: "7px", textDecoration: "none" }}>
+              @{post.profiles?.username ?? "anon"}
+            </Link>
+            <span style={{ display: "-webkit-inline-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 3, overflow: "hidden", verticalAlign: "top" }}>
+              <MentionText text={caption} />
+            </span>
+            <Link href={`/post/${post.id}`} style={{ color: "var(--magma-red)", fontWeight: 700, marginLeft: "7px", textDecoration: "none", whiteSpace: "nowrap" }}>
+              ver más
+            </Link>
+          </p>
+        </div>
+      )}
+
+      {/* Collaboration status only; categories live above the cards. */}
       <div className="absolute top-3 left-3 z-10 flex gap-1.5">
-        <span
-          className="px-2 py-0.5 text-[10px] uppercase tracking-widest border"
-          style={{
-            background: "rgba(20,20,18,0.88)",
-            color: isVideoPost ? "#EF9F27" : "#888780",
-            borderColor: isVideoPost ? "#EF9F27" : "#2a2a28",
-            fontFamily: "var(--font-space-mono), monospace",
-          }}
-        >
-          {TYPE_LABEL[cardType]}
-        </span>
         {post.open_collab && (
           <span
-            className="px-2 py-0.5 text-[10px] uppercase tracking-widest border"
+            className="px-2 py-0.5 text-xs uppercase tracking-widest border"
             style={{
               background: "rgba(20,20,18,0.88)",
-              color: "#5DCAA5",
-              borderColor: "#5DCAA5",
+              color: "var(--magma-ash)",
+              borderColor: "var(--magma-orange)",
               fontFamily: "var(--font-space-mono), monospace",
             }}
           >
@@ -551,7 +594,7 @@ export function PostCard({ post, index, total, currentUserId }: { post: Post; in
       </div>
 
       {/* Hover overlay — evento gets a specialized one */}
-      {isEvento ? (
+      {!stream && (isEvento ? (
         <EventoHoverOverlay
           post={post}
           showFlag={!!currentUserId}
@@ -561,10 +604,10 @@ export function PostCard({ post, index, total, currentUserId }: { post: Post; in
       ) : (
         <div
           className="absolute inset-0 z-20 flex flex-col justify-between p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-          style={{ background: "rgba(12,12,11,0.85)" }}
+          style={{ background: "rgba(12,12,11,0.85)", pointerEvents: "none" }}
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs tabular-nums" style={{ color: "#D85A30", fontFamily: "var(--font-space-mono), monospace" }}>
+          <div className="flex items-center justify-between" style={{ pointerEvents: "auto" }}>
+            <span className="text-xs tabular-nums" style={{ color: "#C94B35", fontFamily: "var(--font-space-mono), monospace" }}>
               ↑ {post.upvotes.toLocaleString()}
             </span>
             <div className="flex items-center gap-1">
@@ -573,7 +616,7 @@ export function PostCard({ post, index, total, currentUserId }: { post: Post; in
                 <button
                   onClick={(e) => { e.stopPropagation(); setReporting(true); }}
                   className="cursor-pointer hover:opacity-70"
-                  style={{ color: "#5F5E5A", background: "none", border: "none", padding: "2px", lineHeight: 0 }}
+                  style={{ color: "var(--magma-muted)", background: "none", border: "none", padding: "2px", lineHeight: 0 }}
                   title="reportar"
                 >
                   <FlagIcon />
@@ -584,19 +627,20 @@ export function PostCard({ post, index, total, currentUserId }: { post: Post; in
           <div>
             <p
               className="leading-snug mb-2"
-              style={{ fontSize: "16px", color: "#e8e4dc", fontFamily: "var(--font-syne), sans-serif", fontWeight: 700 }}
+              style={{ fontSize: "14px", color: "#F2F4F8", fontFamily: "var(--font-syne), sans-serif", fontWeight: 700 }}
             >
               {post.title}
             </p>
             {authorDisplay && (
-              <span className="text-xs" style={{ color: "#888780", fontFamily: "var(--font-space-mono), monospace" }}>
+              <span className="text-xs" style={{ color: "var(--magma-muted)", fontFamily: "var(--font-space-mono), monospace" }}>
                 {authorDisplay}
               </span>
             )}
           </div>
         </div>
-      )}
+      ))}
     </div>
+    </SensitiveContentGate>
 
     {reporting && currentUserId && (
       <ReportModal
@@ -629,39 +673,26 @@ export function ArtCard({ card }: { card: CardData }) {
         <CardArt card={card} />
       </div>
 
-      {/* Type badge */}
-      <span
-        className="absolute top-3 left-3 z-10 px-2 py-0.5 text-[10px] uppercase tracking-widest border"
-        style={{ background: "rgba(20,20,18,0.88)", color: "#888780", borderColor: "#2a2a28", fontFamily: "var(--font-space-mono), monospace" }}
-      >
-        {TYPE_LABEL[card.type]}
-      </span>
-
       {/* Hover overlay */}
       <div
         className="absolute inset-0 z-20 flex flex-col justify-between p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
         style={{ background: "rgba(12,12,11,0.85)" }}
       >
         <div className="flex justify-end">
-          <span className="text-xs tabular-nums" style={{ color: "#D85A30", fontFamily: "var(--font-space-mono), monospace" }}>
+          <span className="text-xs tabular-nums" style={{ color: "#C94B35", fontFamily: "var(--font-space-mono), monospace" }}>
             ↑ {card.upvotes.toLocaleString()}
           </span>
         </div>
         <div>
-          <p className="leading-snug mb-3" style={{ fontSize: "16px", color: "#e8e4dc", fontFamily: "var(--font-syne), sans-serif", fontWeight: 700 }}>
+          <p className="leading-snug mb-3" style={{ fontSize: "16px", color: "#F2F4F8", fontFamily: "var(--font-syne), sans-serif", fontWeight: 700 }}>
             {card.title}
           </p>
           <div className="flex items-center gap-2.5">
-            <div
-              className="flex items-center justify-center shrink-0 text-[10px] font-bold"
-              style={{ width: "28px", height: "28px", borderRadius: "2px", backgroundColor: "#2a2a28", color: "#e8e4dc", fontFamily: "var(--font-syne), sans-serif" }}
-            >
-              {card.initials}
-            </div>
+
             <Link
               href={`/profile/${username}`}
               className="text-xs hover:underline"
-              style={{ color: "#888780", fontFamily: "var(--font-space-mono), monospace" }}
+              style={{ color: "var(--magma-muted)", fontFamily: "var(--font-space-mono), monospace" }}
               onClick={(e) => e.stopPropagation()}
             >
               {card.author}

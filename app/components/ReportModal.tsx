@@ -70,18 +70,18 @@ export function ReportModal({ postId, commentId, currentUserId, onClose }: Props
         {sent ? (
           /* ── Confirmation ── */
           <div className="flex flex-col gap-4">
-            <div style={{ width: "24px", height: "2px", backgroundColor: "#D85A30" }} />
-            <h2 style={{ fontSize: "16px", color: "#e8e4dc", fontFamily: syne, fontWeight: 700 }}>
+            <div style={{ width: "24px", height: "2px", backgroundColor: "#E12120" }} />
+            <h2 style={{ fontSize: "16px", color: "#F2F4F8", fontFamily: syne, fontWeight: 700 }}>
               reporte enviado
             </h2>
-            <p style={{ fontSize: "12px", color: "#5F5E5A", fontFamily: mono, lineHeight: 1.6 }}>
+            <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, lineHeight: 1.6 }}>
               gracias. cuidadorxs de la casa lo revisarán pronto.
             </p>
             <button
               onClick={onClose}
               style={{
-                fontSize: "10px",
-                color: "#888780",
+                fontSize: "var(--magma-text-small)",
+                color: "var(--magma-muted)",
                 fontFamily: mono,
                 background: "none",
                 border: "none",
@@ -99,13 +99,13 @@ export function ReportModal({ postId, commentId, currentUserId, onClose }: Props
           /* ── Form ── */
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             <div className="flex items-start justify-between gap-4">
-              <h2 style={{ fontSize: "16px", color: "#e8e4dc", fontFamily: syne, fontWeight: 700 }}>
+              <h2 style={{ fontSize: "16px", color: "#F2F4F8", fontFamily: syne, fontWeight: 700 }}>
                 reportar contenido
               </h2>
-              <button
+              <button data-magma-glow={/magma-(red|orange|hot)|#E12120|#7f77dd/i.test(String("var(--magma-red)"))}
                 type="button"
                 onClick={onClose}
-                style={{ fontSize: "16px", color: "#5F5E5A", fontFamily: mono, background: "none", border: "none", cursor: "pointer", lineHeight: 1, flexShrink: 0 }}
+                style={{ fontSize: "16px", color: "var(--magma-muted)", fontFamily: mono, background: "none", border: "none", cursor: "pointer", lineHeight: 1, flexShrink: 0 }}
               >
                 ×
               </button>
@@ -113,14 +113,14 @@ export function ReportModal({ postId, commentId, currentUserId, onClose }: Props
 
             {/* Reason radios */}
             <div className="flex flex-col gap-2">
-              <p style={{ fontSize: "9px", color: "#5F5E5A", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.14em" }}>
+              <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.14em" }}>
                 motivo
               </p>
               {REASONS.map((r) => (
                 <label
                   key={r}
                   className="flex items-center gap-3 cursor-pointer"
-                  style={{ fontSize: "12px", color: reason === r ? "#e8e4dc" : "#888780", fontFamily: mono }}
+                  style={{ fontSize: "var(--magma-text-small)", color: reason === r ? "#F2F4F8" : "var(--magma-muted)", fontFamily: mono }}
                 >
                   <span
                     style={{
@@ -129,13 +129,13 @@ export function ReportModal({ postId, commentId, currentUserId, onClose }: Props
                       justifyContent: "center",
                       width: "14px",
                       height: "14px",
-                      border: `0.5px solid ${reason === r ? "#D85A30" : "#2a2a28"}`,
+                      border: `0.5px solid ${reason === r ? "#E12120" : "#2a2a28"}`,
                       borderRadius: "50%",
                       flexShrink: 0,
                     }}
                   >
                     {reason === r && (
-                      <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "#D85A30", display: "block" }} />
+                      <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "#E12120", display: "block" }} />
                     )}
                   </span>
                   <input
@@ -153,9 +153,9 @@ export function ReportModal({ postId, commentId, currentUserId, onClose }: Props
 
             {/* Optional details */}
             <div className="flex flex-col gap-2">
-              <label style={{ fontSize: "9px", color: "#5F5E5A", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.14em" }}>
+              <label style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.14em" }}>
                 detalles{" "}
-                <span style={{ textTransform: "none", letterSpacing: 0, color: "#444441" }}>(opcional)</span>
+                <span style={{ textTransform: "none", letterSpacing: 0, color: "var(--magma-muted)" }}>(opcional)</span>
               </label>
               <textarea
                 rows={3}
@@ -165,9 +165,9 @@ export function ReportModal({ postId, commentId, currentUserId, onClose }: Props
                 style={{
                   backgroundColor: "#0c0c0b",
                   border: "0.5px solid #2a2a28",
-                  color: "#e8e4dc",
+                  color: "#F2F4F8",
                   fontFamily: mono,
-                  fontSize: "12px",
+                  fontSize: "var(--magma-text-small)",
                   outline: "none",
                   padding: "8px 10px",
                   resize: "vertical",
@@ -177,7 +177,7 @@ export function ReportModal({ postId, commentId, currentUserId, onClose }: Props
             </div>
 
             {error && (
-              <p style={{ fontSize: "11px", color: "#D85A30", fontFamily: mono }}>{error}</p>
+              <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-ash)", fontFamily: mono }}>{error}</p>
             )}
 
             {/* Actions */}
@@ -187,10 +187,10 @@ export function ReportModal({ postId, commentId, currentUserId, onClose }: Props
                 disabled={!reason || submitting}
                 className="disabled:opacity-40 cursor-pointer"
                 style={{
-                  backgroundColor: "#D85A30",
-                  color: "#0c0c0b",
+                  backgroundColor: "var(--magma-red)",
+                  color: "var(--magma-ash)",
                   fontFamily: mono,
-                  fontSize: "10px",
+                  fontSize: "var(--magma-text-small)",
                   border: "none",
                   padding: "9px 20px",
                   textTransform: "uppercase",
@@ -202,7 +202,7 @@ export function ReportModal({ postId, commentId, currentUserId, onClose }: Props
               <button
                 type="button"
                 onClick={onClose}
-                style={{ fontSize: "11px", color: "#5F5E5A", fontFamily: mono, background: "none", border: "none", cursor: "pointer" }}
+                style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, background: "none", border: "none", cursor: "pointer" }}
                 className="hover:opacity-70"
               >
                 cancelar

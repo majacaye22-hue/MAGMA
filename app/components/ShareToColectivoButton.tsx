@@ -12,9 +12,11 @@ type Colectivo = { id: string; name: string; avatar_color: string; already_share
 export function ShareToColectivoButton({
   postId,
   currentUserId,
+  inMenu = false,
 }: {
   postId: string;
   currentUserId: string | null;
+  inMenu?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [colectivos, setColectivos] = useState<Colectivo[]>([]);
@@ -103,20 +105,22 @@ export function ShareToColectivoButton({
   const anyShared = colectivos.some((c) => c.already_shared);
 
   return (
-    <div ref={ref} style={{ position: "relative", display: "inline-block", marginBottom: "16px" }}>
+    <div ref={ref} style={{ position: "relative", display: inMenu ? "block" : "inline-block", marginBottom: inMenu ? 0 : "16px" }}>
       <button
+        type="button"
+        aria-expanded={open}
         onClick={handleOpen}
         style={{
           display: "inline-flex",
           alignItems: "center",
           gap: "6px",
-          fontSize: "10px",
+          fontSize: "var(--magma-text-small)",
           fontFamily: mono,
           textTransform: "uppercase",
           letterSpacing: "0.12em",
-          padding: "6px 12px",
-          border: `0.5px solid ${anyShared ? "#5DCAA5" : "#2a2a28"}`,
-          color: anyShared ? "#5DCAA5" : "#888780",
+          padding: inMenu ? "8px 0" : "6px 12px",
+          border: `0.5px solid ${anyShared ? "var(--magma-orange)" : "#2a2a28"}`,
+          color: anyShared ? "var(--magma-ash)" : "var(--magma-muted)",
           backgroundColor: "transparent",
           cursor: "pointer",
         }}
@@ -134,28 +138,28 @@ export function ShareToColectivoButton({
       {open && (
         <div
           style={{
-            position: "absolute",
+            position: inMenu ? "relative" : "absolute",
             top: "calc(100% + 6px)",
             left: 0,
             zIndex: 60,
             backgroundColor: "#141412",
             border: "0.5px solid #2a2a28",
-            width: "240px",
+            width: inMenu ? "100%" : "240px",
             boxShadow: "0 8px 32px rgba(0,0,0,0.7)",
           }}
           onClick={(e) => e.stopPropagation()}
         >
           <div style={{ padding: "8px 12px", borderBottom: "0.5px solid #2a2a28" }}>
-            <span style={{ fontSize: "9px", color: "#5F5E5A", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em" }}>
+            <span style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em" }}>
               compartir en colectivo
             </span>
           </div>
 
           <div style={{ maxHeight: "220px", overflowY: "auto" }}>
             {loading ? (
-              <p style={{ fontSize: "10px", color: "#444441", fontFamily: mono, padding: "12px" }}>cargando...</p>
+              <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, padding: "12px" }}>cargando...</p>
             ) : colectivos.length === 0 ? (
-              <p style={{ fontSize: "10px", color: "#444441", fontFamily: mono, padding: "12px" }}>sin colectivos</p>
+              <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, padding: "12px" }}>sin colectivos</p>
             ) : (
               colectivos.map((col) => (
                 <button
@@ -171,19 +175,19 @@ export function ShareToColectivoButton({
                 >
                   <div style={{
                     width: "12px", height: "12px", flexShrink: 0,
-                    border: `0.5px solid ${col.already_shared ? "#5DCAA5" : "#2a2a28"}`,
+                    border: `0.5px solid ${col.already_shared ? "var(--magma-orange)" : "#2a2a28"}`,
                     backgroundColor: col.already_shared ? "rgba(93,202,165,0.15)" : "transparent",
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
                     {col.already_shared && (
                       <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                        <path d="M1 4l2 2 4-3" stroke="#5DCAA5" strokeWidth="1.2" strokeLinecap="square" />
+                        <path d="M1 4l2 2 4-3" stroke="var(--magma-orange)" strokeWidth="1.2" strokeLinecap="square" />
                       </svg>
                     )}
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0 }}>
                     <div style={{ width: "8px", height: "8px", borderRadius: "1px", backgroundColor: col.avatar_color, flexShrink: 0 }} />
-                    <span style={{ fontSize: "11px", color: col.already_shared ? "#e8e4dc" : "#888780", fontFamily: mono, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <span style={{ fontSize: "var(--magma-text-small)", color: col.already_shared ? "#F2F4F8" : "var(--magma-muted)", fontFamily: mono, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {col.name}
                     </span>
                   </div>
