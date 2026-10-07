@@ -33,7 +33,7 @@ This is NOT standard Next.js 14/15. Read `node_modules/next/dist/docs/` before w
 | Text placeholder | `#5F5E5A` |
 | Text dim | `#444441` |
 | Accent coral | `#D85A30` (primary CTA, arte visual) |
-| Teal | `#5DCAA5` (música) |
+| Lava orange | `#FF641F` (acciones, música y colaboración) |
 | Blue | `#378ADD` (fotografía) |
 | Amber | `#EF9F27` (evento) |
 

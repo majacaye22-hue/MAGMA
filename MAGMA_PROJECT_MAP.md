@@ -371,6 +371,13 @@ The feed keeps its newest-first data order. Explorar and mi círculo use a natur
 - Verified owner self-removal and unauthorized role changes are blocked in rollback-only SQL checks. User confirmed the staging test passed.
 - TypeScript, scoped lint, and five moderation interaction tests passed. Invitation links remain out of scope; friends register before the owner adds their username.
 
+## October 7, 2026 — Source backlog checkpoint
+
+- Committed the accumulated shared styling/media, authentication, upload/draft, post-detail, colectivo privacy/invitation, messaging, search, profile and project work by concern.
+- Included schema migrations, SQL checks, staging fixture scripts/assets and product planning sources. This checkpoint does not apply any migrations or deploy/push code.
+- Updated stale test assumptions for uniform event posters, event body search, click-to-play video and colectivo-only search exclusion. All 34 Node tests and TypeScript pass; full ESLint has zero errors and 14 warnings.
+- Local tool settings, generated documents, diagnostic folders and environment credentials are excluded. A fresh production build and full cross-account/browser regression were not performed for this commit-only pass.
+
 ## October 5, 2026 — Colectivo post audiences
 
 - Posts created inside a colectivo have an immutable `audience_colectivo_id`; members can read them, with existing moderator oversight preserved. Sharing an existing public post into a colectivo leaves the original public.
