@@ -1,114 +1,52 @@
 "use client";
-
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase";
 
-const mono = "var(--font-space-mono), monospace";
-
 type MemberStatus = "admin" | "member" | "pending" | "none";
-
-export function JoinButton({
-  colectivoId,
-  colectivoSlug,
-  isPrivate,
-  initialStatus,
-  currentUserId,
-}: {
-  colectivoId: string;
-  colectivoSlug: string;
-  isPrivate: boolean;
-  initialStatus: MemberStatus;
-  currentUserId: string | null;
+export function JoinButton({ colectivoId, colectivoSlug, initialStatus, currentUserId }: {
+  colectivoId: string; colectivoSlug: string; initialStatus: MemberStatus; currentUserId: string | null;
 }) {
   const router = useRouter();
-  const [status, setStatus] = useState<MemberStatus>(initialStatus);
+  const [status, setStatus] = useState(initialStatus);
+  const [composing, setComposing] = useState(false);
+  const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
-
+  const [error, setError] = useState("");
+  useEffect(() => { setStatus(initialStatus); }, [initialStatus]);
+  async function act(action: "request" | "cancel" | "leave") {
+    if (!currentUserId || loading) return;
+    setLoading(true); setError("");
+    try {
+      const db = getSupabaseClient();
+      const result = action === "request"
+        ? await db.rpc("request_colectivo_join", { cid: colectivoId, introduction: note.trim() || null })
+        : action === "cancel"
+          ? await db.rpc("cancel_colectivo_request", { cid: colectivoId })
+          : await db.from("colectivo_members").delete().eq("colectivo_id", colectivoId).eq("user_id", currentUserId);
+      if (result.error) throw result.error;
+      setStatus(action === "request" ? "pending" : "none");
+      setComposing(false); setNote(""); router.refresh();
+    } catch {
+      setError("no se pudo confirmar el cambio. recarga para comprobar el estado antes de reintentar.");
+    } finally { setLoading(false); }
+  }
   if (status === "admin") return null;
-
-  async function handleJoin() {
-    if (!currentUserId) {
-      window.location.href = `/auth/login?redirectTo=/colectivos/${colectivoSlug}`;
-      return;
-    }
-    setLoading(true);
-    const supabase = getSupabaseClient();
-
-    if (isPrivate) {
-      const { error } = await supabase.from("colectivo_join_requests").insert({
-        colectivo_id: colectivoId,
-        user_id: currentUserId,
-        status: "pending",
-      });
-      if (!error) setStatus("pending");
-    } else {
-      const { error } = await supabase.from("colectivo_members").insert({
-        colectivo_id: colectivoId,
-        user_id: currentUserId,
-        role: "member",
-      });
-      if (!error) {
-        setStatus("member");
-        router.refresh();
-      }
-    }
-    setLoading(false);
-  }
-
-  async function handleLeave() {
-    if (!currentUserId) return;
-    setLoading(true);
-    const supabase = getSupabaseClient();
-    await supabase.from("colectivo_members")
-      .delete()
-      .eq("colectivo_id", colectivoId)
-      .eq("user_id", currentUserId);
-    setStatus("none");
-    router.refresh();
-    setLoading(false);
-  }
-
-  if (status === "member") {
-    return (
-      <button
-        onClick={handleLeave}
-        disabled={loading}
-        style={{
-          fontSize: "10px", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em",
-          padding: "8px 16px", border: "0.5px solid #2a2a28", color: "#5F5E5A",
-          backgroundColor: "transparent", cursor: "pointer",
-        }}
-      >
-        {loading ? "..." : "miembro · salir"}
-      </button>
-    );
-  }
-
-  if (status === "pending") {
-    return (
-      <span style={{
-        fontSize: "10px", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em",
-        padding: "8px 16px", border: "0.5px solid #2a2a28", color: "#444441",
-      }}>
-        solicitud enviada
-      </span>
-    );
-  }
-
-  return (
-    <button
-      onClick={handleJoin}
-      disabled={loading}
-      style={{
-        fontSize: "10px", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em",
-        padding: "8px 16px",
-        border: `0.5px solid ${isPrivate ? "#2a2a28" : "#D85A30"}`,
-        color: isPrivate ? "#888780" : "#D85A30",
-        backgroundColor: "transparent", cursor: loading ? "default" : "pointer",
-      }}
-    >
-      {loading ? "..." : isPrivate ? "solicitar unirse" : "unirse"}
-    </button>
-  );
+  const buttonClass = "border border-[var(--magma-red)] px-4 py-2 text-xs text-[var(--magma-ash)] disabled:opacity-50";
+  return <div className="max-w-sm text-xs">
+    {status === "member" ? <button className={buttonClass} disabled={loading} onClick={() => void act("leave")}>{loading ? "guardando…" : "miembro · salir"}</button>
+      : status === "pending" ? <div><p role="status">solicitud pendiente · un admin debe aprobarla</p><button className="mt-2 underline" disabled={loading} onClick={() => void act("cancel")}>{loading ? "cancelando…" : "cancelar solicitud"}</button></div>
+      : composing ? <form onSubmit={(event) => { event.preventDefault(); void act("request"); }} className="space-y-3">
+        <label className="block">preséntate · opcional
+          <textarea value={note} onChange={event => setNote(event.target.value)} maxLength={500} rows={3} className="mt-2 block w-full border border-[var(--magma-border)] bg-transparent p-3" placeholder="¿por qué te gustaría formar parte?" />
+        </label>
+        <p className="text-[var(--magma-muted)]">solo los admins del colectivo verán tu nota.</p>
+        <button className={buttonClass} disabled={loading} type="submit">{loading ? "enviando…" : "enviar solicitud"}</button>
+        <button type="button" disabled={loading} className="ml-3 underline" onClick={() => setComposing(false)}>cancelar</button>
+      </form> : <button className={buttonClass} onClick={() => {
+        if (!currentUserId) router.push(`/auth/login?redirectTo=/colectivos/${colectivoSlug}`);
+        else setComposing(true);
+      }}>solicitar unirme</button>}
+    {error && <p role="alert" className="mt-3">{error}</p>}
+  </div>;
 }

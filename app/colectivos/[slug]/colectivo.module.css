@@ -1,0 +1,28 @@
+.page { color: #fff; }
+.actions :is(button, a) {
+  min-height: 44px;
+  border-radius: 2px;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  box-shadow: none !important;
+}
+.actions > div > :is(button, a) {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 16px;
+  border: 1px solid var(--magma-red) !important;
+  background: transparent !important;
+  color: #fff !important;
+  font-size: 14px;
+}
+.actions > div > :is(button, a):hover { background: var(--magma-red) !important; }
+.page :is(a, button, summary, textarea):focus-visible {
+  outline: 2px solid var(--magma-red);
+  outline-offset: 3px;
+}
+.actions textarea {
+  border: 1px solid #49463f;
+  border-radius: 2px;
+  color: #fff;
+}
+.actions textarea::placeholder { color: #fff; opacity: 1; }

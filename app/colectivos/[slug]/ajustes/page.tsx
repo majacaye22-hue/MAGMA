@@ -1,5 +1,4 @@
 import { notFound, redirect } from "next/navigation";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase-server";
 import { AjustesClient } from "./AjustesClient";
 
@@ -12,11 +11,15 @@ export default async function ColectivoAjustesPage({ params }: { params: Promise
 
   const { data: col } = await supabase
     .from("colectivos")
-    .select("id, name, slug, description, avatar_color, is_private, created_by")
+    .select("id, name, slug, description, avatar_color, cover_image_url, is_private, created_by")
     .eq("slug", slug)
     .single();
 
   if (!col) notFound();
+
+  // Separate optional read keeps existing installations usable before migration.
+  const { data: coverSettings } = await supabase.from("colectivos")
+    .select("cover_shape").eq("id", col.id).single();
 
   // Only admins can access settings
   const { data: mem } = await supabase
@@ -39,14 +42,14 @@ export default async function ColectivoAjustesPage({ params }: { params: Promise
   // Fetch pending join requests
   const { data: requests } = await supabase
     .from("colectivo_join_requests")
-    .select("id, user_id, created_at, profiles(username, display_name)")
+    .select("id, user_id, created_at, note, profiles(username, display_name)")
     .eq("colectivo_id", col.id)
     .eq("status", "pending")
     .order("created_at", { ascending: true });
 
   return (
     <AjustesClient
-      col={col}
+      col={{ ...col, cover_shape: coverSettings?.cover_shape }}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       members={(members ?? []) as any}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
