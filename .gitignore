@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local diagnostics, generated documents and tool snapshots (not source assets)
+/tmp/
+/output/
+/outputs/
+/.codex-trusted-read-*/
