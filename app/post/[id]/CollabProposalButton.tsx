@@ -84,7 +84,7 @@ export function CollabProposalButton({
   }
 
   return (
-    <div style={{ marginBottom: "24px" }}>
+    <div className="collab-proposal" style={{ marginBottom: "24px" }}>
       <div
         style={{
           display: "inline-flex",
@@ -93,30 +93,27 @@ export function CollabProposalButton({
           width: "auto",
           maxWidth: "280px",
           padding: "8px 12px",
-          border: `0.5px solid ${YELLOW}`,
         }}
       >
         <span style={{
-          fontSize: "9px",
+          fontSize: "var(--magma-text-small)",
           color: YELLOW,
           fontFamily: mono,
           textTransform: "uppercase",
           letterSpacing: "0.14em",
         }}>
-          ✦ abierto a colaboración
+          abierto a colaboración
         </span>
 
-        <span style={{
-          fontSize: "10px",
+        {description?.trim() && <span style={{
+          fontSize: "var(--magma-text-small)",
           color: YELLOW,
           fontFamily: mono,
           lineHeight: 1.6,
           opacity: 0.7,
         }}>
-          {description?.trim()
-            ? description.trim()
-            : "el artista invita a otros creadores a participar o comentar este proyecto"}
-        </span>
+          {description.trim()}
+        </span>}
 
         {!isOwner && (
           <button
@@ -134,7 +131,7 @@ export function CollabProposalButton({
             }}
           >
             <span style={{
-              fontSize: "9px",
+              fontSize: "var(--magma-text-small)",
               color: hovered ? DARK : YELLOW,
               fontFamily: mono,
               textTransform: "uppercase",
@@ -146,14 +143,14 @@ export function CollabProposalButton({
               padding: "3px 6px",
               marginLeft: "-6px",
             }}>
-              {loading ? "..." : "proponer colaboración →"}
+              {loading ? "..." : "mensaje →"}
             </span>
           </button>
         )}
       </div>
 
       {err && (
-        <p style={{ marginTop: "6px", fontSize: "10px", color: "#D85A30", fontFamily: mono }}>
+        <p style={{ marginTop: "6px", fontSize: "var(--magma-text-small)", color: "var(--magma-ash)", fontFamily: mono }}>
           {err}
         </p>
       )}
