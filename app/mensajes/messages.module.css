@@ -1,0 +1,45 @@
+.page {
+  color: #fff;
+}
+.page :is(p, span, time, a, input, textarea, summary, details) {
+  color: #fff !important;
+}
+.page :is(input, textarea)::placeholder {
+  color: #fff;
+  opacity: 1;
+}
+.page :is(input, textarea) {
+  border: 1px solid #49463f !important;
+  border-radius: 2px !important;
+}
+.page :is(button, summary) {
+  border-radius: 2px;
+}
+.page :is(button, a, input, textarea):focus-visible {
+  outline: 2px solid var(--magma-red);
+  outline-offset: 2px;
+}
+.page [aria-label="filtrar conversaciones"] button {
+  border: 0;
+  color: #fff;
+}
+.page [aria-label="filtrar conversaciones"] button[aria-pressed="true"] {
+  color: var(--magma-red);
+}
+.page [class~="border-b"],
+.page [class~="border-t"] {
+  border-top-width: 0;
+  border-bottom-width: 0;
+}
+.page :global(.magma-send-button) {
+  border: 1px solid var(--magma-red) !important;
+  border-radius: 2px !important;
+  background: transparent !important;
+  color: #fff !important;
+  box-shadow: none !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+.page :global(.magma-send-button):hover:not(:disabled) {
+  background: var(--magma-red) !important;
+}
