@@ -16,16 +16,16 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   backgroundColor: "transparent",
   border: "0.5px solid #2a2a28",
-  color: "#e8e4dc",
+  color: "#F2F4F8",
   fontFamily: mono,
-  fontSize: "13px",
+  fontSize: "var(--magma-text-body)",
   padding: "10px 12px",
   outline: "none",
 };
 
 const labelStyle: React.CSSProperties = {
-  fontSize: "9px",
-  color: "#5F5E5A",
+  fontSize: "var(--magma-text-small)",
+  color: "var(--magma-muted)",
   fontFamily: mono,
   textTransform: "uppercase",
   letterSpacing: "0.14em",
@@ -121,12 +121,12 @@ export default function CrearListingPage() {
     <div className="min-h-screen" style={{ backgroundColor: "#0c0c0b" }}>
       <div style={{ maxWidth: "560px", margin: "0 auto", padding: "40px 24px 80px" }}>
         <div style={{ marginBottom: "28px" }}>
-          <Link href="/tianguis" style={{ fontSize: "10px", color: "#5F5E5A", fontFamily: mono, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.12em" }}>
+          <Link href="/tianguis" style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.12em" }}>
             ← tianguis
           </Link>
         </div>
 
-        <h1 style={{ fontSize: "28px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800, marginBottom: "32px" }}>
+        <h1 className="magma-page-title" style={{ color: "#F2F4F8", fontFamily: syne, fontWeight: 800, marginBottom: "32px" }}>
           publicar en tianguis
         </h1>
 
@@ -148,8 +148,8 @@ export default function CrearListingPage() {
                       style={{
                         position: "absolute", top: "4px", right: "4px",
                         width: "18px", height: "18px", border: "none",
-                        backgroundColor: "rgba(12,12,11,0.8)", color: "#e8e4dc",
-                        fontSize: "10px", cursor: "pointer", lineHeight: 1,
+                        backgroundColor: "rgba(12,12,11,0.8)", color: "#F2F4F8",
+                        fontSize: "var(--magma-text-small)", cursor: "pointer", lineHeight: 1,
                         display: "flex", alignItems: "center", justifyContent: "center",
                       }}
                     >
@@ -171,7 +171,7 @@ export default function CrearListingPage() {
                 onDrop={(e) => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
                 style={{
                   minHeight: "100px",
-                  border: `1px dashed ${dragOver ? "#D85A30" : "#2a2a28"}`,
+                  border: `1px dashed ${dragOver ? "#E12120" : "#2a2a28"}`,
                   backgroundColor: dragOver ? "rgba(216,90,48,0.04)" : "transparent",
                   display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
                   gap: "6px", cursor: "pointer",
@@ -181,7 +181,7 @@ export default function CrearListingPage() {
                   <path d="M10 13V4M10 4L6.5 7.5M10 4L13.5 7.5" stroke="#444441" strokeWidth="1.2" strokeLinecap="square" />
                   <path d="M3 14V16.5H17V14" stroke="#444441" strokeWidth="1.2" strokeLinecap="square" />
                 </svg>
-                <span style={{ fontSize: "11px", color: "#5F5E5A", fontFamily: mono }}>
+                <span style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono }}>
                   {imageFiles.length === 0 ? "arrastra o haz clic · jpg, png, webp" : `+ agregar foto (${imageFiles.length}/4)`}
                 </span>
               </div>
@@ -197,7 +197,7 @@ export default function CrearListingPage() {
 
           {/* Description */}
           <div>
-            <label style={labelStyle}>descripción <span style={{ color: "#444441" }}>— opcional</span></label>
+            <label style={labelStyle}>descripción <span style={{ color: "var(--magma-muted)" }}>— opcional</span></label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -229,10 +229,10 @@ export default function CrearListingPage() {
                   onClick={() => setCurrency(c)}
                   style={{
                     padding: "10px 16px",
-                    fontSize: "11px",
+                    fontSize: "var(--magma-text-small)",
                     fontFamily: mono,
-                    border: `0.5px solid ${currency === c ? "#D85A30" : "#2a2a28"}`,
-                    color: currency === c ? "#D85A30" : "#5F5E5A",
+                    border: `0.5px solid ${currency === c ? "#E12120" : "#2a2a28"}`,
+                    color: currency === c ? "var(--magma-ash)" : "var(--magma-muted)",
                     backgroundColor: "transparent",
                     cursor: "pointer",
                   }}
@@ -254,12 +254,12 @@ export default function CrearListingPage() {
                   onClick={() => setCategory(cat)}
                   style={{
                     padding: "10px",
-                    fontSize: "10px",
+                    fontSize: "var(--magma-text-small)",
                     fontFamily: mono,
                     textTransform: "uppercase",
                     letterSpacing: "0.1em",
-                    border: `0.5px solid ${category === cat ? "#D85A30" : "#2a2a28"}`,
-                    color: category === cat ? "#D85A30" : "#5F5E5A",
+                    border: `0.5px solid ${category === cat ? "#E12120" : "#2a2a28"}`,
+                    color: category === cat ? "var(--magma-ash)" : "var(--magma-muted)",
                     backgroundColor: category === cat ? "rgba(216,90,48,0.06)" : "transparent",
                     cursor: "pointer",
                   }}
@@ -272,7 +272,7 @@ export default function CrearListingPage() {
 
           {/* Location */}
           <div>
-            <label style={labelStyle}>ubicación <span style={{ color: "#444441" }}>— opcional</span></label>
+            <label style={labelStyle}>ubicación <span style={{ color: "var(--magma-muted)" }}>— opcional</span></label>
             <input
               type="text"
               value={location}
@@ -284,17 +284,17 @@ export default function CrearListingPage() {
           </div>
 
           {err && (
-            <p style={{ fontSize: "10px", color: "#D85A30", fontFamily: mono }}>{err}</p>
+            <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-ash)", fontFamily: mono }}>{err}</p>
           )}
 
-          <button
+          <button data-magma-glow={/magma-(red|orange|hot)|#E12120|#7f77dd/i.test(String(submitting ? "#2a2a28" : "#E12120"))}
             type="submit"
             disabled={submitting}
             style={{
-              backgroundColor: submitting ? "#2a2a28" : "#D85A30",
-              color: submitting ? "#5F5E5A" : "#0c0c0b",
+              backgroundColor: submitting ? "#2a2a28" : "#E12120",
+              color: submitting ? "var(--magma-muted)" : "#0c0c0b",
               fontFamily: mono,
-              fontSize: "11px",
+              fontSize: "var(--magma-text-small)",
               textTransform: "uppercase",
               letterSpacing: "0.14em",
               padding: "14px",

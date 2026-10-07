@@ -74,22 +74,22 @@ function SolicitarForm() {
   if (sent) {
     return (
       <div className="flex flex-col gap-6 max-w-lg" style={{ paddingTop: "60px" }}>
-        <div style={{ height: "2px", width: "32px", backgroundColor: "#5DCAA5" }} />
-        <h1 style={{ fontSize: "28px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800, lineHeight: 1.1 }}>
+        <div style={{ height: "2px", width: "32px", backgroundColor: "var(--magma-orange)" }} />
+        <h1 className="magma-page-title" style={{ color: "#F2F4F8", fontFamily: syne, fontWeight: 800, }}>
           solicitud enviada.
         </h1>
-        <p style={{ fontSize: "13px", color: "#888780", fontFamily: mono, lineHeight: 1.7 }}>
+        <p style={{ fontSize: "var(--magma-text-body)", color: "var(--magma-muted)", fontFamily: mono, lineHeight: 1.7 }}>
           recibimos tu solicitud para el slot {preferredTime ? `de las ${preferredTime}` : ""}.
           <br />te contactamos en menos de 24h.
         </p>
         <div className="flex gap-4" style={{ marginTop: "8px" }}>
-          <Link
+          <Link data-magma-glow={/magma-(red|orange|hot)|#E12120|#7f77dd/i.test(String("#E12120"))}
             href="/radio"
             style={{
-              fontSize: "10px",
+              fontSize: "var(--magma-text-small)",
               color: "#0c0c0b",
               fontFamily: mono,
-              backgroundColor: "#D85A30",
+              backgroundColor: "#E12120",
               padding: "10px 20px",
               textDecoration: "none",
               textTransform: "uppercase",
@@ -107,7 +107,7 @@ function SolicitarForm() {
     <form onSubmit={handleSubmit} className="flex flex-col gap-5 max-w-lg">
       {/* Username */}
       <div className="flex flex-col gap-2">
-        <label style={{ fontSize: "9px", color: "#5F5E5A", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.14em" }}>
+        <label style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.14em" }}>
           nombre artístico / @usuario
         </label>
         <input
@@ -164,15 +164,15 @@ function SolicitarForm() {
               type="button"
               onClick={() => setPlatform(p)}
               style={{
-                fontSize: "10px",
+                fontSize: "var(--magma-text-small)",
                 fontFamily: mono,
                 textTransform: "uppercase",
                 letterSpacing: "0.1em",
                 padding: "5px 12px",
                 cursor: "pointer",
-                border: `0.5px solid ${platform === p ? "#D85A30" : "#2a2a28"}`,
+                border: `0.5px solid ${platform === p ? "#E12120" : "#2a2a28"}`,
                 backgroundColor: platform === p ? "rgba(216,90,48,0.08)" : "transparent",
-                color: platform === p ? "#D85A30" : "#5F5E5A",
+                color: platform === p ? "var(--magma-ash)" : "var(--magma-muted)",
               }}
             >
               {p}
@@ -185,7 +185,7 @@ function SolicitarForm() {
       <div className="flex flex-col gap-2">
         <label style={labelStyle}>
           URL de tu stream{" "}
-          <span style={{ color: "#444441", textTransform: "none", letterSpacing: 0 }}>(opcional)</span>
+          <span style={{ color: "var(--magma-muted)", textTransform: "none", letterSpacing: 0 }}>(opcional)</span>
         </label>
         <input
           type="url"
@@ -197,21 +197,21 @@ function SolicitarForm() {
       </div>
 
       {error && (
-        <div style={{ padding: "10px 12px", backgroundColor: "#1a0a08", border: "0.5px solid #D85A30" }}>
-          <p style={{ fontSize: "11px", color: "#D85A30", fontFamily: mono }}>{error}</p>
+        <div style={{ padding: "10px 12px", backgroundColor: "#1a0a08", border: "0.5px solid #E12120" }}>
+          <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-ash)", fontFamily: mono }}>{error}</p>
         </div>
       )}
 
       <div className="flex items-center gap-4" style={{ marginTop: "4px" }}>
-        <button
+        <button data-magma-glow={/magma-(red|orange|hot)|#E12120|#7f77dd/i.test(String("#E12120"))}
           type="submit"
           disabled={submitting || !username.trim() || !genre.trim()}
           className="disabled:opacity-40 cursor-pointer"
           style={{
-            fontSize: "11px",
+            fontSize: "var(--magma-text-small)",
             color: "#0c0c0b",
             fontFamily: mono,
-            backgroundColor: "#D85A30",
+            backgroundColor: "#E12120",
             border: "none",
             padding: "12px 28px",
             textTransform: "uppercase",
@@ -222,7 +222,7 @@ function SolicitarForm() {
         </button>
         <Link
           href="/radio"
-          style={{ fontSize: "11px", color: "#5F5E5A", fontFamily: mono, textDecoration: "none" }}
+          style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, textDecoration: "none" }}
           className="hover:opacity-70"
         >
           cancelar
@@ -237,17 +237,17 @@ function SolicitarForm() {
 const inputStyle: React.CSSProperties = {
   backgroundColor: "#141412",
   border: "0.5px solid #2a2a28",
-  color: "#e8e4dc",
+  color: "#F2F4F8",
   fontFamily: mono,
-  fontSize: "13px",
+  fontSize: "var(--magma-text-body)",
   outline: "none",
   padding: "9px 12px",
   width: "100%",
 };
 
 const labelStyle: React.CSSProperties = {
-  fontSize: "9px",
-  color: "#5F5E5A",
+  fontSize: "var(--magma-text-small)",
+  color: "var(--magma-muted)",
   fontFamily: mono,
   textTransform: "uppercase",
   letterSpacing: "0.14em",
@@ -263,7 +263,7 @@ export default function SolicitarPage() {
         <div className="pt-8 pb-2">
           <Link
             href="/radio"
-            style={{ fontSize: "10px", color: "#5F5E5A", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em", textDecoration: "none" }}
+            style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em", textDecoration: "none" }}
             className="hover:opacity-70"
           >
             ← radio
@@ -271,10 +271,10 @@ export default function SolicitarPage() {
         </div>
 
         <div style={{ paddingTop: "32px", paddingBottom: "32px" }}>
-          <h1 style={{ fontSize: "28px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800, lineHeight: 1, marginBottom: "8px" }}>
+          <h1 className="magma-page-title" style={{ color: "#F2F4F8", fontFamily: syne, fontWeight: 800, marginBottom: "8px" }}>
             solicitar un slot
           </h1>
-          <p style={{ fontSize: "12px", color: "#5F5E5A", fontFamily: mono, lineHeight: 1.6 }}>
+          <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, lineHeight: 1.6 }}>
             ¿tienes algo que transmitir? cuéntanos sobre tu set y te contactamos.
           </p>
         </div>

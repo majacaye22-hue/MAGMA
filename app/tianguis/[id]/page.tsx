@@ -36,9 +36,6 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
   if (!data) notFound();
   const listing = data as unknown as Listing;
 
-  const sellerInitials = listing.profiles?.display_name
-    ? listing.profiles.display_name.split(" ").slice(0, 2).map((w: string) => w[0]).join("").toUpperCase()
-    : (listing.profiles?.username ?? "?").slice(0, 2).toUpperCase();
 
   const isOwner = currentUserId === listing.user_id;
 
@@ -47,7 +44,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
       <div className="max-w-5xl mx-auto px-6 pb-24">
         {/* Back */}
         <div style={{ paddingTop: "28px", marginBottom: "24px" }}>
-          <Link href="/tianguis" style={{ fontSize: "10px", color: "#5F5E5A", fontFamily: mono, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.12em" }}>
+          <Link href="/tianguis" style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.12em" }}>
             ← tianguis
           </Link>
         </div>
@@ -69,7 +66,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
               </div>
             ) : (
               <div style={{ height: "400px", backgroundColor: "#141412", display: "flex", alignItems: "center", justifyContent: "center", border: "0.5px solid #2a2a28" }}>
-                <span style={{ fontSize: "10px", color: "#2a2a28", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.1em" }}>sin imagen</span>
+                <span style={{ fontSize: "var(--magma-text-small)", color: "#2a2a28", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.1em" }}>sin imagen</span>
               </div>
             )}
           </div>
@@ -78,33 +75,33 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
           <div style={{ position: "sticky", top: "80px" }}>
             {/* Category + availability */}
             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
-              <span style={{ fontSize: "9px", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.14em", padding: "3px 10px", border: "0.5px solid #D85A30", color: "#D85A30" }}>
+              <span style={{ fontSize: "var(--magma-text-small)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.14em", padding: "3px 10px", border: "0.5px solid #E12120", color: "var(--magma-ash)" }}>
                 {listing.category}
               </span>
               {!listing.is_available && (
-                <span style={{ fontSize: "9px", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.14em", padding: "3px 10px", border: "0.5px solid #2a2a28", color: "#444441" }}>
+                <span style={{ fontSize: "var(--magma-text-small)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.14em", padding: "3px 10px", border: "0.5px solid #2a2a28", color: "var(--magma-muted)" }}>
                   vendido
                 </span>
               )}
             </div>
 
-            <h1 style={{ fontSize: "26px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800, lineHeight: 1.1, marginBottom: "16px" }}>
+            <h1 className="magma-page-title" style={{ color: "#F2F4F8", fontFamily: syne, fontWeight: 800, marginBottom: "16px" }}>
               {listing.title}
             </h1>
 
-            <p style={{ fontSize: "28px", color: "#D85A30", fontFamily: mono, fontWeight: "bold", lineHeight: 1, marginBottom: "24px" }}>
+            <p style={{ fontSize: "28px", color: "var(--magma-ash)", fontFamily: mono, fontWeight: "bold", lineHeight: 1, marginBottom: "24px" }}>
               ${listing.price}{" "}
-              <span style={{ fontSize: "12px", color: "#5F5E5A" }}>{listing.currency}</span>
+              <span style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)" }}>{listing.currency}</span>
             </p>
 
             {listing.description && (
-              <p style={{ fontSize: "12px", color: "#888780", fontFamily: mono, lineHeight: 1.7, marginBottom: "24px", whiteSpace: "pre-wrap" }}>
+              <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, lineHeight: 1.7, marginBottom: "24px", whiteSpace: "pre-wrap" }}>
                 {listing.description}
               </p>
             )}
 
             {listing.location && (
-              <p style={{ fontSize: "10px", color: "#5F5E5A", fontFamily: mono, marginBottom: "24px" }}>
+              <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, marginBottom: "24px" }}>
                 📍 {listing.location}
               </p>
             )}
@@ -114,20 +111,14 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
               <Link
                 href={`/profile/${listing.profiles.username}`}
                 style={{ display: "flex", alignItems: "center", gap: "12px", textDecoration: "none", marginBottom: "24px", padding: "12px", border: "0.5px solid #2a2a28" }}
-                className="hover:border-[#D85A30] transition-colors"
+                className="hover:border-[#E12120] transition-colors"
               >
-                <div style={{
-                  width: "36px", height: "36px", borderRadius: "2px", flexShrink: 0,
-                  backgroundColor: listing.profiles.avatar_color ?? "#D85A30",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                }}>
-                  <span style={{ fontSize: "13px", color: "#0c0c0b", fontFamily: syne, fontWeight: 800 }}>{sellerInitials}</span>
-                </div>
+
                 <div>
-                  <p style={{ fontSize: "12px", color: "#e8e4dc", fontFamily: syne, fontWeight: 700, lineHeight: 1 }}>
+                  <p style={{ fontSize: "var(--magma-text-small)", color: "#F2F4F8", fontFamily: syne, fontWeight: 700, lineHeight: 1 }}>
                     {listing.profiles.display_name ?? listing.profiles.username}
                   </p>
-                  <p style={{ fontSize: "10px", color: "#5F5E5A", fontFamily: mono, marginTop: "2px" }}>
+                  <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, marginTop: "2px" }}>
                     @{listing.profiles.username}
                   </p>
                 </div>
@@ -148,8 +139,8 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
                 href="/tianguis/mis-listings"
                 style={{
                   display: "block", textAlign: "center", padding: "12px",
-                  fontSize: "10px", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em",
-                  border: "0.5px solid #2a2a28", color: "#5F5E5A", textDecoration: "none",
+                  fontSize: "var(--magma-text-small)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em",
+                  border: "0.5px solid #2a2a28", color: "var(--magma-muted)", textDecoration: "none",
                 }}
               >
                 gestionar mi tianguis →

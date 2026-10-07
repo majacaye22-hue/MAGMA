@@ -65,20 +65,20 @@ export default function MisListingsPage() {
     <div className="min-h-screen" style={{ backgroundColor: "#0c0c0b" }}>
       <div style={{ maxWidth: "760px", margin: "0 auto", padding: "40px 24px 80px" }}>
         <div style={{ marginBottom: "28px" }}>
-          <Link href="/tianguis" style={{ fontSize: "10px", color: "#5F5E5A", fontFamily: mono, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.12em" }}>
+          <Link href="/tianguis" style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.12em" }}>
             ← tianguis
           </Link>
         </div>
 
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: "32px" }}>
-          <h1 style={{ fontSize: "28px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800, lineHeight: 1 }}>
+          <h1 className="magma-page-title" style={{ color: "#F2F4F8", fontFamily: syne, fontWeight: 800, }}>
             mi tianguis
           </h1>
           <Link
             href="/tianguis/crear"
             style={{
-              fontSize: "10px", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em",
-              color: "#D85A30", border: "0.5px solid #D85A30", padding: "8px 16px", textDecoration: "none",
+              fontSize: "var(--magma-text-small)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em",
+              color: "var(--magma-ash)", border: "0.5px solid #E12120", padding: "8px 16px", textDecoration: "none",
             }}
           >
             + publicar
@@ -86,13 +86,13 @@ export default function MisListingsPage() {
         </div>
 
         {loading ? (
-          <p style={{ fontSize: "10px", color: "#444441", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em" }}>cargando...</p>
+          <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em" }}>cargando...</p>
         ) : listings.length === 0 ? (
           <div style={{ paddingTop: "60px", textAlign: "center" }}>
-            <p style={{ fontSize: "11px", color: "#444441", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em" }}>
+            <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em" }}>
               sin publicaciones todavía
             </p>
-            <Link href="/tianguis/crear" style={{ display: "inline-block", marginTop: "16px", fontSize: "10px", color: "#D85A30", fontFamily: mono, textDecoration: "underline" }}>
+            <Link href="/tianguis/crear" style={{ display: "inline-block", marginTop: "16px", fontSize: "var(--magma-text-small)", color: "var(--magma-ash)", fontFamily: mono, textDecoration: "underline" }}>
               crear primer anuncio →
             </Link>
           </div>
@@ -113,18 +113,18 @@ export default function MisListingsPage() {
                   {/* Info */}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <Link href={`/tianguis/${listing.id}`} style={{ textDecoration: "none" }}>
-                      <p style={{ fontSize: "14px", color: "#e8e4dc", fontFamily: syne, fontWeight: 700, lineHeight: 1.2, marginBottom: "4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <p style={{ fontSize: "var(--magma-text-body)", color: "#F2F4F8", fontFamily: syne, fontWeight: 700, lineHeight: 1.2, marginBottom: "4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {listing.title}
                       </p>
                     </Link>
-                    <p style={{ fontSize: "12px", color: "#D85A30", fontFamily: mono, marginBottom: "4px" }}>
+                    <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-ash)", fontFamily: mono, marginBottom: "4px" }}>
                       ${listing.price} {listing.currency}
                     </p>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <span style={{ fontSize: "8px", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.1em", padding: "2px 8px", border: "0.5px solid #2a2a28", color: "#5F5E5A" }}>
+                      <span style={{ fontSize: "var(--magma-text-small)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.1em", padding: "2px 8px", border: "0.5px solid #2a2a28", color: "var(--magma-muted)" }}>
                         {listing.category}
                       </span>
-                      <span style={{ fontSize: "9px", color: listing.is_available ? "#5DCAA5" : "#444441", fontFamily: mono }}>
+                      <span style={{ fontSize: "var(--magma-text-small)", color: listing.is_available ? "var(--magma-ash)" : "var(--magma-muted)", fontFamily: mono }}>
                         {listing.is_available ? "disponible" : "vendido"}
                       </span>
                     </div>
@@ -136,9 +136,9 @@ export default function MisListingsPage() {
                       onClick={() => toggleAvailability(listing.id, listing.is_available)}
                       disabled={toggling === listing.id}
                       style={{
-                        fontSize: "9px", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.1em",
-                        padding: "6px 12px", border: `0.5px solid ${listing.is_available ? "#2a2a28" : "#5DCAA5"}`,
-                        color: listing.is_available ? "#5F5E5A" : "#5DCAA5",
+                        fontSize: "var(--magma-text-small)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.1em",
+                        padding: "6px 12px", border: `0.5px solid ${listing.is_available ? "#2a2a28" : "var(--magma-orange)"}`,
+                        color: listing.is_available ? "var(--magma-muted)" : "var(--magma-ash)",
                         backgroundColor: "transparent", cursor: "pointer",
                       }}
                     >
@@ -148,11 +148,11 @@ export default function MisListingsPage() {
                       onClick={() => deleteListing(listing.id)}
                       disabled={deleting === listing.id}
                       style={{
-                        fontSize: "9px", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.1em",
+                        fontSize: "var(--magma-text-small)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.1em",
                         padding: "6px 12px", border: "0.5px solid #2a2a28",
-                        color: "#5F5E5A", backgroundColor: "transparent", cursor: "pointer",
+                        color: "var(--magma-muted)", backgroundColor: "transparent", cursor: "pointer",
                       }}
-                      className="hover:border-[#D85A30] hover:text-[#D85A30] transition-colors"
+                      className="hover:border-[#E12120] hover:text-[var(--magma-ash)] transition-colors"
                     >
                       {deleting === listing.id ? "..." : "eliminar"}
                     </button>
