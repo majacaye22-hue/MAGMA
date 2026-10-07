@@ -1,0 +1,397 @@
+# MAGMA — Roles and Product Map
+
+**Purpose:** Canonical running inventory of Magma's people, permissions, pages, and internal tools.
+**Last updated:** October 6, 2026
+
+Update this file whenever a role, route, major workflow, or product area is added, removed, or renamed.
+
+## Product center
+
+- Project `e7a09280-0000-4000-8000-000000000001` uses a vertical journal (640px maximum width, viewport-responsive image frames capped at 680px), retaining the larger project header. The horizontal notebook experiment was removed; multi-photo entries retain their photo carousel. Other projects are unchanged.
+
+- Post-detail loading: middleware refreshes the session, and the page verifies the user before querying posts. Explicit post fields exclude legacy base64 unless needed; all queries still use authenticated RLS. Auth/post stages have 15-second deadlines, development timing logs, and a route-level retry error state. Middleware authentication must not be skipped: Server Components cannot persist refreshed session cookies.
+
+Magma is a CDMX-focused living archive for personal creative projects, unfinished work, observations, events, and conversations happening across the city. Personal projects are the heart of the product. The long-term direction is a physical social club supported by the digital community.
+
+## Global search
+
+- Cartelera (`/eventos`) also has live, accent-insensitive local search over loaded event titles, descriptions, venues, and addresses. It combines with the wall/archive view and day, colonia, and access filters; × clears only the query.
+
+- Global search (`/buscar`) is available from a persistent rounded search bar with a Magma-red magnifier in navigation. It sits inline on wide desktops and on its own full-width row on smaller screens. Searches post titles/body/tags, profile usernames/names/bios, project titles/descriptions, and listed colectivo names/descriptions. Results use the signed-in user's RLS permissions, additionally exclude hidden/unapproved posts and unlisted colectivos, and never query private messages. “todo” previews six per category; individual filters page 20 results with stable ordering. This first version uses case-insensitive text matching and exact tag matches; accent-insensitive/fuzzy ranking and dedicated search indexes are future improvements.
+
+## Profile ecos
+
+- Visual direction: analog nostalgia and “things you kept because they meant something.” Feed cards use fine square-edged frames and creator/format/date labels. Post pages use compact archive labels, captions beneath visual media, aligned controls, and “notas al margen”; writing retains its reading layout and events retain event facts/attendance. Original media and stable sizing are preserved.
+
+- Members can “hacer eco” of another member’s approved, non-hidden community post, optionally adding a 1,000-character note. Ecos live only under `/profile/[username]?tab=ecos`, separate from original publications and the home feed.
+- Original creator credit and links remain visible; reactions and conversation stay on the original. One echo per person/original; its owner can undo it. Original deletion cascades to echoes, and hidden/unapproved/inaccessible originals are excluded by RLS.
+- Private colectivo posts cannot be echoed, including by colectivo members. This is internal to signed-in Magma, not external sharing.
+- Database migration: `supabase/post_echoes.sql` (applied to staging; production pending). No echo notifications or reblog chains in this initial version.
+
+## Status labels
+
+- **Active / navigation:** Built and linked in the primary navigation.
+- **Active / secondary:** Built and reachable through another workflow, profile, or direct link.
+- **Internal:** Restricted staff or operational tool.
+- **Legacy / hidden:** Still exists in code but is no longer part of the current primary experience.
+- **Planned:** Agreed direction, not implemented yet.
+
+---
+
+# Roles
+
+## Current community roles
+
+### Logged-out visitor
+
+- Can access only authentication and account-recovery pages.
+- All community content requires a Magma account.
+- Represented by the absence of a Supabase Auth session.
+
+### Member
+
+- Has a Supabase Auth account and a row in `profiles`.
+- Can view the community, create posts and projects, comment when comments are enabled, message, report, block, join colectivos, request radio slots, and manage their own content.
+- Ordinary posts publish immediately; sensitive posts enter review. Apply `supabase/ordinary_posts_publish.sql` after the older moderation/SoundCloud migrations.
+
+### Post author
+
+- Profiles have optional free-text origin (`hometown`, max 100 characters), edited as “¿de dónde eres?” and displayed separately from current location (“de … · en …”). This is personal identity, not multi-city product support. Staging migration: `supabase/profile_hometown.sql`.
+
+- Personal identity is username-only across navigation, comments, messages, post headers, sala and marketplace. Initial/avatar boxes and the profile avatar-color picker are paused; stored avatar values and profile covers are preserved.
+
+- Owns a post through `posts.author_id`.
+- Can see their own pending or rejected posts.
+- Can edit or delete their own eligible posts.
+- Ordinary edits remain visible; sensitive edits require review. Rejected posts and pending sensitive posts cannot bypass review through an author edit.
+
+### Project owner
+
+- Owns a project through `projects.author_id`.
+- Can edit the project and attach posts through `post_projects`.
+- Projects are intended to feel like personal journals, archives, or windows into an ongoing creative process.
+
+### Colectivo member
+
+- Membership is represented in `colectivo_members` with role `member`.
+- Can participate in a colectivo according to its membership and posting rules.
+
+### Colectivo administrator
+
+- Membership is represented in `colectivo_members` with role `admin`.
+- Can manage colectivo settings, membership requests, member roles, and shared work.
+- A colectivo creator is added as its first administrator.
+- Public join requests require admin approval, including public colectivos. Visitors submit an optional private introduction, can cancel a pending request, and receive in-app approval/rejection notifications. Admins review in settings. Existing members are retained. Atomic RPCs and database permissions prevent direct self-admission. Apply `supabase/colectivo_approval.sql` after notifications; rollback tests: `supabase/test_colectivo_approval.sql`.
+- Account-bound invitations are enabled on staging (migration `supabase/colectivo_invitations.sql`, 2026-09-24). Only admins create/revoke links by @username in settings and copy/send them to the recipient; delivery is manual. Links expire after seven days; only the named account can explicitly accept and join without further approval. Regeneration revokes previous links. Used links cannot re-add removed members. Rollback security tests passed (`supabase/test_colectivo_invitations.sql`), including automatic chat access without earlier history. Anonymous RPC execution is explicitly revoked. Production not migrated.
+- Colectivo chat is available in Messages under “colectivos,” named after the group, with an “abrir chat” link on its page. Membership automatically grants access; public applicants must first be approved. Database RLS hides messages and previews from before the latest membership; leaving/removal denies read/send, and rejoining resets history. Existing members start at feature activation. Text messages (4,000 characters), profile links, paginated history, 5-second foreground refresh, retry-safe sends, per-member read state and mute are supported. No push/email notifications. Migration `supabase/colectivo_chat.sql` applied and rollback privacy tests passed on staging; production not migrated.
+
+### Event host
+
+- Normally the author of an event post.
+- Controls related event interactions; live sala is deferred to a possible phase two.
+
+### Approved DJ
+
+- Has an approved row in `djs` linked through `user_id`.
+- Can access the DJ performance dashboard. Radio live chat and open event salas are deferred to a possible phase two.
+- Approval currently comes from the slot-request review workflow.
+
+## Current staff roles
+
+### Moderator / cuidadorx
+
+- Identified by `profiles.is_moderator = true`.
+- Uses an individual Magma account; staff credentials are never shared.
+- Can access `/staff`, `/mod`, pending-post review, community reports, content hiding/restoration, and moderator actions allowed by RLS.
+- Decisions are recorded in `moderation_actions`.
+
+### Owner / administrator
+
+- Identified by `app_config.owner_user_id` and environment-specific owner configuration.
+- Can access `/staff`, moderation tools, and `/admin` operational tools.
+- Can appoint moderators, manage radio operations, review DJ slot requests, and handle escalations.
+- This is currently a founder role, not a general moderator role.
+
+## Planned staff roles
+
+These should eventually live in a dedicated role/membership model rather than additional booleans on `profiles`.
+
+### Editorial curator — planned
+
+- Shapes featured projects, Explore editions, archive groupings, and editorial context.
+- Does not automatically receive moderation or account-administration powers.
+
+### Events producer — planned
+
+- Manages Cartelera quality, event relationships, salas, and future presence-based member access.
+- Does not automatically receive moderation powers.
+
+### Radio producer — planned
+
+- Manages radio scheduling, DJ approvals, live status, and stream information.
+- Should receive narrower access than the owner dashboard currently provides.
+
+### Community support — planned
+
+- Helps with account access, member questions, and appeals.
+- Should only see the minimum personal or moderation information necessary.
+
+### Technical administrator — planned
+
+- Maintains deployments, Supabase, storage, security, and operational infrastructure.
+- Technical access should remain separate from editorial and moderation authority.
+
+### Verified in-person member — future direction
+
+- Possible additive status earned through attendance at curated physical events using single-use codes.
+- Exact benefits are intentionally undecided.
+- Must not become mandatory until Magma has enough events and community density.
+
+---
+
+# Pages and product areas
+
+## Core navigation
+
+| Route | Name | Status | Purpose |
+|---|---|---|---|
+| `/` | Explorar / El archivo vivo | Active / navigation | General finite community stream. The first recent-feed page includes a compact “¿en qué andas?” entry bar with image and compartir links to the existing `/upload` workflow; moderation and sensitive-content controls remain there. |
+| `/explorar` | Explore compatibility route | Active / secondary | Backward-compatible alias for the homepage Explore experience; Explore controls use `/`. |
+| `/proyectos` | Proyectos | Active / navigation | Authenticated project directory with database-side title/description search, creator username filter, newest/oldest/title sorting, and stable 18-item pagination. The all/my-projects selector is removed; legacy vista parameters no longer restrict results. URL preserves filters across pages; filter submission resets pagination. Includes loading, empty and retry states. Category/status filters await explicit project metadata. |
+| `/eventos` | Cartelera | Active / navigation | Events and cultural activity around CDMX. Server-rendered poster data streams behind a loading placeholder using authenticated RLS, selecting preview fields and description for search, without profile payloads or a browser fetch waterfall. Uniform poster frames preserve natural proportions; first poster eager/high priority, others lazy. Shared request-time clock and CDMX dates avoid hydration differences. Live search and muro completo/archivo share a compact row above posters; date, colonia and access filters sit in a desktop sidebar and wrap on mobile. Active options are red without underlines. Search is accent-insensitive and combines with filters over fetched events; database pagination remains future scaling work. |
+| `/radio` | Radio | Deferred / hidden from navigation | Deferred beyond first launch while building the first 50 members. Removed from desktop and mobile navigation; code, data, and direct URL remain available. Test interest through a curated listening event before relaunching. |
+| `/colectivos` | Colectivos | Active / navigation | Discover listed creative groups with name/description search, created-by-me filter, newest/oldest/name sorting, and server-side pagination (18 per page). URL preserves filters; link-only groups remain excluded. Includes result counts, reset, empty and error states. |
+| `/upload` | Subir obra | Active / navigation | Create a post, optionally attach it to a project or colectivo, choose comments, mark sensitive content, and embed a SoundCloud track/set on music posts. Plain upload links open a lazy-loaded native dialog at desktop widths (1024px+), reusing `UploadForm`; mobile, direct URLs, modified clicks and links with project/colectivo parameters retain the full page. Modal locks background scrolling, confirms draft discard, blocks closing during submission and closes on successful publication. Arte/fotografía support 1–3 ordered photos with previews, removal, and carousel display in feed/detail; requires `supabase/post_carousel.sql` (applied to staging 2026-09-24; production pending). |
+
+## Personal projects and profiles
+
+Profile activity-count summary (“huellas en magma”) is removed for now; posts and event data remain unchanged.
+
+| Route | Name | Status | Purpose |
+|---|---|---|---|
+| `/profile/[username]` | Profile | Active / secondary | Identity and biography followed by Publicaciones (all authored post types together, newest first), Proyectos, Agenda (upcoming attendance), and Guardados. Text filters default to Todo. Letras filters publications to writing. Standalone event reflections are paused: composer and profile display removed; existing notes/photos retained, not migrated to conversations. Event conversations remain the place for notes. Compact editorial previews preserve full event posters. |
+| `/profile/edit` | Edit profile | Active / secondary | Manage profile identity, biography, location, and cover image. Discipline labels and selectors are removed; members can describe their practice in their bio. Signup does not collect disciplines. Existing discipline data is retained but not displayed, including in mi círculo. |
+| `/proyecto/[id]` | Project detail | Active / secondary | Journal-like home for a personal project and its linked entries. Authors choose horizontal (4:3) or vertical (2:3, default) cover crops in the project editor, with a live preview. Persisted as `links.cover_shape` in the existing JSON payload; applied to the detail header for all viewers. Original images and listing thumbnails remain unchanged. |
+| `/post/[id]` | Post detail | Active / secondary | Full presentation of a post, comments, reporting, sensitive-content consent, and moderation status for its author. Standard posts use one editorial column: author and headline, uncropped media, compact actions and disclosure for extra options, then conversation with its composer before comments. Natural page scrolling, no enclosed card or nested scrolling panels. Events retain their gallery-wall layout: centered uncropped viewport-sized poster, caption and attendance/sala actions underneath, then author, description, interactions, and conversation. |
+| `/post/[id]/edit` | Edit post | Active / secondary | Ordinary edits publish immediately; sensitive or previously rejected content requires review. Arte/fotografía can add, reorder, and remove gallery photos (up to 3; carousel migration required). |
+| `/colecciones/[username]` | Collections | Legacy / hidden | User-created saved groupings of posts. Not in the current primary product direction. |
+| `/colecciones/[username]/[id]` | Collection detail | Legacy / hidden | Individual saved collection. |
+
+### Post mentions
+
+Caption creation/editing and the letra editor offer account suggestions after `@`; selections are saved in the existing text/content fields, including browser drafts. Feed/detail mentions link to profiles; rich-text sanitization only preserves local profile links. Mention notifications are implemented by `supabase/post_mentions.sql` (applied to staging 2026-10-02; production pending): on approved visible publication/edit, notify each resolved account once per post, excluding the author and blocked pairs. Drafts never write posts. The bell opens the post directly. No email or private-message delivery. `supabase/test_post_mentions.sql` passed in staging for delivery, duplicates, self exclusion, pending/hidden visibility and recipient isolation; all fixtures rolled back.
+
+### Upload form and drafts
+
+The upload form uses the site's dark background with ash text and red accents. The experimental paper sheet, ruled lines, margin and punch holes have been removed; the simplified layout and controls remain.
+
+The shared upload page/dialog uses a notebook-style layout: compact format choices, media before title and writing, transparent underlined fields, and optional metadata, collaboration, comments, sensitive-content and project controls under “algo más”. Event facts stay visible. “publicar” and the quieter “guardar borrador” remain outside that disclosure. The photo picker retains ordering, removal, validation and previews; other uses of the picker keep their existing presentation.
+
+Drafts live in the owner-only profile tab `?tab=borradores`, excluded from “todo” and never mounted on another person's profile. No desktop/mobile account-menu shortcut; `/borradores` redirects to the profile tab (retaining a fallback index if the account lacks a username). Lists the current account’s browser-local saved drafts newest-first, with title/type/date, resume links to the original upload context, confirmed deletion, and loading/error/empty states. Resume opens the form’s existing draft recovery prompt.
+
+`UploadForm` offers manual browser-local draft save/resume/delete through IndexedDB, including Files, ordered photos, rich text, event fields, and publication settings. Drafts are keyed by account and upload context (type/project/colectivo), one saved draft per context; return via the same upload entry point to resume. No server upload occurs until publishing. Not cross-device; clearing browser data removes drafts. Storage errors are surfaced, existing drafts require resume/discard before replacement, and successful post insertion removes an actively resumed/saved draft even if subsequent attachment linking fails. Modal closure preserves saved drafts and warns about unsaved edits. Browser-level persistence QA remains required.
+
+## Events and salas
+
+| Route | Name | Status | Purpose |
+|---|---|---|---|
+| `/post/[id]/sala` | Event sala | Deferred / possible Phase 2 | Entry CTA removed; direct visits redirect to the event. Implementation and data preserved. Controlled by `EVENT_SALA_ENABLED` in `lib/features.ts`; restore CTA when re-enabling. |
+| `/hoy` | Hoy | Legacy / hidden | Daily-edition experiment. Explore is the current broader discovery direction. |
+
+## Colectivos
+
+Visibility labels are “visible en cartelera de colectivos” and “solo con enlace.” The existing `is_private` field controls directory listing only, not members-only content access. Public join requests require approval for both options; account-bound admin invitations bypass further approval once enabled.
+
+| Route | Name | Status | Purpose |
+|---|---|---|---|
+| `/colectivos/[slug]` | Colectivo detail | Active / secondary | Group identity, profile-linked member list below cover/actions, and shared work. Creator/admin labels appear first; pending requests/invitations are excluded. Existing membership/profile read permissions apply. |
+| `/colectivos/crear` | Create colectivo | Active / secondary | Create a new colectivo and become its administrator. |
+| `/colectivos/invitacion/[id]` | Accept invitation | Active / staging | Sign in with the invited account and explicitly accept a single-use admin invitation. |
+| `/colectivos/[slug]/ajustes` | Colectivo settings | Active / secondary | Administer membership, requests, and roles. The creator can edit name, description, cover image, background color, and directory visibility; the existing slug/link is preserved. Creator-only database update policy remains in force. Horizontal (4:3) / vertical (2:3) cover preview and saved detail-page crop require `supabase/colectivo_cover_shape.sql`; selector stays disabled until migration is applied. Detail header uses compact cover beside text, stacked on mobile. |
+
+## Radio
+
+| Route | Name | Status | Purpose |
+|---|---|---|---|
+| `/radio/solicitar` | Request a slot | Deferred / retained | DJ proposal workflow retained with radio, outside first-launch scope; direct URL remains available. |
+| `/radio/dj` | DJ dashboard | Deferred / retained | Approved-DJ performance view, live status, and listeners retained for later. Direct URL remains available; live chat also deferred. |
+
+## Communication
+
+Profile filters include “colectivos” alongside publications, writing, projects, agenda and saved collections. It shows linked memberships with loading, empty and retry states. “todo” combines publications, existing projects, colectivos, upcoming event attendance and visible saved collections into one responsive masonry mood board without separate section headings. Individual filter tabs remain available; empty project prompts appear only in the projects tab.
+
+| Route | Name | Status | Purpose |
+|---|---|---|---|
+| `/circulo` | Mi círculo | Active / secondary | Private, one-sided profile directory chosen by each member. Add/remove on other profiles and remove from the directory. Usernames, practice and biography excerpts, profile links; no avatars, ranking, follower counts, reciprocity or notifications. Owner-only RLS; self-adds and blocked-pair additions forbidden. Desktop/mobile account menu. Staging migration `supabase/private_circle.sql`; apply separately after schema on new environments. |
+| `/?feed=circulo` | Mi círculo feed | Active / explorar tab | Alongside “todo” in explorar (also supported on `/explorar`). Chronological, non-event posts from the viewer's chosen people, filtered server-side through an inner join to the private circle using the authenticated viewer's ID and existing RLS. Recent pagination and hoy/archivo date links preserve the circle selection; existing content filters remain available. Empty views offer guidance and an “editar mi círculo” link. No new schema or ranking. |
+| `/likes` | Mis likes | Active / secondary | Private editorial mood board of the signed-in member's post appreciations. Variable-height image tiles, paper-style writing excerpts, sound/video typographic tiles; newest appreciations first, 36 per page. Desktop/mobile account menu entry. Uses owner-only appreciation RLS and post visibility; sensitive content remains gated. No new likes storage or public taste profile. |
+| `/mensajes` | Messages | Active / navigation | Compact unified activity-sorted inbox with name search and todos/sin leer/directos/colectivos filters; mobile list/thread navigation. Direct messages (`?c=`) and membership-based colectivo chats (`?colectivo=`), grouped sender labels and CDMX date separators. Shared history loader fetches the latest 50, cursor-pages earlier messages with scroll anchoring, and catches up incrementally in 50-message batches (5-second foreground polling plus Realtime where available). Inbox previews/order refresh automatically (direct fallback 10 seconds, colectivos 5); successful reads immediately clear the Magma-red unread dot without marking background/scrolled-up chats read. Sending preserves drafts on failure with an explicit retry state; direct retries reuse the message primary key, colectivo retries retain the existing idempotent RPC. DM blocking remains in the options menu and group history RLS is unchanged. Inbox search/filtering is client-side; server inbox pagination and a single batched DM-summary query remain pending. |
+| `/mensajes/[conversationId]` | Conversation | Active / secondary | Direct route to a selected conversation. |
+
+## Authentication and recovery
+
+| Route | Name | Status | Purpose |
+|---|---|---|---|
+| `/auth/login` | Member login | Active / secondary | Standard member login; validates email-confirmation callback tokens, clears URL credentials, and displays confirmation or invalid-link guidance. Branded signup email source: `supabase/email-templates/confirm-signup.html` (install in Supabase dashboard). |
+| `/auth/register` | Registration | Active / secondary | Server-side account/profile creation followed by email confirmation and resend UI; no automatic sign-in token. Email delivery and redirect allowlist require deployment verification. |
+| `/auth/forgot-password` | Forgot password | Active / secondary | Request a recovery email without exposing account existence. |
+| `/auth/reset-password` | Reset password | Active / secondary | Awaits automatic PKCE exchange without redeeming twice, supports legacy recovery callbacks, validates the user session and clears callback credentials before password update. Fresh-email end-to-end retest pending. |
+
+## Staff and backend
+
+| Route | Name | Status | Access | Purpose |
+|---|---|---|---|---|
+| `/staff/login` | Staff login | Internal | Public form; individual credentials required | Entry point for Magma staff accounts. |
+| `/staff` | Staff workspace | Internal | Moderator or owner | Central launcher for authorized internal tools. |
+| `/staff/team` | Moderator team | Active in staging | Owner in `app_config` | Add/remove existing usernames with confirmation; owner cannot revoke their own moderator access. `supabase/moderator_team.sql` applied to staging on 2026-10-07; @majmaj configured as owner with moderator access. Production unchanged. No email invitations or accounts are created. |
+| `/mod` | Moderation dashboard | Internal | Moderator | Pending-post queue and community reports. |
+| `/admin` | Administration | Internal | Owner | Radio settings, DJ records, and slot-request decisions. |
+
+## Editorial and experimental pages
+
+| Route | Name | Status | Purpose |
+|---|---|---|---|
+| `/manifiesto` | Manifesto | Active / footer | Spanish manifesto, “magma no está terminado,” about creative experimentation, collaboration, CDMX, and the physical-space ambition. Linked from the shared desktop/mobile footer; mensajes occupies its former primary-navigation position. Reading is optional, not a signup gate. |
+| `/letras` | Letras | Active / secondary | Writing-focused view. |
+| `/manifiestos` | Old manifiestos URL | Legacy / hidden | Redirects to `/letras`, preserving old links. |
+
+## Tianguis
+
+| Route | Name | Status | Purpose |
+|---|---|---|---|
+| `/tianguis` | Marketplace | Legacy / hidden | Marketplace experiment removed from current navigation to simplify Magma. |
+| `/tianguis/[id]` | Listing detail | Legacy / hidden | Individual marketplace listing. |
+| `/tianguis/crear` | Create listing | Legacy / hidden | Listing creation. |
+| `/tianguis/mis-listings` | My listings | Legacy / hidden | Seller listing management. |
+
+---
+
+# Internal API routes
+
+| Route | Purpose |
+|---|---|
+| `/api/auth/login` | Server-side email/username login with generic errors and rate limiting. |
+| `/api/auth/register` | Validated account/profile creation with unconfirmed email, confirmation delivery, and best-effort per-process attempt limits. Production edge/distributed rate limits still required. |
+| `/api/upload` | Authenticated, validated media upload. HEIC/HEIF files convert to JPEG before storage (primary still image, 15 MB input/output limit); Mexican Spanish errors. Carousel picker accepts HEIC/HEIF. Actual iPhone end-to-end verification pending. |
+| `/api/event-note-image` | Retained backend for paused reflections; no active UI consumer. Session-authenticated image delivery checks note visibility and Storage RLS; private no-store responses. |
+| `/api/admin/slot-requests` | Owner-authorized DJ slot approval/rejection. |
+| `/api/events` | Event data endpoint. |
+| `/api/events/[id]/sala` | Deferred event sala endpoint; returns 404 while `EVENT_SALA_ENABLED` is false. |
+| `/api/home` | Homepage data endpoint. |
+
+---
+
+# Major workflows being built
+
+## Post moderation
+
+### In-app notifications
+
+- Navbar bell on desktop/mobile shows unread count and the 30 latest notifications; individual or bulk mark-read persists.
+- The bell is the only numeric notification badge in navigation. Removed the separate stale chat counter; unread chat indicators remain inside mensajes. Mobile feed filters are collapsed behind a summary; colectivo posts use one column below the desktop breakpoint.
+- New post comments notify the author and previous commenters (flat conversation updates, not threaded replies); direct messages notify their recipient. No self-notifications or historical backfill.
+- Database triggers generate notifications; recipient-only RLS, block checks, and target visibility checks protect reads. Clients can update only `read_at`, not create notifications or alter recipients.
+- Refreshes every 30 seconds while visible, on tab focus, and when opening the bell. No email/push delivery.
+- Staging migration: `supabase/in_app_notifications.sql` (apply after comments, messaging, blocks, and moderation). Production not applied.
+
+### Publishing policy
+
+- [x] Ordinary posts publish immediately; sensitive posts enter `pending` review. Legacy ordinary pending posts without moderation history are released by the migration; hidden/rejected/reviewed content is preserved.
+- [x] Existing posts remain approved during migration.
+- [x] Authors and moderators can see pending/rejected posts.
+- [x] Moderator approve/reject workflow.
+- [x] Immutable moderation action history.
+- [x] Sensitive-content blur with viewer consent.
+- [ ] Appeals interface and second-review workflow.
+- [ ] Account warnings and temporary posting restrictions.
+- [ ] Queue filters, assignment, pagination, and bulk actions.
+- [ ] Risk-based review and trusted publishing when volume requires it.
+
+## Personal projects
+
+- [x] Create, edit, and browse projects.
+- [x] Link posts to projects during upload and editing.
+- [x] SoundCloud and external project links.
+- [x] Safe SoundCloud players on music posts from normal track, playlist, or set URLs; arbitrary iframe HTML is never accepted.
+- [x] Journal-like project presentation.
+- [ ] Stronger entry ordering and project chapters/sections.
+- [ ] Draft entries and private project previews.
+- [ ] Better project-following and update notifications.
+
+## Explore / archive
+
+The feed keeps its newest-first data order. Explorar and mi círculo use a natural-height masonry column layout (three columns on desktop, two on tablet, one on mobile), letting posts tuck beneath one another without row gaps. Visual order flows down each column, then across, rather than strictly left to right. A responsive black margin on the right gives the desktop feed breathing room; the composer aligns with the feed's right edge. Both queries sort by created_at descending with id descending as a stable tie-breaker before pagination. Desktop and mobile filters expose todo / mi círculo and content types; the edición selector (reciente / hoy / archivo) and sidebar date picker are removed. Existing date-view URLs remain supported for compatibility.
+
+- [x] Separate Explore route.
+- [x] Mix different forms of city activity rather than projects alone.
+- [ ] Define the long-term relationship between Explore, daily editions, and the archive.
+- [ ] Editorial curation and featured groupings.
+- [ ] Pagination or finite editions rather than infinite scroll.
+
+## Community communication
+
+- [x] Direct messages and mutual block enforcement.
+- [x] Per-post comments on/off control.
+- [x] Consistent post interaction bar for appreciation, comments, private saves, sharing, and reporting.
+- [x] Per-user appreciation records with one appreciation per person and post.
+- [ ] Sticker responses to posts and comments.
+- [ ] Notifications for comments, project updates, messages, and moderation decisions.
+
+## Staff operations
+
+- [x] Individual staff login and staff workspace.
+- [x] Moderator and owner authorization.
+- [ ] Dedicated staff-role table with narrow permissions.
+- [ ] Editorial, events, radio, support, and technical roles.
+- [ ] Staff invitation and offboarding workflow.
+- [ ] Operational dashboard and audit views.
+
+## Physical membership
+
+- [ ] Define benefits of verified in-person status.
+- [ ] Build single-use event code issuance and redemption.
+- [ ] Keep physical verification additive during the community's early growth.
+
+---
+
+# Related documents
+
+- [`MODERATION.md`](./MODERATION.md) — Community standards and moderation philosophy.
+- [`LAUNCH_ROADMAP.md`](./LAUNCH_ROADMAP.md) — Launch and future-proofing roadmap.
+- [`MAGMA_context.md`](./MAGMA_context.md) — Technical and product context for collaborators.
+- [`AGENTS.md`](./AGENTS.md) — Product constraints and coding-agent instructions.
+
+# Change log
+
+## October 7, 2026 — Moderator team and reliable review actions
+
+- Activated owner-only moderator management at `/staff/team` in staging; @majmaj is the configured owner and can moderate. Production is unchanged.
+- Added database protection against self-assigned moderator roles, access-change history, and atomic report actions that target comments independently of parent posts.
+- Added explicit queue errors/retry, cancellation-safe rejection, and confirmation for permanent deletion.
+- Verified owner self-removal and unauthorized role changes are blocked in rollback-only SQL checks. User confirmed the staging test passed.
+- TypeScript, scoped lint, and five moderation interaction tests passed. Invitation links remain out of scope; friends register before the owner adds their username.
+
+## October 5, 2026 — Colectivo post audiences
+
+- Posts created inside a colectivo have an immutable `audience_colectivo_id`; members can read them, with existing moderator oversight preserved. Sharing an existing public post into a colectivo leaves the original public.
+- Database row policies protect private posts, their comments, and post notifications. Nonmembers see an access-request prompt on colectivo pages and a generic unavailable message at private post URLs.
+- Public feeds, profile post lists, search, letras, projects, and event listings exclude colectivo-only posts, including for members.
+- New colectivo uploads use the private `colectivo-media` bucket and authenticated `/api/colectivo-media` endpoint with no-store responses; public uploads retain their existing storage.
+- `supabase/colectivo_post_privacy.sql` applied to staging. Rollback-only checks in `supabase/test_colectivo_post_privacy.sql` verify member access, outsider denial, comments, atomic linking, immutable audience, and unchanged public shares. Production migration remains pending.
+- The 15 explicitly labeled sample posts were backfilled using `supabase/example_colectivo_post_privacy.sql`. Other historical shares were not reclassified because their original creation context cannot be inferred safely.
+
+## September 17, 2026
+
+- Created the canonical roles and pages inventory.
+- Added moderator/owner staff entry points.
+- Documented the post-review queue, moderation history, and future risk-based moderation direction.
+- Recorded sticker responses as planned rather than active work.
+- Consolidated the homepage and Explore into one Reddit-like community stream at `/`, with contextual project and colectivo rails.
+- Constrained homepage media to the viewport so complete images and videos remain visible without cropping.
+- Added an aspect-aware editorial stream layout: portrait artwork pairs the complete image with its title, context, tags, and author instead of filling unused space artificially.
+- Removed event posts from the homepage archive so Cartelera remains their dedicated destination.
+- Added captions from the existing post description: portrait posts place them beneath the title in the editorial side panel, while landscape media keeps them below the image.
+- Constrained homepage video previews to a smaller viewport-aware frame so the full video remains visible above its caption.
+- Added a consistent, low-pressure interaction system across the stream and post pages: appreciate, comment, save, share, and contextual moderation actions.
+- Reworked the main archive into a chronological editorial front page: one lead story, two supporting stories, and an alternating multi-column archive that returns to one column on mobile.
+- Evolved the archive into a hybrid editorial discovery layout: a continuous natural-height three-column masonry wall on desktop, two columns on tablets, and one column on phones.
