@@ -364,6 +364,11 @@ The feed keeps its newest-first data order. Explorar and mi círculo use a natur
 
 # Change log
 
+## October 20, 2026 — Red signup email (staging accepted)
+
+- Signup confirmation and resend emails now use Magma red (`#E12120`), dark backgrounds and white button text. Live-text branding avoids remote image dependencies; both confirmation variables are preserved.
+- Updated the local template, added two regression tests, and saved the palette to magma-staging. User confirmed the staging test passed. Production is unchanged; no push performed.
+
 ## October 20, 2026 — Intentional onboarding (staging database applied)
 
 - Added the introduction, existing full manifesto, two questions and community agreements before account creation. No personality scoring, long minimum answer length or owner approval requirement.
