@@ -1,7 +1,7 @@
 # MAGMA — Roles and Product Map
 
 **Purpose:** Canonical running inventory of Magma's people, permissions, pages, and internal tools.
-**Last updated:** October 6, 2026
+**Last updated:** October 20, 2026
 
 Update this file whenever a role, route, major workflow, or product area is added, removed, or renamed.
 
@@ -233,7 +233,7 @@ Profile filters include “colectivos” alongside publications, writing, projec
 | Route | Name | Status | Purpose |
 |---|---|---|---|
 | `/auth/login` | Member login | Active / secondary | Standard member login; validates email-confirmation callback tokens, clears URL credentials, and displays confirmation or invalid-link guidance. Branded signup email source: `supabase/email-templates/confirm-signup.html` (install in Supabase dashboard). |
-| `/auth/register` | Registration | Active / secondary | Server-side account/profile creation followed by email confirmation and resend UI; no automatic sign-in token. Email delivery and redirect allowlist require deployment verification. |
+| `/auth/register` | Registration | Staging migrated / local preview | Three steps: CDMX introduction with the existing expandable manifesto and community agreements; two private answers and explicit consent; account creation and email confirmation. No membership approval gate. Profile and answers save atomically before confirmation delivery. `supabase/member_onboarding.sql` applied to staging October 20; existing members are unchanged. User confirmed the staging test passed October 20; hosted frontend deployment remains separate. |
 | `/auth/forgot-password` | Forgot password | Active / secondary | Request a recovery email without exposing account existence. |
 | `/auth/reset-password` | Reset password | Active / secondary | Awaits automatic PKCE exchange without redeeming twice, supports legacy recovery callbacks, validates the user session and clears callback credentials before password update. Fresh-email end-to-end retest pending. |
 
@@ -244,6 +244,7 @@ Profile filters include “colectivos” alongside publications, writing, projec
 | `/staff/login` | Staff login | Internal | Public form; individual credentials required | Entry point for Magma staff accounts. |
 | `/staff` | Staff workspace | Internal | Moderator or owner | Central launcher for authorized internal tools. |
 | `/staff/team` | Moderator team | Active in staging | Owner in `app_config` | Add/remove existing usernames with confirmation; owner cannot revoke their own moderator access. `supabase/moderator_team.sql` applied to staging on 2026-10-07; @majmaj configured as owner with moderator access. Production unchanged. No email invitations or accounts are created. |
+| `/staff/ingresos` | Respuestas de ingreso | Staging migrated / local preview | Owner in `app_config` only | Private, newest-first answers with username search, reviewed/unreviewed filters, 20-row pagination, account creation date and timestamped/versioned agreement snapshots. Review markers do not change access. Ordinary moderators cannot read other members' answers. Staging owner is `@majmaj`. |
 | `/mod` | Moderation dashboard | Internal | Moderator | Pending-post queue and community reports. |
 | `/admin` | Administration | Internal | Owner | Radio settings, DJ records, and slot-request decisions. |
 
@@ -251,7 +252,7 @@ Profile filters include “colectivos” alongside publications, writing, projec
 
 | Route | Name | Status | Purpose |
 |---|---|---|---|
-| `/manifiesto` | Manifesto | Active / footer | Spanish manifesto, “magma no está terminado,” about creative experimentation, collaboration, CDMX, and the physical-space ambition. Linked from the shared desktop/mobile footer; mensajes occupies its former primary-navigation position. Reading is optional, not a signup gate. |
+| `/manifiesto` | Manifesto | Active / footer | Spanish manifesto, “magma no está terminado,” about creative experimentation, collaboration, CDMX, and the physical-space ambition. Shared component also expands inside the public signup introduction without leaving the form. The standalone page retains its existing member-only access. |
 | `/letras` | Letras | Active / secondary | Writing-focused view. |
 | `/manifiestos` | Old manifiestos URL | Legacy / hidden | Redirects to `/letras`, preserving old links. |
 
@@ -271,7 +272,7 @@ Profile filters include “colectivos” alongside publications, writing, projec
 | Route | Purpose |
 |---|---|
 | `/api/auth/login` | Server-side email/username login with generic errors and rate limiting. |
-| `/api/auth/register` | Validated account/profile creation with unconfirmed email, confirmation delivery, and best-effort per-process attempt limits. Production edge/distributed rate limits still required. |
+| `/api/auth/register` | Validates both answers and explicit current-version consent server-side. Creates an unconfirmed Auth account with a server-only onboarding marker, then atomically stores profile and private answers via service-only RPC before confirmation delivery. Missing migration fails closed before account creation. Best-effort per-process limits remain; production distributed limits still required. |
 | `/api/upload` | Authenticated, validated media upload. HEIC/HEIF files convert to JPEG before storage (primary still image, 15 MB input/output limit); Mexican Spanish errors. Carousel picker accepts HEIC/HEIF. Actual iPhone end-to-end verification pending. |
 | `/api/event-note-image` | Retained backend for paused reflections; no active UI consumer. Session-authenticated image delivery checks note visibility and Storage RLS; private no-store responses. |
 | `/api/admin/slot-requests` | Owner-authorized DJ slot approval/rejection. |
@@ -362,6 +363,14 @@ The feed keeps its newest-first data order. Explorar and mi círculo use a natur
 - [`AGENTS.md`](./AGENTS.md) — Product constraints and coding-agent instructions.
 
 # Change log
+
+## October 20, 2026 — Intentional onboarding (staging database applied)
+
+- Added the introduction, existing full manifesto, two questions and community agreements before account creation. No personality scoring, long minimum answer length or owner approval requirement.
+- Private `member_onboarding` records keep original answers, question/agreement/privacy snapshots, version, acceptance time and optional owner review marker. Account deletion cascades; answers are not public profile fields or Auth metadata. The member can read their own record through RLS; this first version has no member editing screen.
+- Added owner-only `/staff/ingresos`, linked from `/staff`. Review changes neither membership nor moderation state.
+- New Auth accounts must originate from the server registration flow; a database trigger rejects direct public signup and prevents email confirmation before private answers exist. Existing accounts remain unchanged. Future OAuth or manual invitations must integrate this flow rather than bypass it.
+- Applied migration to `magma-staging` (`jbzkdzcaqmxsmmyrlwif`) and passed rollback-only live permission checks in `supabase/test_member_onboarding.sql`. Confirmed zero remaining synthetic accounts/profiles/answers, RLS enabled and signup guard enabled. Local PostgreSQL checks additionally cover cascade deletion. No email was sent, no existing member was modified, and production is unchanged. The local app uses staging; user confirmed staging acceptance October 20; hosted frontend deployment remains separate. See `supabase/MEMBER_ONBOARDING.md`.
 
 ## October 7, 2026 — Moderator team and reliable review actions
 

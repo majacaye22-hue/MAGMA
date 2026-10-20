@@ -20,6 +20,7 @@ export default async function StaffPage() {
   if (!isOwner && !isModerator) redirect("/staff/login?error=unauthorized");
 
   const tools = [
+    ...(config?.owner_user_id === user.id ? [{ href: "/staff/ingresos", label: "respuestas de ingreso", description: "Leer las respuestas privadas de nuevos miembros y marcar las revisadas, sin cambiar su acceso.", accent: "#E12120" }] : []),
     ...(isOwner ? [{ href: "/staff/team", label: "equipo de moderación", description: "Dar o retirar acceso por usuario y revisar la actividad del equipo.", accent: "#E12120" }] : []),
     ...(isModerator || isOwner ? [{ href: "/mod", label: "moderación", description: "Revisar publicaciones pendientes y reportes de la comunidad.", accent: "#E12120" }] : []),
     ...(isOwner ? [{ href: "/admin", label: "administración", description: "Radio, solicitudes de slots y acceso administrativo.", accent: "#FF641F" }] : []),
