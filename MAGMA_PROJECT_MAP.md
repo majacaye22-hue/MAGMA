@@ -5,6 +5,13 @@
 
 Update this file whenever a role, route, major workflow, or product area is added, removed, or renamed.
 
+## Hosted staging release — October 20
+
+- All current Magma implementation and research sources are committed and pushed to `codex/magma-preview`; remote `main` and production are unchanged. Unrelated local tool configuration and the résumé script are excluded.
+- Vercel's branch-specific Supabase URL was verified as `https://jbzkdzcaqmxsmmyrlwif.supabase.co`. Other preview branches inherit production credentials: do not deploy staging work on a different branch without first configuring isolated credentials.
+- Preview deployments are enabled in `vercel.json`, using the verified webpack build. Local checks: 108 tests, TypeScript, staging-configured optimized build, and event-details/event-management/community-question SQL harnesses passed. Existing HEIC bundler and middleware deprecation warnings remain.
+- Code delivery is not feature activation: collaboration, event-invitation, event-details, event-management and community-question flags remain unset/off on the hosted preview. The attempted flag save was blocked by safety review and was not completed. Existing collaboration/invitation migrations were previously applied to staging; the three newer migrations and hosted privacy acceptance remain pending. No remote migration was applied during this release.
+
 ## Technical readiness checkpoint — October 14
 
 Visual identity development is handled separately; current engineering work prioritizes function, permissions and reliability. See `LAUNCH_TEST_CHECKLIST.md` for the evidence-based journey inventory, P0/P1 gates and acceptance-run format. Baseline: 53 automated tests pass, TypeScript passes, lint has 0 errors/15 warnings. These are partial regression checks, not live end-to-end or deployed-RLS certification. Production build, role-matrix rerun, browser/mobile journeys, migration rehearsal, backup/restore and monitoring verification remain pending. No production changes were made by this audit.
