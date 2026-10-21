@@ -11,7 +11,7 @@ CREATE FUNCTION pg_temp.ei_denied(stmt text) RETURNS void LANGUAGE plpgsql AS $$
 DO $$ DECLARE t record; uid uuid; BEGIN
  SELECT * INTO t FROM ei_test;
  FOREACH uid IN ARRAY ARRAY[t.host,t.guest,t.outsider] LOOP
- INSERT INTO auth.users(id,email) VALUES(uid,uid::text||'@event-invitation-test.invalid');
+ INSERT INTO auth.users(id,email,raw_app_meta_data) VALUES(uid,uid::text||'@event-invitation-test.invalid','{"magma_onboarding_version":"2026-10-20.v1"}');
  INSERT INTO public.profiles(id,username) VALUES(uid,'ei_'||replace(uid::text,'-',''))
  ON CONFLICT(id) DO UPDATE SET username=excluded.username;
  END LOOP;

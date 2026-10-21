@@ -16,7 +16,7 @@ END; $$;
 DO $$ DECLARE t record; uid uuid; BEGIN
  SELECT * INTO t FROM collaboration_test_ids;
  FOREACH uid IN ARRAY ARRAY[t.owner_id,t.member_id,t.stranger_id] LOOP
-   INSERT INTO auth.users(id,email) VALUES(uid,uid::text || '@collaboration-test.invalid');
+   INSERT INTO auth.users(id,email,raw_app_meta_data) VALUES(uid,uid::text || '@collaboration-test.invalid','{"magma_onboarding_version":"2026-10-20.v1"}');
    INSERT INTO public.profiles(id,username) VALUES(uid,'collab_' || replace(uid::text,'-',''))
      ON CONFLICT(id) DO UPDATE SET username=excluded.username;
  END LOOP;

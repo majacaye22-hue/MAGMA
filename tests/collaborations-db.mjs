@@ -7,7 +7,7 @@ const { PGlite } = await import(pathToFileURL(process.env.PGLITE_MODULE).href);
 const db = new PGlite();
 try {
   await db.exec(`CREATE ROLE authenticated; CREATE ROLE anon; CREATE ROLE service_role;
-    CREATE SCHEMA auth; CREATE TABLE auth.users(id uuid PRIMARY KEY, email text);
+    CREATE SCHEMA auth; CREATE TABLE auth.users(id uuid PRIMARY KEY, email text, raw_app_meta_data jsonb);
     CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
     GRANT USAGE ON SCHEMA public, auth TO authenticated, anon;
     CREATE SCHEMA storage; CREATE TABLE storage.buckets(id text PRIMARY KEY, name text, public boolean);`);
