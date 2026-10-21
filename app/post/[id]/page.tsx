@@ -1,4 +1,8 @@
 import { PhotoCarousel } from "@/app/components/PhotoCarousel";
+import { QuestionControls } from '@/app/components/QuestionControls';
+import { EventManagement } from "@/app/components/EventManagement";
+import { EVENT_MANAGEMENT_ENABLED, EVENT_MANAGEMENT_COLUMNS, EVENT_STATUSES, eventUnavailable } from "@/lib/event-management";
+import { EVENT_DETAILS_ENABLED, EVENT_DETAILS_COLUMNS, eventFinished, safeEventLink } from "@/lib/event-details";
 import { postMediaStyle, postShellStyle } from "@/lib/post-layout";
 import { PostImage } from "@/app/components/PostImage";
 import { postImages } from "@/lib/post-images";
@@ -7,6 +11,10 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase-server";
 import { CommentsSection, type Comment } from "@/app/components/CommentsSection";
 import { CollabProposalButton } from "./CollabProposalButton";
+import { COLLABORATIONS_ENABLED } from '@/lib/collaborations';
+import { CollaborationPanel } from '@/app/components/CollaborationPanel';
+import { EventInvitations } from '@/app/components/EventInvitations';
+import { EVENT_INVITATIONS_ENABLED } from '@/lib/event-invitations';
 import { ShareToColectivoButton } from "@/app/components/ShareToColectivoButton";
 import { EventAttendanceButton } from "./EventAttendanceButton";
 import type { Post } from "@/app/components/card-art";
@@ -21,7 +29,7 @@ import archiveStyles from "./archive-preview.module.css";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const POST_COLUMNS = "id,author_id,type,title,body,content,media_url,media_type,image_urls,cover_url,soundcloud_url,created_at,event_date,venue,address,is_free,price,open_collab,collab_description,tags,upvotes,comments_enabled,is_sensitive,audience_colectivo_id,moderation_status,moderation_note,profiles!posts_author_id_fkey(username, display_name)";
+const POST_COLUMNS = "id,author_id,type,title,body,content,media_url,media_type,image_urls,cover_url,soundcloud_url,created_at,event_date,venue,address,is_free,price,open_collab,collab_description,tags,upvotes,comments_enabled,is_sensitive,audience_colectivo_id,moderation_status,moderation_note,profiles!posts_author_id_fkey(username, display_name)" + (EVENT_DETAILS_ENABLED ? `,${EVENT_DETAILS_COLUMNS}` : "") + (EVENT_MANAGEMENT_ENABLED ? `,${EVENT_MANAGEMENT_COLUMNS}` : "");
 
 async function timedRequest<T>(stage: string, request: PromiseLike<T>): Promise<T> {
   const started = Date.now();
@@ -148,7 +156,8 @@ function EventoView({ post, conversation, currentUserId }: {
   const admission = post.is_free ? "entrada libre" : post.price ? `$${post.price}` : "entrada por confirmar";
   // The event page is force-dynamic, so this server-rendered boundary is recalculated per request.
   // eslint-disable-next-line react-hooks/purity
-  const eventHasPassed = Boolean(post.event_date && new Date(post.event_date).getTime() < Date.now());
+  const eventHasPassed = eventFinished(post, Date.now());
+  const eventLink = safeEventLink(post.event_link);
 
   return (
     <div style={postShellStyle} className={`mx-auto min-w-0 px-4 pb-12 sm:px-8 ${archiveStyles.page} ${archiveStyles.event}`}>
@@ -171,10 +180,18 @@ function EventoView({ post, conversation, currentUserId }: {
         </SensitiveContentGate>
         <figcaption className="event-gallery-caption">
           <h1 className="magma-page-title " style={{ color: "var(--magma-ash)", fontFamily: syne, fontWeight: 800 }}>{post.title}</h1>
+          {eventUnavailable(post) && <div role="status" className="my-3 border border-[var(--magma-red)] p-3"><strong>{EVENT_STATUSES[post.event_status!]}</strong>{post.event_status_note && <p className="whitespace-pre-wrap">{post.event_status_note}</p>}<p className="text-sm">el horario publicado ya no está confirmado.</p></div>}
           <dl className="event-gallery-facts">
             <div><dt>cuándo</dt><dd>{post.event_date ? formatDate(post.event_date) + " · " + formatTime(post.event_date) : "fecha por anunciar"}</dd></div>
             <div><dt>dónde</dt><dd>{[post.venue, post.address].filter(Boolean).join(" · ") || "lugar por anunciar"}</dd></div>
             <div><dt>acceso</dt><dd>{admission}</dd></div>
+            {post.event_end_date && <div><dt>termina</dt><dd>{formatDate(post.event_end_date)} · {formatTime(post.event_end_date)}</dd></div>}
+            {post.event_category && <div><dt>categoría</dt><dd>{post.event_category}</dd></div>}
+            {post.minimum_age != null && <div><dt>edad mínima</dt><dd>{post.minimum_age === 0 ? "todas las edades" : `${post.minimum_age}+`}</dd></div>}
+            {post.registration_required && <div><dt>registro</dt><dd>requiere registro previo</dd></div>}
+            {post.accessibility_info && <div><dt>accesibilidad</dt><dd className="whitespace-pre-wrap">{post.accessibility_info}</dd></div>}
+            {post.address && <div><dt>ubicación</dt><dd><a className="underline" target="_blank" rel="noopener noreferrer" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${post.venue ?? ""} ${post.address}, Ciudad de México`)}`}>cómo llegar ↗</a></dd></div>}
+            {eventLink && !eventHasPassed && !eventUnavailable(post) && <div><dt>enlace externo</dt><dd><a className="text-[var(--magma-red)] underline" href={eventLink} target="_blank" rel="noopener noreferrer">{post.event_link_kind === "registration" ? "registrarme" : "comprar boleto"} ↗</a></dd></div>}
             {post.open_collab && <div><dt className="sr-only">colaboración</dt><dd><div className="-ml-3 -mt-2"><CollabProposalButton postId={post.id} postAuthorId={post.author_id ?? ""} currentUserId={currentUserId} description={post.collab_description} /></div></dd></div>}
           </dl>
         </figcaption>
@@ -186,8 +203,9 @@ function EventoView({ post, conversation, currentUserId }: {
           <div data-post-interactions className={archiveStyles.eventActions}>
           <PostInteractionBar echoAllowed={post.audience_colectivo_id === null && post.moderation_status === "approved"} postId={post.id} postAuthorId={post.author_id} currentUserId={currentUserId} initialAppreciations={post.upvotes} commentsEnabled={post.comments_enabled !== false} showDivider={false} showCommentAction={false} />
           </div>
-          {!eventHasPassed && <EventAttendanceButton eventId={post.id} currentUserId={currentUserId} />}
+          {!eventHasPassed && !eventUnavailable(post) && <EventAttendanceButton eventId={post.id} currentUserId={currentUserId} />}
         </div>
+        {EVENT_MANAGEMENT_ENABLED && currentUserId && <EventManagement eventId={post.id} userId={currentUserId} ownerId={post.author_id} status={post.event_status ?? "scheduled"} version={post.event_status_version ?? 0} />}
         <section className="mt-3">
           {conversation}
         </section>
@@ -372,7 +390,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
       .select(POST_COLUMNS)
       .eq("id", id)
       .abortSignal(AbortSignal.timeout(15000))
-      .maybeSingle());
+      .maybeSingle<Post>());
 
   if (postError) {
     console.error("[post detail] failed to fetch post", { id, code: postError.code, message: postError.message });
@@ -389,7 +407,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   const post = { ...postData, media_base64: null } as unknown as Post;
   // Keep old uploads working without transferring unused base64 data for
   // newer posts. This remains an authenticated, RLS-protected query.
-  if (!post.media_url && !post.image_urls?.length && post.type !== "escrito" && !post.soundcloud_url) {
+  if (!post.media_url && !post.image_urls?.length && post.type !== "escrito" && post.type !== "pregunta" && !post.soundcloud_url) {
     const legacy = await timedRequest("legacy media", supabase.from("posts")
       .select("media_base64").eq("id", id).abortSignal(AbortSignal.timeout(15000)).maybeSingle());
     if (legacy.error) throw new Error("No se pudo cargar la imagen.");
@@ -406,6 +424,8 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#0c0c0b" }}>
+      {EVENT_INVITATIONS_ENABLED && post.type === 'evento' && post.author_id === currentUserId && <div className="mx-auto max-w-3xl px-6 pt-4"><EventInvitations eventId={post.id} userId={currentUserId} unavailable={eventUnavailable(post)} /></div>}
+      {COLLABORATIONS_ENABLED && post.type !== 'pregunta' && <div className="mx-auto max-w-3xl px-6"><CollaborationPanel kind="post" targetId={post.id} ownerId={post.author_id ?? ''} userId={currentUserId} ownerInviteMode="hidden" /></div>}
 
       {post.moderation_status && post.moderation_status !== "approved" && post.author_id === currentUserId && (
         <div className="max-w-2xl mx-auto px-6 pt-6">
@@ -416,7 +436,18 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
         </div>
       )}
 
-        {post.type === "evento" ? (
+        {post.type === 'pregunta' ? (
+          <main className="mx-auto max-w-2xl px-6 py-10">
+            <Link href="/" className="text-sm underline">← explorar</Link>
+            <p className="mt-6 text-sm text-[var(--magma-red)]">pregunta a la comunidad · {post.profiles ? <Link href={`/profile/${encodeURIComponent(post.profiles.username)}`}>@{post.profiles.username}</Link> : 'anónimo'}</p>
+            <h1 className="my-5 text-3xl font-semibold">{post.title}</h1>
+            <p className="mb-6 whitespace-pre-wrap">{post.body}</p>
+            <PostInteractionBar postId={post.id} postAuthorId={post.author_id} currentUserId={currentUserId} initialAppreciations={post.upvotes} commentsEnabled={post.comments_enabled !== false} question showCommentAction={false} />
+            <QuestionControls postId={post.id} />
+            <p className="mb-4 text-xs text-[var(--magma-muted)]">las respuestas son públicas y llevan tu usuario, incluso si hiciste la pregunta de forma anónima.</p>
+            {conversation}
+          </main>
+        ) : post.type === "evento" ? (
           <EventoView {...viewProps} />
         ) : post.type === "escrito" ? (
           <SensitiveContentGate enabled={post.is_sensitive === true} postId={post.id}>

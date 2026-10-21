@@ -2,10 +2,13 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabase";
+import { PROFILE_OFFERINGS_ENABLED } from '@/lib/profile-offerings';
+import type { OfferingReference } from '@/lib/offering-reference';
 import { CHAT_PAGE_SIZE, cursorFilter, mergeMessages, notifyInbox, type MessageCursor } from "@/lib/chat-sync";
 
 export type ChatMessage = MessageCursor & {
   sender_id: string | null; body: string; read?: boolean;
+  offering_reference?: OfferingReference | null;
   profiles?: { username: string } | null;
 };
 
@@ -27,7 +30,7 @@ export function useMessageHistory(kind: "direct" | "group", id: string, userId: 
   const readRef = useRef<() => void>(() => {});
   const table = kind === "direct" ? "messages" : "colectivo_messages";
   const foreignKey = kind === "direct" ? "conversation_id" : "colectivo_id";
-  const selection = kind === "direct" ? "id,sender_id,body,created_at,read" : "id,sender_id,body,created_at,profiles!colectivo_messages_sender_id_fkey(username)";
+  const selection = kind === "direct" ? `id,sender_id,body,created_at,read${PROFILE_OFFERINGS_ENABLED ? ',offering_reference' : ''}` : "id,sender_id,body,created_at,profiles!colectivo_messages_sender_id_fkey(username)";
 
   useEffect(() => {
     const generationCounter = epoch;

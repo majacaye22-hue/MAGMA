@@ -8,7 +8,7 @@ const { renderToStaticMarkup } = require("react-dom/server");
 const helpers = {};
 vm.runInNewContext(ts.transpileModule(fs.readFileSync("lib/event-preview.ts", "utf8"), {
   compilerOptions: { module: ts.ModuleKind.CommonJS },
-}).outputText, { exports: helpers, Intl, Date });
+}).outputText, { exports: helpers, Intl, Date, require: name => name.endsWith('event-management') ? require('./event-management-loader.cjs')() : require('./event-details-loader.cjs')() });
 
 test("event dates use CDMX at midnight boundaries and preview excludes large fields", () => {
   assert.equal(helpers.eventDay("2026-09-29T05:59:00Z"), "2026-09-28");
@@ -27,6 +27,7 @@ test("event cards render immediately on the server with first-poster priority an
     if (name === "next/link") return { default: ({ children, ...props }) => React.createElement("a", props, children) };
     if (name === "./FeedImage") return { FeedImage: ({ mediaType, ...props }) => React.createElement("img", props) };
     if (name === "@/lib/event-preview") return helpers;
+    if (name === "@/lib/event-management") return require('./event-management-loader.cjs')();
     throw Error(name);
   } });
   const props = { post: { id: "event", title: "prueba", media_url: "/poster.jpg", event_date: "2026-09-29T18:00:00Z" }, now: Date.parse("2026-09-29T12:00:00Z") };
@@ -34,7 +35,8 @@ test("event cards render immediately on the server with first-poster priority an
   assert.match(first, /loading="eager"/);
   assert.match(first, /fetchPriority="high"/);
   assert.match(first, /aspect-ratio:3 \/ 4/);
-  assert.match(first, /object-fit:contain/);
+  assert.match(first, /object-fit:cover/);
+  assert.match(first, /object-position:center/);
   const rest = renderToStaticMarkup(React.createElement(exports.FlyerCard, props));
   assert.match(rest, /loading="lazy"/);
   assert.match(rest, /29 de septiembre/);

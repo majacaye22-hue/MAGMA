@@ -8,6 +8,8 @@ import { getSupabaseClient } from "@/lib/supabase";
 import { BookmarkButton } from "./BookmarkButton";
 import { ReportModal } from "./ReportModal";
 import { EchoButton } from "./EchoButton";
+import { COLLABORATIONS_ENABLED } from '@/lib/collaborations';
+import { PostCollaboratorsDialog } from './PostCollaboratorsDialog';
 
 const mono = "var(--font-space-mono), monospace";
 
@@ -42,6 +44,7 @@ export function PostInteractionBar({
   showDivider = true,
   extraActions,
   echoAllowed = false,
+  question = false,
 }: {
   postId: string;
   postAuthorId: string | null;
@@ -54,6 +57,7 @@ export function PostInteractionBar({
   showDivider?: boolean;
   extraActions?: ReactNode;
   echoAllowed?: boolean;
+  question?: boolean;
 }) {
   const [appreciated, setAppreciated] = useState(false);
   const router = useRouter();
@@ -64,6 +68,7 @@ export function PostInteractionBar({
   const [interactionError, setInteractionError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [reporting, setReporting] = useState(false);
+  const [inviting, setInviting] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
   const [menuPosition, setMenuPosition] = useState({ left: 0, top: 0 });
@@ -225,7 +230,7 @@ export function PostInteractionBar({
                 event.preventDefault(); event.stopPropagation();
                 const rect = event.currentTarget.getBoundingClientRect();
                 const width = extraActions ? 260 : 190;
-                const height = extraActions ? 180 : 110;
+                const height = (extraActions ? 180 : 110) + (COLLABORATIONS_ENABLED && currentUserId === postAuthorId ? 44 : 0);
                 setMenuPosition({ left: Math.max(8, Math.min(rect.right - width, window.innerWidth - width - 8)), top: rect.bottom + height > window.innerHeight ? Math.max(8, rect.top - height) : rect.bottom + 6 });
                 setMenuOpen((open) => !open);
               }}
@@ -239,7 +244,8 @@ export function PostInteractionBar({
               <div ref={popupRef} onClick={(event) => event.stopPropagation()} style={{ position: "fixed", ...menuPosition, width: extraActions ? "260px" : "190px", maxWidth: "calc(100vw - 16px)", maxHeight: `calc(100dvh - ${menuPosition.top + 8}px)`, overflowY: "auto", borderRadius: "8px", backgroundColor: "#181819", border: "1px solid #454549", boxShadow: "0 8px 24px rgba(0,0,0,.55)", zIndex: 1000 }}>
                 {currentUserId && currentUserId === postAuthorId ? (
                   <>
-                    <Link href={`/post/${postId}/edit`} style={{ ...actionStyle, display: "flex", padding: "10px 12px" }}>editar</Link>
+                    {!question && <Link href={`/post/${postId}/edit`} style={{ ...actionStyle, display: "flex", padding: "10px 12px" }}>editar</Link>}
+                    {!question && COLLABORATIONS_ENABLED && <button type="button" onClick={() => { setMenuOpen(false); setInviting(true); }} style={{ ...actionStyle, display: 'flex', padding: '10px 12px', width: '100%', textAlign: 'left', cursor: 'pointer' }}>invitar colaboradores</button>}
                     <button type="button" disabled={deleting} onClick={deletePost} style={{ ...actionStyle, color: "var(--magma-red)", cursor: "pointer", width: "100%", padding: "10px 12px", textAlign: "left" }}>{deleting ? "eliminando…" : "eliminar publicación"}</button>
                   </>
                 ) : currentUserId ? (
@@ -266,6 +272,12 @@ export function PostInteractionBar({
 
       {reporting && currentUserId && (
         <ReportModal postId={postId} currentUserId={currentUserId} onClose={() => setReporting(false)} />
+      )}
+      {inviting && COLLABORATIONS_ENABLED && currentUserId && currentUserId === postAuthorId && (
+        <PostCollaboratorsDialog postId={postId} userId={currentUserId} onClose={() => {
+          setInviting(false);
+          menuRef.current?.querySelector('button')?.focus();
+        }} />
       )}
     </>
   );

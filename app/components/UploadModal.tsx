@@ -55,6 +55,6 @@ export function UploadModal() {
     <div className="sticky top-0 z-50 flex justify-end bg-[var(--magma-obsidian)] px-4 py-2">
       <button type="button" onClick={() => close()} aria-label="cerrar formulario" className="magma-nav-action text-xl">×</button>
     </div>
-    <UploadForm onDraftState={updateDraft} onPublished={() => close(true)} />
+    <UploadForm onDraftState={updateDraft} onPublished={() => close(true)} onLeave={() => close(true)} />
   </dialog> : null;
 }

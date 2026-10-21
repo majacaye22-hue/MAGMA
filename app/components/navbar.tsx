@@ -7,10 +7,12 @@ import { getSupabaseClient } from "@/lib/supabase";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { MagmaLogo } from "@/app/components/MagmaLogo";
 import { NotificationBell } from "@/app/components/NotificationBell";
+import { COLLABORATIONS_ENABLED } from '@/lib/collaborations';
 
 interface Profile {
   username: string;
   display_name: string | null;
+  is_moderator: boolean;
 }
 
 
@@ -57,6 +59,47 @@ export function Navbar() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [moderationQueue, setModerationQueue] = useState<{ username: string; pending: boolean } | null>(null);
+  const hasPendingModeration = profile?.is_moderator === true && moderationQueue?.username === profile.username && moderationQueue.pending;
+
+  useEffect(() => {
+    if (!profile?.is_moderator) return;
+    let disposed = false;
+    let request = 0;
+    const username = profile.username;
+    const refresh = async () => {
+      const version = ++request;
+      try {
+        const { data, error } = await supabase.from("posts").select("id")
+          .eq("moderation_status", "pending").limit(1).abortSignal(AbortSignal.timeout(10000));
+        if (!disposed && version === request && !error) {
+          setModerationQueue({ username, pending: Boolean(data?.length) });
+        }
+      } catch { /* Keep the last known queue state on a temporary connection failure. */ }
+    };
+    const wake = () => { if (!document.hidden) void refresh(); };
+    void refresh();
+    const channel = supabase.channel("moderation-menu-queue")
+      .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, wake)
+      .subscribe((status: string) => { if (status === "SUBSCRIBED") wake(); });
+    const timer = window.setInterval(wake, 15000);
+    window.addEventListener("focus", wake);
+    window.addEventListener("magma:moderation-changed", wake);
+    document.addEventListener("visibilitychange", wake);
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", wake);
+      window.removeEventListener("magma:moderation-changed", wake);
+      document.removeEventListener("visibilitychange", wake);
+      void supabase.removeChannel(channel);
+    };
+  }, [profile?.username, profile?.is_moderator, supabase, pathname]);
+
+  const moderationLabel = <>moderación{hasPendingModeration && <>
+    <span aria-hidden="true" className="ml-2 inline-block h-2 w-2 rounded-full bg-[#DC143C]" />
+    <span className="sr-only"> · publicaciones pendientes de revisión</span>
+  </>}</>;
 
   function scrollToTopAfterNavigation() {
     requestAnimationFrame(() => {
@@ -83,7 +126,7 @@ export function Navbar() {
     async function loadProfile(userId: string) {
       const { data } = await client
         .from("profiles")
-        .select("username, display_name")
+        .select("username, display_name, is_moderator")
         .eq("id", userId)
         .maybeSingle();
       setProfile(data ?? null);
@@ -219,6 +262,7 @@ export function Navbar() {
                       mi perfil
                     </Link>
                     <Link href="/likes" onClick={() => setDropdownOpen(false)} className="px-4 py-3 text-xs hover:bg-[#1e1e1b] transition-colors border-t" style={{ color: "#F2F4F8", fontFamily: mono, borderColor: "#2a2a28" }}>mis likes ✦</Link>
+                    {COLLABORATIONS_ENABLED && <Link href="/colaboraciones" onClick={() => setDropdownOpen(false)} className="px-4 py-3 text-xs border-t border-[#2a2a28]">invitaciones</Link>}
                     <Link
                       href="/circulo"
                       onClick={() => setDropdownOpen(false)}
@@ -232,6 +276,12 @@ export function Navbar() {
                     >
                       subir obra
                     </Link>
+                    {profile.is_moderator === true && <Link
+                      href="/mod"
+                      onClick={() => setDropdownOpen(false)}
+                      className="px-4 py-3 text-xs hover:bg-[#1e1e1b] transition-colors border-t"
+                      style={{ color: "#ffffff", fontFamily: mono, borderColor: "#2a2a28" }}
+                    >{moderationLabel}</Link>}
                     <button
                       onClick={handleSignOut}
                       className="px-4 py-3 text-xs text-left cursor-pointer hover:bg-[#1e1e1b] transition-colors border-t"
@@ -317,11 +367,18 @@ export function Navbar() {
                 mi perfil
               </Link>
               <Link href="/likes" onClick={() => setMobileOpen(false)} className="px-6 py-4 text-xs border-b" style={{ color: "#F2F4F8", fontFamily: mono, borderColor: "#1e1e1e" }}>mis likes ✦</Link>
+              {COLLABORATIONS_ENABLED && <Link href="/colaboraciones" onClick={() => setMobileOpen(false)} className="px-6 py-4 text-xs border-b border-[#1e1e1e]">invitaciones</Link>}
               <Link
                 href="/circulo"
                 onClick={() => setMobileOpen(false)}
                 className="px-6 py-4 text-xs border-b border-[#1e1e1e]"
               >mi círculo</Link>
+              {profile.is_moderator === true && <Link
+                href="/mod"
+                onClick={() => setMobileOpen(false)}
+                className="px-6 py-4 text-xs border-b"
+                style={{ color: "#ffffff", fontFamily: mono, borderColor: "#1e1e1e" }}
+              >{moderationLabel}</Link>}
               <button
                 onClick={handleSignOut}
                 className="px-6 py-4 text-xs text-left cursor-pointer border-b"

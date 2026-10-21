@@ -1,4 +1,6 @@
 "use client";
+import { EventDetailsFields } from "@/app/components/EventDetailsFields";
+import { EVENT_DETAILS_ENABLED, emptyEventDetails, eventDetailsPayload, eventTimestamp, eventLocalParts, restoreEventDetails, type EventDetails } from "@/lib/event-details";
 
 import { PhotoPicker } from "@/app/components/PhotoPicker";
 import { MentionInput } from "@/app/components/MentionInput";
@@ -12,6 +14,9 @@ import { useParams, useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { normalizeSoundCloudUrl } from "@/lib/soundcloud";
+import { COLLABORATIONS_ENABLED } from '@/lib/collaborations';
+import { CollaborationPanel } from '@/app/components/CollaborationPanel';
+import { PostProjectLinks } from '@/app/components/PostProjectLinks';
 
 const RichEditor = dynamic(
   () => import("@/app/components/editor/RichEditor").then((m) => m.RichEditor),
@@ -96,6 +101,7 @@ export default function EditPostPage() {
   const [address, setAddress] = useState("");
   const [isFree, setIsFree] = useState(true);
   const [price, setPrice] = useState("");
+  const [eventDetails, setEventDetails] = useState(emptyEventDetails);
   const [openCollab, setOpenCollab] = useState(false);
   const [collabDescription, setCollabDescription] = useState("");
   const [commentsEnabled, setCommentsEnabled] = useState(true);
@@ -148,10 +154,11 @@ export default function EditPostPage() {
       setPhotos(postImages(p));
 
       if (p.event_date) {
-        const d = new Date(p.event_date);
-        setEventDate(d.toISOString().slice(0, 10));
-        setEventTime(d.toISOString().slice(11, 16));
+        const d = eventLocalParts(p.event_date);
+        setEventDate(d.date);
+        setEventTime(d.time);
       }
+      setEventDetails(restoreEventDetails(p as PostData & EventDetails));
       setVenue(p.venue ?? "");
       setAddress(p.address ?? "");
       setIsFree(p.is_free ?? true);
@@ -162,14 +169,16 @@ export default function EditPostPage() {
       setCollabDescription((p as PostData & { collab_description?: string | null }).collab_description ?? "");
 
       // Fetch user's projects and this post's current project link
-      const [{ data: projects }, { data: linked }] = await Promise.all([
-        supabase.from("projects").select("id, title").eq("author_id", session.user.id).order("created_at", { ascending: false }),
-        supabase.from("post_projects").select("project_id").eq("post_id", id).maybeSingle(),
-      ]);
-      setUserProjects(projects ?? []);
-      const currentProjectId = linked?.project_id ?? "";
-      setSelectedProject(currentProjectId);
-      setInitialProject(currentProjectId);
+      if (!COLLABORATIONS_ENABLED) {
+        const [{ data: projects }, { data: linked }] = await Promise.all([
+          supabase.from("projects").select("id, title").eq("author_id", session.user.id).order("created_at", { ascending: false }),
+          supabase.from("post_projects").select("project_id").eq("post_id", id).order('created_at').limit(1).maybeSingle(),
+        ]);
+        setUserProjects(projects ?? []);
+        const currentProjectId = linked?.project_id ?? "";
+        setSelectedProject(currentProjectId);
+        setInitialProject(currentProjectId);
+      }
 
       setLoading(false);
     })();
@@ -221,9 +230,7 @@ export default function EditPostPage() {
       // Build event_date
       let event_date: string | null = null;
       if (postType === "evento" && eventDate) {
-        event_date = eventTime
-          ? new Date(`${eventDate}T${eventTime}`).toISOString()
-          : new Date(eventDate).toISOString();
+        event_date = eventTimestamp(eventDate, eventTime);
       }
 
       const updatePayload: Record<string, unknown> = {
@@ -246,6 +253,7 @@ export default function EditPostPage() {
         updatePayload.address = address.trim() || null;
         updatePayload.is_free = isFree;
         updatePayload.price = !isFree && price.trim() ? price.trim() : null;
+        if (EVENT_DETAILS_ENABLED) Object.assign(updatePayload, eventDetailsPayload(eventDetails, event_date));
       }
 
       // Use direct fetch to avoid gotrue-js internal getSession() deadlock
@@ -269,13 +277,15 @@ export default function EditPostPage() {
       }
 
       // Update project linkage if changed
-      if (selectedProject !== initialProject) {
+      if (!COLLABORATIONS_ENABLED && selectedProject !== initialProject) {
         const supabase = getSupabaseClient();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase as any).from("post_projects").delete().eq("post_id", id);
+        const { error: unlinkError } = initialProject ? await supabase.from("post_projects").delete().eq("post_id", id).eq('project_id', initialProject) : { error: null };
+        if (unlinkError) throw unlinkError;
+        setInitialProject('');
         if (selectedProject) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (supabase as any).from("post_projects").insert({ post_id: id, project_id: selectedProject });
+          const { error: linkError } = await supabase.from("post_projects").insert({ post_id: id, project_id: selectedProject });
+          if (linkError) throw linkError;
+          setInitialProject(selectedProject);
         }
       }
 
@@ -519,6 +529,7 @@ export default function EditPostPage() {
           )}
 
           {/* Collab toggle */}
+          {EVENT_DETAILS_ENABLED && postType === "evento" && <EventDetailsFields value={eventDetails} onChange={setEventDetails} />}
           <button
             type="button"
             onClick={() => setOpenCollab((v) => !v)}
@@ -657,7 +668,11 @@ export default function EditPostPage() {
           </button>
 
           {/* Agregar a proyecto */}
-          {userProjects.length > 0 && (
+          {COLLABORATIONS_ENABLED && <>
+            <PostProjectLinks postId={id} privatePost={Boolean(colectivoId)} />
+            {userId && <CollaborationPanel kind="post" targetId={id} ownerId={userId} userId={userId} />}
+          </>}
+          {!COLLABORATIONS_ENABLED && userProjects.length > 0 && (
             <div>
               <label style={labelStyle}>
                 Agregar a proyecto <span style={{ color: "var(--magma-muted)" }}>— opcional</span>

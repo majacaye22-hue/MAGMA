@@ -32,7 +32,7 @@ export default async function CirclePage({ searchParams }: { searchParams: Promi
     ) : <section className="mt-6 border-t border-white/20 py-10">
       <h2 className="text-2xl">{page > 1 ? "no hay más personas aquí" : "tu círculo empieza con alguien"}</h2>
       <p className="mt-4 text-sm text-white/60">visita un perfil y elige “añadir a mi círculo”.</p>
-      <Link href={page > 1 ? "/circulo" : "/"} className="inline-block mt-8 text-[var(--magma-ash)]">{page > 1 ? "volver a mi círculo" : "explorar la comunidad"} →</Link>
+      <Link href={page > 1 ? "/circulo" : "/buscar"} className="inline-block mt-8 text-[var(--magma-ash)]">{page > 1 ? "volver a mi círculo" : "explorar la comunidad"} →</Link>
     </section>}
     {!error && (count ?? 0) > 36 && <nav aria-label="páginas de mi círculo" className="flex justify-between mt-8 text-sm">
       {page > 1 ? <Link href={`/circulo?page=${page - 1}`}>← anteriores</Link> : <span />}

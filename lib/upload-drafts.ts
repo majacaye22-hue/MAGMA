@@ -1,7 +1,9 @@
 export type UploadDraft = {
+  eventDetails?: import("./event-details").EventDetailsDraft;
   selectedType: "arte" | "música" | "fotografía" | "evento" | "escrito" | "video" | null;
   title: string; description: string; richContent: string; soundCloudUrl: string;
   tags: string; location: string; selectedProject: string;
+  collaboratorUsernames?: string;
   openCollab: boolean; collabDescription: string; commentsEnabled: boolean; isSensitive: boolean;
   eventDate: string; eventTime: string; venue: string; address: string; isFree: boolean; price: string;
   file: File | null; coverFile: File | null; photos: (File | string)[];

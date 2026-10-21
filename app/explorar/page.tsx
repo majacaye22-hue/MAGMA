@@ -79,17 +79,16 @@ export default async function ExplorarPage({ searchParams }: { searchParams: Pro
 
         {view !== "reciente" && <nav className="flex flex-wrap items-center justify-between gap-4 py-5" aria-label="Navegar por fechas"><Link href={href(`/?vista=archivo&fecha=${shiftDate(date, -1)}`)} style={{ color: "var(--magma-muted)", fontFamily: mono, fontSize: "var(--magma-text-small)", textDecoration: "none" }}>← día anterior</Link><p style={{ color: "#F2F4F8", fontFamily: mono, fontSize: "var(--magma-text-small)" }}>{displayDate(date)} · {posts.length} señal{posts.length === 1 ? "" : "es"}</p>{date === today ? <span style={{ color: "#2a2a28", fontFamily: mono, fontSize: "var(--magma-text-small)" }}>día siguiente →</span> : <Link href={href(shiftDate(date, 1) === today ? "/?vista=hoy" : `/?vista=archivo&fecha=${shiftDate(date, 1)}`)} style={{ color: "var(--magma-muted)", fontFamily: mono, fontSize: "var(--magma-text-small)", textDecoration: "none" }}>día siguiente →</Link>}</nav>}
 
-        <div className="pt-3 md:pt-7 lg:pr-[204px]">
+        <div className="pt-3 md:pt-7 lg:pr-[88px]">
           {view === "reciente" && page === 1 && (
-            <nav aria-label="compartir en magma" className="mb-3 flex min-w-0 items-center gap-1 rounded-[2px] border border-[#49463f] bg-transparent p-1 md:ml-[204px]">
+            <div className="mb-3 md:ml-[88px]">
+            <nav aria-label="compartir en magma" className="mx-auto flex w-full max-w-[680px] min-w-0 items-center gap-1 rounded-[2px] border border-[#49463f] bg-transparent p-1">
               <Link href="/upload" className="flex min-h-11 min-w-0 flex-1 flex-col justify-center gap-1 rounded-[2px] px-3 py-2 text-white transition-colors hover:bg-white/5 focus-visible:outline-2 focus-visible:outline-[var(--magma-red)]">
-                <span className="text-base">¿qué traes hoy?</span>
-              </Link>
-              <Link href="/upload" aria-label="compartir una imagen" title="compartir una imagen" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[2px] text-white hover:text-[var(--magma-red)] focus-visible:outline-2 focus-visible:outline-[var(--magma-red)]">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8" cy="8" r="1.5" /><path d="m3 17 5-5 4 4 4-6 5 7" /></svg>
+                <span className="text-sm">¿qué traes hoy?</span>
               </Link>
               <Link href="/upload" className="flex min-h-11 shrink-0 items-center gap-2 rounded-[2px] border border-[var(--magma-red)] bg-[var(--magma-red)] px-3 text-sm text-white transition-opacity hover:opacity-85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--magma-red)]">compartir <span aria-hidden="true">→</span></Link>
             </nav>
+            </div>
           )}
           <section style={{ minWidth: 0 }}>
             <Feed posts={posts} showFilters={view === "reciente"} layout="editorial" filterPlacement="left" archiveNav={{ circle, view, selectedDate, today, count: view === "reciente" ? (count ?? posts.length) : posts.length, page, totalPages }} emptyMessage={circle ? "tu círculo, a tu ritmo" : view === "reciente" ? "el archivo todavía está en blanco" : "esta edición quedó en blanco"} />

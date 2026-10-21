@@ -5,12 +5,23 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { getSupabaseClient } from "@/lib/supabase";
 import { ColectivoChatThread, type ColectivoChat } from "./ColectivoChat";
+import { EventInvitations } from '@/app/components/EventInvitations';
+import { EVENT_INVITATIONS_ENABLED } from '@/lib/event-invitations';
 
 import { useMessageHistory } from "./useMessageHistory";
 import { sendDirectMessage } from "@/lib/send-direct-message";
 import { CHAT_INBOX_CHANGED, messageId, type InboxChange } from "@/lib/chat-sync";
 import { chatDay, chatTime, continuesMessage } from "@/lib/chat-display";
 import styles from "./messages.module.css";
+import { PROFILE_OFFERINGS_ENABLED } from '@/lib/profile-offerings';
+import { offeringReference, offeringReferenceHref, type OfferingReference } from '@/lib/offering-reference';
+
+function ReferenceCard({ reference }: { reference: OfferingReference }) {
+  return <Link href={offeringReferenceHref(reference)} className="mb-2 block border border-[#49463f] bg-[#181516] p-3 text-sm text-white hover:border-[#dc143c]">
+    <span className="block font-bold">sobre: {reference.title} ↗</span>
+    <span className="mt-1 block text-xs">portafolio · @{reference.username}</span>
+  </Link>;
+}
 
 const mono = "var(--font-space-mono), monospace";
 const syne = "var(--font-syne), sans-serif";
@@ -211,7 +222,8 @@ function NewMessagePanel({ currentUserId, blockedIds, onConversationCreated, onC
 
 // ─── Message thread ───────────────────────────────────────────────────────────
 
-function MessageThread({ conversationId, currentUserId, other, onBlock, onBack }: {
+function MessageThread({ conversationId, currentUserId, other, onBlock, onBack, offeringId }: {
+  offeringId: string | null;
   conversationId: string;
   currentUserId: string;
   other: OtherProfile;
@@ -220,7 +232,25 @@ function MessageThread({ conversationId, currentUserId, other, onBlock, onBack }
 }) {
   const history = useMessageHistory("direct", conversationId, currentUserId);
   const { messages } = history;
-  const attempt = useRef<{ id: string; body: string } | null>(null);
+  const attempt = useRef<{ id: string; body: string; offering_reference?: OfferingReference } | null>(null);
+  const [reference, setReference] = useState<OfferingReference | null>(null);
+  const [referenceLoading, setReferenceLoading] = useState(!!offeringId && PROFILE_OFFERINGS_ENABLED);
+  const [referenceError, setReferenceError] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    if (!offeringId || !PROFILE_OFFERINGS_ENABLED) return;
+    void (async () => {
+      try {
+        const result = await getSupabaseClient().from('profile_offerings').select('id,title')
+          .eq('id', offeringId).eq('profile_id', other.id).single()
+          .abortSignal(AbortSignal.any([controller.signal, AbortSignal.timeout(10000)]));
+        if (result.error) throw result.error;
+        if (!controller.signal.aborted) setReference(offeringReference({ ...result.data, username: other.username }));
+      } catch { if (!controller.signal.aborted) setReferenceError(true); }
+      finally { if (!controller.signal.aborted) setReferenceLoading(false); }
+    })();
+    return () => controller.abort();
+  }, [offeringId, other.id, other.username]);
   const sendLock = useRef(false);
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
@@ -235,14 +265,16 @@ function MessageThread({ conversationId, currentUserId, other, onBlock, onBack }
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = body.trim();
-    if (!trimmed || sendLock.current) return;
+    if (!trimmed || sendLock.current || referenceLoading) return;
     sendLock.current = true;
     setSending(true);
     setSendError(null);
     try {
-      if (attempt.current?.body !== trimmed) attempt.current = { id: messageId(), body: trimmed };
+      if (attempt.current?.body !== trimmed || attempt.current?.offering_reference?.id !== reference?.id) attempt.current = { id: messageId(), body: trimmed, ...(reference ? { offering_reference: reference } : {}) };
       await sendDirectMessage(supabase, conversationId, currentUserId, attempt.current);
       setBody(""); attempt.current = null;
+      setReference(null);
+      window.history.replaceState(null, '', `/mensajes?c=${conversationId}`);
       history.sent();
     } catch {
       setSendError("no se pudo confirmar el envío. tu mensaje sigue aquí; puedes reintentar sin duplicarlo.");
@@ -334,6 +366,7 @@ function MessageThread({ conversationId, currentUserId, other, onBlock, onBack }
                   border: `1px solid ${isMine ? "var(--magma-red)" : "#49463f"}`,
                   borderRadius: "2px",
                 }}>
+                  {offeringReference(msg.offering_reference) && <ReferenceCard reference={offeringReference(msg.offering_reference)!} />}
                   <p style={{ fontSize: "var(--magma-text-body)", color: "#F2F4F8", fontFamily: mono, lineHeight: 1.55, wordBreak: "break-word" }}>
                     {msg.body}
                   </p>
@@ -356,6 +389,12 @@ function MessageThread({ conversationId, currentUserId, other, onBlock, onBack }
       {history.error && <p role="alert" className="px-4 py-2 text-sm text-white">{history.error} <button onClick={history.refresh} className="underline">reintentar</button></p>}
 
       {/* Input */}
+      {referenceLoading && <p role="status" className="px-4 py-2 text-sm">cargando referencia…</p>}
+      {referenceError && <p role="status" className="px-4 py-2 text-sm">esta referencia ya no está disponible. puedes escribir sin ella.</p>}
+      {reference && <div className="shrink-0 px-3 pt-3">
+        <ReferenceCard reference={reference} />
+        <button type="button" disabled={sending} className="mb-2 min-h-11 text-sm text-white" onClick={() => { setReference(null); window.history.replaceState(null, '', `/mensajes?c=${conversationId}`); }}>quitar referencia ×</button>
+      </div>}
       <form
         onSubmit={handleSend}
         className="flex items-center shrink-0 border-t"
@@ -387,7 +426,7 @@ function MessageThread({ conversationId, currentUserId, other, onBlock, onBack }
         />
         <button
           type="submit"
-          disabled={!body.trim() || sending}
+          disabled={!body.trim() || sending || referenceLoading}
           className="magma-send-button cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
           style={{
             fontSize: "var(--magma-text-small)",
@@ -665,6 +704,7 @@ function MensajesInner() {
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto">
             {!showNew && <>
+              {EVENT_INVITATIONS_ENABLED && currentUserId && <EventInvitations userId={currentUserId} />}
               {inboxError && <p role="status" className="p-4 text-sm">{inboxError}</p>}
               {groupError && <p role="status" className="p-4 text-sm">{groupError}</p>}
               {!inbox.length && <p className="p-4 text-sm text-white/70">no hay conversaciones para mostrar.</p>}
@@ -712,6 +752,7 @@ function MensajesInner() {
           ) : (
             <MessageThread
               key={activeConvo.id}
+              offeringId={searchParams.get('offering')}
               conversationId={activeConvo.id}
               currentUserId={currentUserId}
               other={activeConvo.other}

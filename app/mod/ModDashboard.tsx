@@ -42,7 +42,7 @@ function relativeTime(dateStr: string): string {
   return `hace ${Math.floor(hrs / 24)}d`;
 }
 
-export function ModDashboard({ initialPendingPosts, initialReports }: { initialPendingPosts: PendingPost[]; initialReports: Report[] }) {
+export function ModDashboard({ initialPendingPosts, initialReports, canDelete = false }: { initialPendingPosts: PendingPost[]; initialReports: Report[]; canDelete?: boolean }) {
   const [pendingPosts, setPendingPosts] = useState<PendingPost[]>(initialPendingPosts);
   const [reports, setReports] = useState<Report[]>(initialReports);
   const [working, setWorking] = useState<string | null>(null); // id of report being actioned
@@ -70,11 +70,13 @@ export function ModDashboard({ initialPendingPosts, initialReports }: { initialP
       }).abortSignal(AbortSignal.timeout(10000));
       if (error) throw error;
       setPendingPosts(previous => previous.filter(post => post.id !== postId));
+      window.dispatchEvent(new Event("magma:moderation-changed"));
     });
   }
 
   async function actOnReport(report: Report, action: "hide" | "restore" | "resolve" | "delete") {
     if (lock.current) return;
+    if (action === "delete" && !canDelete) return;
     if (action === "delete" && !window.confirm("¿Eliminar este contenido de forma permanente? Esta acción no se puede deshacer.")) return;
     await run(report.id, async () => {
       const { error } = await supabase.rpc("moderate_report", {
@@ -204,14 +206,14 @@ export function ModDashboard({ initialPendingPosts, initialReports }: { initialP
               >
                 {busy ? "..." : "ignorar"}
               </button>
-              <button
+              {canDelete && <button
                 onClick={() => actOnReport(report, "delete")}
                 disabled={busy}
                 className="cursor-pointer hover:opacity-70 disabled:opacity-40"
                 style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-ash)", fontFamily: mono, background: "none", border: "0.5px solid #E12120", padding: "5px 12px", whiteSpace: "nowrap" }}
               >
                 {busy ? "..." : isComment ? "eliminar comentario" : "eliminar post"}
-              </button>
+              </button>}
             </div>
           </div>
         );

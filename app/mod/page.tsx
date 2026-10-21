@@ -2,11 +2,12 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-server";
 import { ModDashboard, type PendingPost, type Report } from "./ModDashboard";
+import HiddenPosts from "./HiddenPosts";
 
 const mono = "var(--font-space-mono), monospace";
 const syne = "var(--font-syne), sans-serif";
 
-export default async function ModPage() {
+export default async function ModPage({ searchParams }: { searchParams: Promise<{ tab?: string; pagina?: string }> }) {
   const supabase = await createClient();
 
   // Must be logged in
@@ -22,6 +23,21 @@ export default async function ModPage() {
 
   if (profileError) throw new Error("No se pudo verificar el acceso de moderación.");
   if (!profile?.is_moderator) redirect("/");
+  const { data: config, error: ownerError } = await supabase.from('app_config').select('owner_user_id').limit(1).maybeSingle();
+  const canDelete = !ownerError && config?.owner_user_id === user.id;
+
+  const params = await searchParams;
+  if (params.tab === "ocultos") {
+    return <main className="max-w-4xl mx-auto px-6 py-8 text-white">
+      <Link href="/staff" className="text-sm">← mesa de trabajo</Link>
+      <h1 className="magma-page-title mt-8 mb-6">moderación</h1>
+      <nav aria-label="secciones de moderación" className="flex gap-6 mb-8">
+        <Link href="/mod">por revisar</Link>
+        <Link href="/mod?tab=ocultos" aria-current="page" className="text-[var(--magma-red)]">ocultos</Link>
+      </nav>
+      <HiddenPosts db={supabase} pageValue={params.pagina} />
+    </main>;
+  }
 
   const [{ data: pendingData, error: pendingError }, { data: reportsData, error: reportsError }] = await Promise.all([
     supabase
@@ -59,9 +75,12 @@ export default async function ModPage() {
           </span>
         </div>
 
-        <div style={{ height: "0.5px", backgroundColor: "#2a2a28", marginBottom: "24px" }} />
+        <nav aria-label="secciones de moderación" className="flex gap-6 mb-8 text-white">
+          <Link href="/mod" aria-current="page" className="text-[var(--magma-red)]">por revisar</Link>
+          <Link href="/mod?tab=ocultos">ocultos</Link>
+        </nav>
 
-        <ModDashboard initialPendingPosts={pendingPosts} initialReports={reports} />
+        <ModDashboard initialPendingPosts={pendingPosts} initialReports={reports} canDelete={canDelete} />
       </main>
     </div>
   );

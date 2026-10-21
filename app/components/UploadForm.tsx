@@ -1,11 +1,16 @@
 "use client";
 
 import { PhotoPicker } from "@/app/components/PhotoPicker";
+import { EventDetailsFields } from "@/app/components/EventDetailsFields";
+import { EVENT_DETAILS_ENABLED, emptyEventDetails, eventDetailsPayload, eventTimestamp } from "@/lib/event-details";
 import { MentionInput } from "@/app/components/MentionInput";
+import { CollaboratorPicker } from "@/app/components/CollaboratorPicker";
 import { UploadDraftControls } from "@/app/components/UploadDraftControls";
+import { FeedMenuIcon, type IconName } from "@/app/components/FeedMenuIcon";
 import { draftOperation, uploadDraftKey, type UploadDraft } from "@/lib/upload-drafts";
 import { supportsCarousel, uploadPhotos } from "@/lib/post-images";
 import { EventTimeInput } from "@/app/components/EventTimeInput";
+import { QUESTIONS_ENABLED } from '@/lib/community-questions';
 
 import { useState, useRef, useEffect, Suspense } from "react";
 import dynamic from "next/dynamic";
@@ -14,6 +19,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { normalizeSoundCloudUrl } from "@/lib/soundcloud";
+import { COLLABORATIONS_ENABLED, inviteUsernames } from '@/lib/collaborations';
 
 const RichEditor = dynamic(
   () => import("@/app/components/editor/RichEditor").then((m) => m.RichEditor),
@@ -25,6 +31,15 @@ const isDev = process.env.NODE_ENV !== 'production';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type WorkType = "arte" | "música" | "fotografía" | "evento" | "escrito" | "video";
+
+const FORMAT_ICONS: Record<WorkType, IconName> = {
+  arte: "arte",
+  música: "música",
+  fotografía: "fotografía",
+  video: "video",
+  evento: "evento",
+  escrito: "letras",
+};
 
 interface TypeOption {
   id: WorkType;
@@ -72,15 +87,16 @@ const labelStyle: React.CSSProperties = {
 function TypeCard({ opt, isSelected, onClick }: { opt: TypeOption; isSelected: boolean; onClick: () => void }) {
   return (
     <button type="button" onClick={onClick} aria-pressed={isSelected}
-      className="notebook-format">
-      {opt.label}
+      className="notebook-format" style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
+      <span style={{ display: "flex", justifyContent: "center", width: 20, height: 20 }}><FeedMenuIcon name={FORMAT_ICONS[opt.id]} /></span>
+      <span>{opt.label}</span>
     </button>
   );
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-type UploadFormProps = { onPublished?: () => void; onDraftState?: (dirty: boolean, busy: boolean) => void };
+type UploadFormProps = { onPublished?: () => void; onLeave?: () => void; onDraftState?: (dirty: boolean, busy: boolean) => void };
 export default function UploadPage(props: UploadFormProps) {
   return (
     <Suspense fallback={<div className="min-h-screen" style={{ backgroundColor: "#0c0c0b" }} />}>
@@ -89,7 +105,7 @@ export default function UploadPage(props: UploadFormProps) {
   );
 }
 
-function UploadPageInner({ onPublished, onDraftState }: UploadFormProps) {
+function UploadPageInner({ onPublished, onLeave, onDraftState }: UploadFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -117,6 +133,7 @@ function UploadPageInner({ onPublished, onDraftState }: UploadFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [userProjects, setUserProjects] = useState<{ id: string; title: string }[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>("");
+  const [collaboratorUsernames, setCollaboratorUsernames] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
 
@@ -127,27 +144,30 @@ function UploadPageInner({ onPublished, onDraftState }: UploadFormProps) {
   const [address, setAddress] = useState("");
   const [isFree, setIsFree] = useState(true);
   const [price, setPrice] = useState("");
+  const [eventDetails, setEventDetails] = useState(emptyEventDetails);
   const [savingDraft, setSavingDraft] = useState(false);
   const draftActive = useRef(false);
   const [draftRevision, setDraftRevision] = useState(0);
   const draftContext = JSON.stringify([searchParams.get("type"), searchParams.get("proyecto"), searchParams.get("colectivo")]);
   const draftKey = userId ? uploadDraftKey(userId, draftContext) : null;
-  const draftValue: UploadDraft = { selectedType, title, description, richContent, soundCloudUrl, tags, location, selectedProject, openCollab, collabDescription, commentsEnabled, isSensitive, eventDate, eventTime, venue, address, isFree, price, file, coverFile, photos };
+  const draftValue: UploadDraft = { selectedType, title, description, richContent, soundCloudUrl, tags, location, selectedProject, collaboratorUsernames, openCollab, collabDescription, commentsEnabled, isSensitive, eventDate, eventTime, venue, address, isFree, price, eventDetails, file, coverFile, photos };
   function restoreDraft(draft: UploadDraft) {
     draftActive.current = true;
     setDraftRevision(value => value + 1);
     setSelectedType(draft.selectedType); setTitle(draft.title); setDescription(draft.description);
+    setCollaboratorUsernames(draft.collaboratorUsernames ?? '');
     setRichContent(draft.richContent); setSoundCloudUrl(draft.soundCloudUrl); setTags(draft.tags); setLocation(draft.location);
     setSelectedProject(draft.selectedProject); setOpenCollab(draft.openCollab); setCollabDescription(draft.collabDescription);
     setCommentsEnabled(draft.commentsEnabled); setIsSensitive(draft.isSensitive);
     setEventDate(draft.eventDate); setEventTime(draft.eventTime); setVenue(draft.venue); setAddress(draft.address);
+    setEventDetails(draft.eventDetails ?? emptyEventDetails);
     setIsFree(draft.isFree); setPrice(draft.price); setFile(draft.file); setFileName(draft.file?.name ?? null);
     setCoverFile(draft.coverFile); setCoverFileName(draft.coverFile?.name ?? null); setPhotos(draft.photos);
   }
 
   useEffect(() => {
-    onDraftState?.(Boolean(selectedType || title || description || file || coverFile || photos.length || richContent || soundCloudUrl || tags || location || eventDate || venue || address || selectedProject || isSensitive || openCollab), submitting || savingDraft);
-  }, [onDraftState, selectedType, title, description, file, coverFile, photos, richContent, soundCloudUrl, tags, location, eventDate, venue, address, selectedProject, isSensitive, openCollab, submitting, savingDraft]);
+    onDraftState?.(Boolean(selectedType || title || description || file || coverFile || photos.length || richContent || soundCloudUrl || tags || location || eventDate || venue || address || selectedProject || collaboratorUsernames || isSensitive || openCollab), submitting || savingDraft);
+  }, [onDraftState, selectedType, title, description, file, coverFile, photos, richContent, soundCloudUrl, tags, location, eventDate, venue, address, selectedProject, collaboratorUsernames, isSensitive, openCollab, submitting, savingDraft]);
 
   useEffect(() => {
     getSupabaseClient().auth.getUser().then(({ data: { user } }: { data: { user: { id: string } | null } }) => {
@@ -155,14 +175,15 @@ function UploadPageInner({ onPublished, onDraftState }: UploadFormProps) {
       setUserId(uid);
       if (uid) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (getSupabaseClient() as any)
+        (COLLABORATIONS_ENABLED ? getSupabaseClient().rpc('contributable_projects') : (getSupabaseClient() as any)
           .from("projects")
           .select("id, title")
           .eq("author_id", uid)
-          .order("created_at", { ascending: false })
+          .order("created_at", { ascending: false }))
           .then(({ data, error: projectsError }: { data: { id: string; title: string }[] | null; error: unknown }) => {
             if (isDev) console.log("userProjects:", data, "error:", projectsError)
             setUserProjects(data ?? []);
+            if (projectsError) setError('no se pudieron cargar los proyectos; recarga antes de elegir uno.');
           });
       }
     });
@@ -241,6 +262,10 @@ function UploadPageInner({ onPublished, onDraftState }: UploadFormProps) {
     setError(null)
 
     try {
+      if (selectedType === "evento") {
+        const start = eventTimestamp(eventDate, eventTime);
+        if (EVENT_DETAILS_ENABLED) eventDetailsPayload(eventDetails, start);
+      }
       const supabase = getSupabaseClient()
 
       if (!userId) {
@@ -257,6 +282,8 @@ function UploadPageInner({ onPublished, onDraftState }: UploadFormProps) {
       }
 
       const colectivoSlug = searchParams.get('colectivo');
+      const invitees = COLLABORATIONS_ENABLED ? inviteUsernames(collaboratorUsernames) : [];
+      if (colectivoSlug && selectedProject) throw new Error('una publicación privada no puede añadirse a un proyecto. elige «ninguno» para continuar.');
       let colectivoId: string | null = null;
       if (colectivoSlug) {
         const { data: group, error } = await supabase.from('colectivos').select('id').eq('slug', colectivoSlug).single();
@@ -315,7 +342,8 @@ function UploadPageInner({ onPublished, onDraftState }: UploadFormProps) {
           is_sensitive: isSensitive,
           tags: tags ? tags.split(',').map(t => t.trim()) : [],
           author_id: userId,
-          event_date: eventDate && eventTime ? `${eventDate}T${eventTime}` : null,
+          event_date: selectedType === "evento" ? eventTimestamp(eventDate, eventTime) : null,
+          ...(EVENT_DETAILS_ENABLED && selectedType === "evento" ? eventDetailsPayload(eventDetails, eventTimestamp(eventDate, eventTime)) : {}),
           venue: venue || null,
           address: address || null,
           is_free: isFree,
@@ -333,6 +361,10 @@ function UploadPageInner({ onPublished, onDraftState }: UploadFormProps) {
         catch { window.alert("tu publicación se guardó, pero no se pudo eliminar el borrador local. descártalo antes de volver a publicar."); }
       }
       const attachmentErrors: string[] = [];
+      for (const username of invitees) {
+        const { error: inviteError } = await supabase.rpc('change_collaboration', { kind: 'post', target_id: postId, action: 'invite', username_input: username });
+        if (inviteError) attachmentErrors.push(`invitación a @${username}`);
+      }
 
       // Colectivo-only posts are linked atomically by the database trigger.
 
@@ -407,7 +439,7 @@ function UploadPageInner({ onPublished, onDraftState }: UploadFormProps) {
 
         {/* Type selector */}
         <section className="pb-5">
-          <div className="flex flex-wrap gap-x-5 gap-y-2" role="group" aria-label="formato de la obra">
+          <div className={`grid w-full grid-cols-3 gap-x-2 gap-y-2 ${QUESTIONS_ENABLED && !searchParams.get('colectivo') && !isProjectEntry ? 'sm:grid-cols-7' : 'sm:grid-cols-6'}`} role="group" aria-label="formato de la obra">
             {TYPE_OPTIONS.map((opt) => {
               const isSelected = selectedType === opt.id;
               return (
@@ -419,6 +451,10 @@ function UploadPageInner({ onPublished, onDraftState }: UploadFormProps) {
                 />
               );
             })}
+            {QUESTIONS_ENABLED && !searchParams.get('colectivo') && !isProjectEntry && <Link href="/preguntar" onClick={event => {
+              if (submitting || savingDraft || (Boolean(selectedType || title || description || file || coverFile || photos.length || richContent || soundCloudUrl || tags) && !window.confirm('¿abrir preguntas? los cambios no guardados de esta obra se perderán.'))){event.preventDefault();return;}
+              onLeave?.();
+            }} className="notebook-format inline-flex flex-col items-center gap-1.5"><span aria-hidden="true" className="text-xl leading-[22px]">?</span><span>pregunta</span></Link>}
           </div>
         </section>
 
@@ -658,6 +694,7 @@ function UploadPageInner({ onPublished, onDraftState }: UploadFormProps) {
 
           <div>
             <div className="flex flex-col gap-6 pt-6">
+          {EVENT_DETAILS_ENABLED && selectedType === "evento" && <EventDetailsFields value={eventDetails} onChange={setEventDetails} />}
           {/* Tags */}
           <div>
             <label style={labelStyle}>palabras clave <span style={{ color: "var(--notebook-muted)" }}>separados por coma</span></label>
@@ -827,7 +864,12 @@ function UploadPageInner({ onPublished, onDraftState }: UploadFormProps) {
 
 
           {/* Agregar a proyecto */}
-          {userProjects.length > 0 && (
+          {COLLABORATIONS_ENABLED && <div>
+            <label style={labelStyle} htmlFor="post-collaborators">invitar colaboradores a esta publicación — opcional</label>
+            <CollaboratorPicker id="post-collaborators" inputStyle={inputStyle} value={collaboratorUsernames} onChange={setCollaboratorUsernames} userId={userId} />
+            <p className="mt-2 text-xs">Compartirán crédito al aceptar, sin permisos de edición ni acceso al proyecto. Las invitaciones se envían al publicar y aparecen cuando la obra esté aprobada. En un colectivo privado, solo puedes invitar a sus miembros.</p>
+          </div>}
+          {(userProjects.length > 0 || Boolean(selectedProject)) && (
             <div>
               <label style={labelStyle}>{isProjectEntry ? "cuaderno del proyecto" : "guardar en un proyecto"} <span style={{ color: "var(--notebook-muted)" }}>{isProjectEntry ? "" : "— opcional"}</span></label>
               <select

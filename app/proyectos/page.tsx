@@ -4,6 +4,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { normalizeSearch, searchFilter } from "@/lib/search";
 import styles from "./proyectos.module.css";
+import { COLLABORATIONS_ENABLED } from '@/lib/collaborations';
 
 const mono = "var(--font-space-mono), monospace";
 const syne = "var(--font-syne), sans-serif";
@@ -45,7 +46,8 @@ export default async function ProyectosPage({ searchParams }: { searchParams: Pr
         <header className="grid gap-2 py-5 md:py-6">
           <div>
 
-            <h1 className="magma-page-title" style={{ color: "var(--magma-ash)", fontFamily: syne, fontWeight: 800, letterSpacing: "0.02em", }}>proyectos personales</h1>
+            <h1 className="magma-page-title" style={{ color: "var(--magma-ash)", fontFamily: syne, fontWeight: 800, letterSpacing: "0.02em", }}>proyectos</h1>
+            {COLLABORATIONS_ENABLED && <Link className="inline-block py-3 text-sm underline" href="/colaboraciones">mis invitaciones y colaboraciones →</Link>}
           </div>
         </header>
 

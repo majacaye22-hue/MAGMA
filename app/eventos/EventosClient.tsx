@@ -2,19 +2,34 @@
 
 import { useMemo, useState } from "react";
 import { FlyerCard } from "@/app/components/FlyerCard";
+import { eventUnavailable } from "@/lib/event-management";
+import { EVENT_DETAILS_ENABLED, EVENT_CATEGORIES, eventFinished } from "@/lib/event-details";
 import { eventDay, type EventPreview as Post } from "@/lib/event-preview";
 
 const mono = "var(--font-space-mono), monospace";
 const searchText = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es");
-const filterHeading = { color: "#fff", fontFamily: mono, fontSize: "14px", letterSpacing: ".06em", marginBottom: "4px" };
+function FilterIcon({ kind }: { kind: "date" | "place" | "access" | "filters" }) {
+  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0">
+    {kind === "date" ? <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M7 3v4M17 3v4M3 11h18" /></> : kind === "place" ? <><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z" /><circle cx="12" cy="10" r="2" /></> : kind === "access" ? <><rect x="3" y="6" width="18" height="12" rx="2" /><path d="M9 6v12" /></> : <><path d="M4 7h16M4 17h16" /><circle cx="9" cy="7" r="2" /><circle cx="15" cy="17" r="2" /></>}
+  </svg>;
+}
+
+function FilterSelect({ label, kind, value, onChange, children }: { label: string; kind: "date" | "place" | "access"; value: string; onChange: (value: string) => void; children: React.ReactNode }) {
+  return <label className="flex min-h-11 min-w-0 items-center gap-2 border border-[#49463f] px-3 text-sm" style={{ color: value === "todo" ? "var(--magma-ash)" : "var(--magma-red)", fontFamily: mono }}>
+    <FilterIcon kind={kind} /><span>{label}</span>
+    <select value={value} onChange={event => onChange(event.target.value)} className="min-h-11 min-w-0 flex-1 bg-[var(--magma-obsidian)] focus-visible:outline-2 focus-visible:outline-[var(--magma-red)]">
+      {children}
+    </select>
+  </label>;
+}
 type Wall = "muro" | "archivo";
 type DayFilter = "todo" | "hoy" | "semana" | "próximos";
 
 function eventState(post: Post, now: number) {
   if (!post.event_date) return "sin-fecha" as const;
   const starts = new Date(post.event_date).getTime();
-  if (now >= starts - 48 * 60 * 60 * 1000 && now <= starts + 72 * 60 * 60 * 1000) return "sala" as const;
-  return starts > now ? "próximo" as const : "archivo" as const;
+  if (eventFinished(post, now)) return "archivo" as const;
+  return starts > now ? "próximo" as const : "sala" as const;
 }
 
 function sortForWall(a: Post, b: Post, now: number) {
@@ -31,13 +46,15 @@ function startOfToday(now: number) {
 
 function isInDayFilter(post: Post, filter: DayFilter, now: number) {
   if (filter === "todo") return true;
+  if (eventUnavailable(post)) return false;
   if (!post.event_date) return false;
   const start = new Date(post.event_date).getTime();
+  const end = post.event_end_date ? Date.parse(post.event_end_date) : new Date(`${eventDay(post.event_date)}T00:00:00-06:00`).getTime() + 24 * 60 * 60 * 1000;
   const today = startOfToday(now);
   const weekEnd = today + 7 * 24 * 60 * 60 * 1000;
-  if (filter === "hoy") return start >= today && start < today + 24 * 60 * 60 * 1000;
-  if (filter === "semana") return start >= today && start < weekEnd;
-  return start >= today;
+  if (filter === "hoy") return end > today && start < today + 24 * 60 * 60 * 1000;
+  if (filter === "semana") return end > today && start < weekEnd;
+  return start > now;
 }
 
 const KNOWN_COLONIAS = [
@@ -90,6 +107,14 @@ export function EventosClient({ eventos, now }: { eventos: (Post & { body?: stri
   const [day, setDay] = useState<DayFilter>("todo");
   const [colonia, setColonia] = useState("todo");
   const [access, setAccess] = useState<"todo" | "gratis" | "pago">("todo");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [category, setCategory] = useState("todo");
+  const activeFilters = Number(day !== "todo") + Number(colonia !== "todo") + Number(access !== "todo") + Number(category !== "todo");
+  const hasFilters = activeFilters > 0 || search !== "" || wall !== "muro";
+  function clearFilters() {
+    setSearch(""); setWall("muro"); setDay("todo"); setColonia("todo"); setAccess("todo");
+    setCategory("todo");
+  }
   const eventList = eventos;
   const colonias = useMemo(() => [...new Set(eventList.map(eventColonia))].filter((item) => item !== "sin colonia").sort((a, b) => a.localeCompare(b, "es")), [eventList]);
   const visible = useMemo(() => {
@@ -102,46 +127,37 @@ export function EventosClient({ eventos, now }: { eventos: (Post & { body?: stri
       if (!isInDayFilter(post, day, now)) return false;
       if (access === "gratis" && post.is_free !== true) return false;
       if (access === "pago" && post.is_free !== false) return false;
+      if (category !== "todo" && post.event_category !== category) return false;
       return colonia === "todo" || eventColonia(post) === colonia;
     });
-  }, [access, colonia, day, eventList, wall, now, search]);
+  }, [access, colonia, day, category, eventList, wall, now, search]);
 
   return (
-    <section className="grid items-start gap-5 pt-3 md:pt-4 lg:grid-cols-[180px_minmax(0,1fr)] lg:gap-6">
-      <div role="region" aria-label="filtros de cartelera" className="min-w-0 lg:sticky lg:top-24">
-      <div className="flex flex-wrap items-start gap-6 lg:flex-col lg:items-stretch">
-        <div>
-          <p style={filterHeading}>cuándo</p>
-          <div role="group" aria-label="cuándo" className="flex flex-wrap gap-x-4 gap-y-0 lg:flex-col lg:items-start">
-            {(["todo", "hoy", "semana", "próximos"] as DayFilter[]).map((filter) => (
-              <WallButton key={filter} active={day === filter} onClick={() => setDay(filter)}>{filter === "todo" ? "cualquier día" : filter === "semana" ? "esta semana" : filter}</WallButton>
-            ))}
-          </div>
-        </div>
-        <label>
-          <span style={{ ...filterHeading, display: "block" }}>colonia</span>
-          <select value={colonia} onChange={(event) => setColonia(event.target.value)} className="border-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--magma-red)]" style={{ background: "var(--magma-obsidian)", borderRadius: 0, color: colonia === "todo" ? "#fff" : "var(--magma-red)", fontFamily: mono, fontSize: "var(--magma-text-small)", width: "180px", maxWidth: "100%", minHeight: "44px", padding: "8px 0" }}>
-            <option value="todo">cualquier colonia</option>
-            {colonias.map((item) => <option key={item} value={item}>{item}</option>)}
-          </select>
-        </label>
-        <div>
-          <p style={filterHeading}>acceso</p>
-          <div role="group" aria-label="acceso" className="flex flex-wrap gap-x-4 gap-y-0 lg:flex-col lg:items-start">
-            <WallButton active={access === "todo"} onClick={() => setAccess("todo")}>todos</WallButton>
-            <WallButton active={access === "gratis"} onClick={() => setAccess("gratis")}>entrada libre</WallButton>
-            <WallButton active={access === "pago"} onClick={() => setAccess("pago")}>con costo</WallButton>
-          </div>
-        </div>
-      </div>
-      </div>
-
+    <section className="pt-3 md:pt-4">
       <div className="min-w-0">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div role="search" className="flex min-h-11 w-full items-center rounded-[2px] border border-[#49463f] sm:w-64 focus-within:border-[var(--magma-red)]">
           <input type="search" aria-label="buscar eventos" placeholder="buscar eventos…" value={search} onChange={event => setSearch(event.target.value)} className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-white placeholder:text-white focus:outline-none" />
           {search && <button type="button" aria-label="limpiar búsqueda" onClick={() => setSearch("")} className="h-11 w-11 shrink-0 text-white focus-visible:outline-2 focus-visible:outline-[var(--magma-red)]">×</button>}
         </div>
+        <button type="button" aria-expanded={filtersOpen} aria-controls="event-filters" onClick={() => setFiltersOpen(!filtersOpen)} className="flex min-h-11 items-center gap-2 border border-[#49463f] px-3 text-sm text-white md:hidden">
+          <FilterIcon kind="filters" /> filtros{activeFilters > 0 ? ` (${activeFilters})` : ""}
+        </button>
+        <div id="event-filters" role="region" aria-label="filtros de cartelera" className={`${filtersOpen ? "flex" : "hidden"} w-full flex-col gap-2 md:flex md:w-auto md:flex-row md:flex-wrap`}>
+          <FilterSelect label="cuándo" kind="date" value={day} onChange={value => setDay(value as DayFilter)}>
+            <option value="todo">cualquier día</option><option value="hoy">hoy</option><option value="semana">esta semana</option><option value="próximos">próximos</option>
+          </FilterSelect>
+          <FilterSelect label="colonia" kind="place" value={colonia} onChange={setColonia}>
+            <option value="todo">cualquier colonia</option>{colonias.map(item => <option key={item} value={item}>{item}</option>)}
+          </FilterSelect>
+          <FilterSelect label="acceso" kind="access" value={access} onChange={value => setAccess(value as "todo" | "gratis" | "pago")}>
+            <option value="todo">todos</option><option value="gratis">entrada libre</option><option value="pago">con costo</option>
+          </FilterSelect>
+          {EVENT_DETAILS_ENABLED && <FilterSelect label="categoría" kind="access" value={category} onChange={setCategory}>
+            <option value="todo">todas</option>{EVENT_CATEGORIES.map(item => <option key={item} value={item}>{item}</option>)}
+          </FilterSelect>}
+        </div>
+        {hasFilters && <button type="button" onClick={clearFilters} className="min-h-11 text-sm text-[var(--magma-red)] underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-[var(--magma-red)]">limpiar filtros</button>}
         <div role="group" aria-label="vista de cartelera" className="ml-auto flex flex-wrap items-center gap-x-6 gap-y-0">
           <WallButton active={wall === "muro"} onClick={() => setWall("muro")}>muro completo</WallButton>
           <WallButton active={wall === "archivo"} onClick={() => setWall("archivo")}>archivo</WallButton>
@@ -152,7 +168,7 @@ export function EventosClient({ eventos, now }: { eventos: (Post & { body?: stri
           no encontramos carteles con esos filtros
         </div>
       ) : (
-        <div className="grid min-w-0 grid-cols-1 items-start gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid min-w-0 grid-cols-1 items-start gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
           {visible.map((post, index) => (
             <div
               key={post.id}

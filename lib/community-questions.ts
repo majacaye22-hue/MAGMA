@@ -1,0 +1,1 @@
+export const QUESTIONS_ENABLED = process.env.NEXT_PUBLIC_COMMUNITY_QUESTIONS_ENABLED === 'true';

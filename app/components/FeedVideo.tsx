@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 
-export function FeedVideo({ src }: { src: string }) {
+export function FeedVideo({ src, fitScreen = false, onAspectRatio }: { src: string; fitScreen?: boolean; onAspectRatio?: (ratio: number) => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [started, setStarted] = useState(false);
   const [paused, setPaused] = useState(true);
@@ -40,9 +40,13 @@ export function FeedVideo({ src }: { src: string }) {
       aria-label="video de la publicación" onError={() => setError(true)}
       onLoadedMetadata={event => {
         const video = event.currentTarget;
-        if (video.videoWidth && video.videoHeight) setRatio(video.videoWidth / video.videoHeight);
+        if (video.videoWidth && video.videoHeight) {
+          const nextRatio = video.videoWidth / video.videoHeight;
+          setRatio(nextRatio);
+          onAspectRatio?.(nextRatio);
+        }
       }}
-      style={{ display: "block", width: "100%", height: "auto", aspectRatio: ratio ?? "3 / 4" }} />
+      style={{ display: "block", width: "100%", height: "auto", aspectRatio: ratio ?? "3 / 4", maxHeight: fitScreen ? "min(560px, 60svh)" : undefined, objectFit: "contain" }} />
     {paused && <button type="button" onClick={play} aria-label="reproducir video"
       className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white rounded-full focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-4">
       <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--magma-red)] text-xl" aria-hidden="true">▶</span>

@@ -15,6 +15,8 @@ const nextConfig: NextConfig = {
     maximumRedirects: 0,
   },
   experimental: {
+    // Uploads allow 15 MiB files; leave room for multipart form boundaries.
+    proxyClientMaxBodySize: '16mb',
     serverActions: {
       bodySizeLimit: '50mb',
     },

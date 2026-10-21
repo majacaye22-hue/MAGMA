@@ -37,7 +37,7 @@ test('post renders before discussion/profile requests; conversation stays behind
   const { render, calls } = pageFor({ id: 'post', type: 'fotografía', media_url: '/photo.jpg' });
   const result = await render();
   assert.deepEqual(calls, ['posts']);
-  const view = result.props.children[1];
+  const view = result.props.children.find(child => child?.props?.conversation);
   const boundary = view.props.conversation;
   assert.equal(boundary.type, require('react').Suspense);
   const discussion = boundary.props.children;
@@ -62,7 +62,7 @@ test('legacy media is fetched only when a media URL is absent', async () => {
   const { render, calls } = pageFor({ id: 'post', type: 'fotografía', media_base64: 'data:image/png;base64,legacy' });
   const result = await render();
   assert.deepEqual(calls, ['posts', 'posts']);
-  assert.equal(result.props.children[1].props.post.media_base64, 'data:image/png;base64,legacy');
+  assert.equal(result.props.children.find(child => child?.props?.post)?.props.post.media_base64, 'data:image/png;base64,legacy');
 });
 
 test('written posts do not fetch legacy image data', async () => {

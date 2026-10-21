@@ -46,12 +46,23 @@ test('retry after an ambiguous send uses the same primary key and does not inser
     };
     return query;
   } };
-  const attempt = { id: sync.messageId(), body: 'hola' };
+  const attempt = { id: sync.messageId(), body: 'hola', offering_reference: { id: sync.messageId(), title: 'retratos', username: 'cctv' } };
   await assert.rejects(sendDirectMessage(db, 'conversation', 'me', attempt));
   offline = false;
   await sendDirectMessage(db, 'conversation', 'me', attempt);
   assert.equal(saved.size, 1);
+  assert.equal(saved.get(attempt.id).offering_reference.title, 'retratos');
+  await assert.rejects(sendDirectMessage(db, 'conversation', 'me', { ...attempt, offering_reference: { ...attempt.offering_reference, title: 'changed' } }));
   await assert.rejects(sendDirectMessage(db, 'conversation', 'me', { ...attempt, body: 'different' }));
+});
+
+test('offering references validate snapshots and generate only local profile links', () => {
+  const api = load('lib/offering-reference.ts');
+  const ref = { id: sync.messageId(), title: 'retratos', username: 'cctv' };
+  assert.equal(api.offeringReference(ref).title, 'retratos');
+  assert.equal(api.offeringReferenceHref(ref), `/profile/cctv?tab=comparto#offering-${ref.id}`);
+  for (const value of [null, {}, { ...ref, id: 'javascript:alert(1)' }, { ...ref, title: 'a'.repeat(81) }]) assert.equal(api.offeringReference(value), null);
+  assert.ok(api.offeringReferenceHref({ ...ref, username: 'a/b?c' }).startsWith('/profile/a%2Fb%3Fc?'));
 });
 
 // Small hook harness: exercise query boundaries, reconnects, reading and scroll anchoring

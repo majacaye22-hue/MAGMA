@@ -6,6 +6,7 @@ import { feedHref } from "@/lib/circle-feed";
 import { PostCard, type Post } from "./card-art";
 import { getSupabaseClient } from "@/lib/supabase"
 import archiveStyles from "./archive-card-preview.module.css";
+import { FeedMenuIcon } from './FeedMenuIcon';
 
 function CardWrapper({ children }: { children: React.ReactNode }) {
   const [hovered, setHovered] = useState(false);
@@ -26,8 +27,8 @@ function CardWrapper({ children }: { children: React.ReactNode }) {
   );
 }
 
-const FILTERS = ["todo", "música", "fotografía", "video", "letras", "colaboración"] as const;
-type Filter = (typeof FILTERS)[number];
+const FILTERS = ["música", "fotografía", "video", "letras", "colaboración"] as const;
+type Filter = "todo" | (typeof FILTERS)[number];
 
 const TYPE_MAP: Record<Filter, string | null> = {
   todo: null,
@@ -83,6 +84,7 @@ export function Feed({
 
   function renderGrid(items: Post[]) {
     function StreamArticle({ post, index, size }: { post: Post; index: number; size: "lead" | "support" | "archive" }) {
+      const [videoRatio, setVideoRatio] = useState(3 / 4);
       return (
         <article
           className={archiveStyles.card}
@@ -93,16 +95,29 @@ export function Feed({
             boxShadow: "0 16px 38px rgba(0,0,0,0.24)",
             overflow: "hidden",
             padding: size === "lead" ? "12px" : "10px",
+            width: active === "video" ? `calc(min(560px, 60svh) * ${videoRatio} + ${size === "lead" ? 26 : 22}px)` : undefined,
+            maxWidth: "100%",
+            flexShrink: active === "video" ? 0 : undefined,
           }}
         >
             <header className={archiveStyles.label}>
               <div className={archiveStyles.byline}>
-                <Link href={`/profile/${post.profiles?.username ?? "anon"}`}>@{post.profiles?.username ?? "anon"}</Link>
+                {post.type === 'pregunta' && !post.author_id ? <span>anónimo</span> : <Link href={`/profile/${post.profiles?.username ?? "anon"}`}>@{post.profiles?.username ?? "anon"}</Link>}
                 <time dateTime={post.created_at}>{new Date(post.created_at).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "America/Mexico_City" })}</time>
               </div>
             </header>
-          <PostCard post={post} index={index} total={items.length} currentUserId={currentUserId} stream editorialSize={size} />
+          <PostCard post={post} index={index} total={items.length} currentUserId={currentUserId} stream editorialSize={size} fitMedia={active === "video"} onVideoAspectRatio={setVideoRatio} />
         </article>
+      );
+    }
+
+    if (active === "video") {
+      return (
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: "14px" }}>
+          {items.map((post, index) => (
+            <StreamArticle key={post.id} post={post} index={index} size="archive" />
+          ))}
+        </div>
       );
     }
 
@@ -147,15 +162,16 @@ export function Feed({
 
   const filterControls = !showFilters ? null : (
       <div className={filterPlacement === "left" ? "flex flex-col" : "flex flex-wrap items-center gap-2 py-6"}>
-        {filterPlacement === "left" && <p className="magma-feed-menu-label">formato</p>}
+        {filterPlacement === "left" && <p className="magma-feed-menu-label md:sr-only">formato</p>}
         {FILTERS.map((f) => {
           const isActive = f === active;
           const accent = filterPlacement === "left" ? "var(--magma-red)" : PILL_ACCENT[f];
           return (
             <button
               key={f}
-              onClick={() => setActive(f)}
+              onClick={() => setActive(current => current === f ? "todo" : f)}
               aria-pressed={isActive}
+              aria-label={f}
               className={filterPlacement === "left" ? "magma-feed-menu-item" : "px-4 py-1.5 text-xs tracking-widest uppercase border transition-colors duration-150 cursor-pointer"}
               style={filterPlacement === "left" ? undefined : {
                 fontFamily: "var(--font-space-mono), monospace",
@@ -165,7 +181,7 @@ export function Feed({
                 boxShadow: isActive ? "0 0 12px rgba(225, 33, 32,0.28), inset 0 0 8px rgba(225, 33, 32,0.08)" : "none",
               }}
             >
-              {filterPlacement === "left" && f === "todo" ? "todos los formatos" : f}
+              {filterPlacement === 'left' ? <><FeedMenuIcon name={f} /><span className="magma-feed-tooltip">{f}{isActive ? ' · quitar filtro' : ''}</span></> : f}
             </button>
           );
         })}
@@ -185,11 +201,12 @@ export function Feed({
         {[{ label: "explorar", circle: false }, { label: "mi círculo", circle: true }].map(item => (
           <Link key={item.label} href={feedHref(archiveNav.view === "reciente" ? "/" : `/?vista=${archiveNav.view}&fecha=${archiveNav.selectedDate}`, item.circle)}
             aria-current={Boolean(archiveNav.circle) === item.circle ? "page" : undefined}
+            aria-label={item.label}
             className="magma-feed-menu-item">
-            {item.label}
+            <FeedMenuIcon name={item.circle ? 'mi círculo' : 'explorar'} /><span className="magma-feed-tooltip">{item.label}</span>
           </Link>
         ))}
-        {archiveNav.circle && <Link href="/circulo" className="text-sm text-white underline">editar mi círculo</Link>}
+        {archiveNav.circle && <Link href="/circulo" className="magma-feed-menu-item" aria-label="editar mi círculo"><FeedMenuIcon name="editar" /><span className="magma-feed-tooltip">editar mi círculo</span></Link>}
       </nav>
     </div>
   ) : null;
@@ -208,14 +225,14 @@ export function Feed({
   return (
     <>
       {filterPlacement === "left" ? (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-[180px_minmax(0,1fr)] md:items-start">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-[64px_minmax(0,1fr)] md:items-start">
           <details className="bg-transparent p-3 text-white md:hidden">
             <summary className="cursor-pointer text-sm">filtros · {archiveNav?.circle ? "mi círculo" : "explorar"} · {active === "todo" ? "todos los formatos" : active}</summary>
             <div className="mt-3 space-y-3">{sidebarNavigation}{filterControls}</div>
           </details>
           <aside
             data-feed-filters
-            className="hidden flex-col gap-4 bg-transparent py-1 pr-3 md:flex md:sticky md:top-20 md:max-h-[calc(100dvh-6rem)] md:overflow-y-auto"
+            className="magma-feed-icon-rail hidden flex-col gap-4 bg-transparent py-1 md:flex md:sticky md:top-20"
             style={{
               minWidth: 0,
             }}
@@ -223,7 +240,7 @@ export function Feed({
             {sidebarNavigation}
             {filterControls}
           </aside>
-          <div style={{ minWidth: 0 }}>{feedContent}</div>
+          <div className="relative z-0 isolate" style={{ minWidth: 0 }}>{feedContent}</div>
         </div>
       ) : (
         <>

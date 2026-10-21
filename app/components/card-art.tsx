@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import type { EventDetails } from "@/lib/event-details";
+import type { EventManagement } from "@/lib/event-management";
 import { PostImage } from "./PostImage";
 import Link from "next/link";
 import { MentionText } from "./MentionText";
@@ -18,7 +20,7 @@ export type CardType = "arte" | "música" | "foto" | "evento" | "video";
 
 // ─── Supabase post shape ─────────────────────────────────────────────────────
 
-export interface Post {
+export interface Post extends EventDetails, EventManagement {
   audience_colectivo_id?: string | null;
   id: string;
   title: string | null;
@@ -434,12 +436,19 @@ function EscritoCardInner({ post, currentUserId, light = false }: { post: Post; 
   );
 }
 
-export function PostCard({ post, index, total, currentUserId, stream = true, editorialSize = "archive", fitEvent = false, fitMedia = false }: { post: Post; index: number; total: number; currentUserId?: string | null; stream?: boolean; editorialSize?: "lead" | "support" | "archive"; fitEvent?: boolean; fitMedia?: boolean }) {
+export function PostCard({ post, index, total, currentUserId, stream = true, editorialSize = "archive", fitEvent = false, fitMedia = false, onVideoAspectRatio }: { post: Post; index: number; total: number; currentUserId?: string | null; stream?: boolean; editorialSize?: "lead" | "support" | "archive"; fitEvent?: boolean; fitMedia?: boolean; onVideoAspectRatio?: (ratio: number) => void }) {
   const [reporting, setReporting] = useState(false);
   const images = postImages(post);
   const mediaSrc = post.media_url ?? post.media_base64 ?? null;
 
   // Escrito posts use their own card layout
+  if (post.type === "pregunta") {
+    return <div className="p-4">
+      <p className="mb-3 text-xs text-[var(--magma-red)]">pregunta a la comunidad</p>
+      <Link href={`/post/${post.id}`} className="block"><h2 className="mb-3 text-xl font-semibold">{post.title}</h2><p className="line-clamp-4 whitespace-pre-wrap text-sm">{post.body}</p></Link>
+      <Link href={`/post/${post.id}#comments`} className="mt-4 inline-block min-h-11 py-3 text-sm underline">responder →</Link>
+    </div>;
+  }
   if (post.type === "escrito") {
     return (
       <SensitiveContentGate enabled={post.is_sensitive === true} postId={post.id} compact>
@@ -501,7 +510,7 @@ export function PostCard({ post, index, total, currentUserId, stream = true, edi
         <MusicPostSurface post={post} audioSrc={mediaSrc} />
       ) : isVideoMedia && mediaSrc ? (
         <div style={{ position: "relative", width: "100%", overflow: "hidden", backgroundColor: "var(--magma-obsidian)" }}>
-          <FeedVideo key={mediaSrc} src={mediaSrc} />
+          <FeedVideo key={mediaSrc} src={mediaSrc} fitScreen={fitMedia} onAspectRatio={onVideoAspectRatio} />
         </div>
       ) : images.length > 1 ? (
         <PhotoCarousel key={images.join("|")} images={images} title={post.title ?? ""} href={`/post/${post.id}`} eager={index === 0} fitScreen={fitMedia} />

@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const ts = require('typescript');
 
-function harness() {
+function harness(canDelete = true) {
   let index = 0, failure = false, promptResult = '', confirmed = true;
   const state = [], calls = [];
   const react = {
@@ -16,8 +16,8 @@ function harness() {
   vm.runInNewContext(ts.transpileModule(fs.readFileSync('app/mod/ModDashboard.tsx', 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2020 },
   }).outputText, {
-    exports, AbortSignal,
-    window: { prompt: () => promptResult, confirm: () => confirmed },
+    exports, AbortSignal, Event,
+    window: { prompt: () => promptResult, confirm: () => confirmed, dispatchEvent: () => {} },
     require(name) {
       if (name === 'react') return react;
       if (name === 'react/jsx-runtime') return runtime;
@@ -27,7 +27,7 @@ function harness() {
   });
   const post = { id: 'p1', title: 'test', created_at: new Date().toISOString(), type: 'arte' };
   const report = { id: 'r1', post_id: 'p1', comment_id: 'c1', comments: { id: 'c1', body: 'comment', is_hidden: false }, posts: { id: 'p1', title: 'test', is_hidden: false }, created_at: post.created_at };
-  function render() { index = 0; return exports.ModDashboard({ initialPendingPosts: [post], initialReports: [report] }); }
+  function render() { index = 0; return exports.ModDashboard({ initialPendingPosts: [post], initialReports: [report], canDelete }); }
   function nodes(tree) { if (!tree || typeof tree !== 'object') return []; if (Array.isArray(tree)) return tree.flatMap(nodes); return [tree, ...nodes(tree.props?.children)]; }
   return {
     calls, state, render,
@@ -39,6 +39,20 @@ function harness() {
 test('canceling rejection sends no decision', async () => {
   const h = harness(); h.cancelPrompt(); await h.button('rechazar').props.onClick();
   assert.equal(h.calls.length, 0); assert.equal(h.state[0].length, 1);
+});
+test('non-owner moderators can hide and restore but cannot see permanent deletion', () => {
+  const h = harness(false);
+  assert.equal(h.button('eliminar comentario'), undefined);
+  assert.ok(h.button('ocultar y revisar'));
+  assert.ok(h.button('aprobar'));
+});
+test('database deletion migration restricts direct writes and report RPC, and protects authorship', () => {
+  const sql = fs.readFileSync('supabase/owner_only_moderation_delete.sql', 'utf8');
+  assert.equal((sql.match(/AS RESTRICTIVE FOR DELETE TO authenticated/g) || []).length, 2);
+  assert.match(sql, /author_id = auth.uid\(\) OR auth.uid\(\) =/);
+  assert.match(sql, /IF p_action = 'delete' AND/);
+  assert.ok(sql.indexOf("IF p_action = 'delete' AND") < sql.indexOf('SELECT * INTO r'));
+  assert.match(sql, /NEW.author_id IS DISTINCT FROM OLD.author_id/);
 });
 test('failed approval preserves queue and displays an error', async () => {
   const h = harness(); h.fail(); await h.button('aprobar').props.onClick();

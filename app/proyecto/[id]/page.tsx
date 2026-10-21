@@ -11,6 +11,8 @@ import { ProjectEditor } from "./ProjectEditor";
 import { projectCoverShape, projectCoverStyle } from "@/lib/project-cover";
 import cards from "@/app/components/archive-card-preview.module.css";
 import styles from "./project.module.css";
+import { COLLABORATIONS_ENABLED } from '@/lib/collaborations';
+import { CollaborationPanel, UnlinkProjectEntry } from '@/app/components/CollaborationPanel';
 
 const mono = "var(--font-space-mono), monospace";
 const syne = "var(--font-syne), sans-serif";
@@ -91,21 +93,23 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
   const project = projectData as Project;
 
   // Fetch post IDs for this project
-  const { data: ppData } = await supabase
+  const { data: ppData, error: entriesError } = await supabase
     .from("post_projects")
     .select("post_id")
     .eq("project_id", id);
+  if (entriesError) throw new Error('no se pudieron cargar las entradas del proyecto');
 
   let posts: Post[] = [];
 
   if (ppData && ppData.length > 0) {
     const postIds = ppData.map((r: { post_id: string }) => r.post_id);
 
-    const { data: postsData } = await supabase
+    const { data: postsData, error: postsError } = await supabase
       .from("posts")
       .select("*, profiles!posts_author_id_fkey(username, display_name)")
       .is("audience_colectivo_id", null)
       .in("id", postIds);
+    if (postsError) throw new Error('no se pudieron cargar las publicaciones del proyecto');
 
     posts = (postsData ?? []) as Post[];
   }
@@ -208,7 +212,7 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
             {isOwner && (
               <div className={`${styles.actions} flex flex-wrap gap-2 md:justify-end`}>
                 <ProjectEditor project={project} />
-                <Link
+                {!COLLABORATIONS_ENABLED && <Link
                   href={`/upload?proyecto=${id}`}
                   style={{
                     fontSize: "var(--magma-text-small)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em",
@@ -217,12 +221,13 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
                   }}
                 >
                   + nueva entrada
-                </Link>
+                </Link>}
               </div>
             )}
           </div>
         </div>
 
+        {COLLABORATIONS_ENABLED && <CollaborationPanel kind="project" targetId={id} ownerId={project.author_id} userId={currentUserId} />}
         {/* Journal entries */}
         <div className={`mx-auto ${compactPreview ? "max-w-[640px]" : "max-w-[800px]"} pb-16 pt-2`}>
           <h2 className="mb-3 text-xl" style={{ fontFamily: syne }}>entradas</h2>
@@ -232,7 +237,7 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
               <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em" }}>
                 la primera página sigue en blanco
               </p>
-              {isOwner && (
+              {isOwner && !COLLABORATIONS_ENABLED && (
                 <Link
                   href={`/upload?proyecto=${id}`}
                   style={{ display: "inline-block", marginTop: "12px", fontSize: "var(--magma-text-small)", color: "var(--magma-ash)", fontFamily: mono, textDecoration: "underline" }}
@@ -255,6 +260,7 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
                     <PostCard post={post} index={i} total={journalPosts.length} currentUserId={currentUserId} stream editorialSize="archive" fitMedia />
                   </div>
                   <footer className="pt-3 pb-1 text-center text-xs tabular-nums text-white" style={{ fontFamily: mono }}>
+                    {COLLABORATIONS_ENABLED && (isOwner || post.author_id === currentUserId) && <UnlinkProjectEntry projectId={id} postId={post.id} />}
                     <span aria-label={`página ${i + 1}`}>{String(i + 1).padStart(2, "0")}</span>
                   </footer>
                 </article>

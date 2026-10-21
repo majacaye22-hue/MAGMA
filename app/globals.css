@@ -24,6 +24,11 @@
 }
 
 .magma-notebook .notebook-format {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
   min-height: 44px;
   padding: 8px 0;
   background: transparent;
@@ -32,6 +37,11 @@
   color: var(--notebook-muted);
   font-family: var(--font-space-mono), monospace;
   cursor: pointer;
+}
+.magma-notebook .notebook-format .magma-feed-icon {
+  width: 20px;
+  height: 20px;
+  margin-right: 0;
 }
 .magma-notebook .notebook-format:hover,
 .magma-notebook .notebook-format[aria-pressed="true"] {
@@ -125,6 +135,35 @@
   outline: 2px solid var(--magma-red);
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+.magma-feed-icon { flex-shrink: 0; margin-right: 12px; }
+@media (min-width: 768px) {
+  .magma-feed-icon-rail { z-index: 20; border-right: 1px solid var(--magma-border); }
+  .magma-feed-icon-rail > div + div { border-top: 1px solid var(--magma-border); padding-top: 14px; }
+  .magma-feed-icon-rail .magma-feed-menu-item {
+    width: 48px; min-height: 48px; justify-content: center;
+    padding: 0; margin: 2px 0; border-radius: 8px;
+  }
+  .magma-feed-icon-rail .magma-feed-icon { margin: 0; }
+  .magma-feed-icon-rail .magma-feed-menu-item:is(:hover, :focus-visible, [aria-current="page"], [aria-pressed="true"]) {
+    background: rgba(225, 33, 32, 0.09);
+  }
+  .magma-feed-icon-rail .magma-feed-menu-item:is([aria-current="page"], [aria-pressed="true"])::before {
+    content: ''; position: absolute; left: -5px; width: 2px; height: 18px; background: var(--magma-red);
+  }
+  .magma-feed-icon-rail .magma-feed-tooltip {
+    position: absolute; z-index: 1; left: calc(100% + 12px); top: 50%; transform: translateY(-50%);
+    width: max-content; padding: 8px 12px; border: 1px solid var(--magma-border);
+    border-radius: 4px; background: var(--magma-rock); color: var(--magma-ash);
+    font-size: 12px; opacity: 0; visibility: hidden; pointer-events: none;
+  }
+  .magma-feed-icon-rail .magma-feed-menu-item:is(:hover, :focus-visible) .magma-feed-tooltip {
+    opacity: 1; visibility: visible;
+  }
+}
+@media (min-width: 768px) and (max-height: 680px) {
+  .magma-feed-icon-rail { position: static; }
 }
 
 

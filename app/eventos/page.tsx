@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
-import { EVENT_PREVIEW_COLUMNS } from "@/lib/event-preview";
+import { EVENT_PREVIEW_COLUMNS, type EventPreview } from "@/lib/event-preview";
 
 async function EventWall() {
   const db = await createClient();
@@ -11,7 +11,7 @@ async function EventWall() {
   if (!user) redirect("/auth/login?redirectTo=/eventos");
   const { data, error } = await db.from("posts").select(EVENT_PREVIEW_COLUMNS)
     .is("audience_colectivo_id", null)
-    .eq("type", "evento").order("event_date", { ascending: true }).order("id");
+    .eq("type", "evento").order("event_date", { ascending: true }).order("id").returns<(EventPreview & { body: string | null })[]>();
   if (error) return <div role="alert" className="py-8 text-white">no se pudo cargar la cartelera. <Link href="/eventos" className="underline">reintentar</Link></div>;
   // One request-time clock is serialized to the client to keep hydration stable.
   // eslint-disable-next-line react-hooks/purity
@@ -22,8 +22,8 @@ async function EventWall() {
 function EventWallLoading() {
   return <div role="status" className="py-4">
     <p className="mb-4 text-sm text-white">cargando cartelera…</p>
-    <div aria-hidden="true" className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-      {[0, 1, 2].map(i => (
+    <div aria-hidden="true" className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+      {[0, 1, 2, 3, 4].map(i => (
         <div key={i} className="rounded-[2px] border border-[#49463f] bg-[#10100f] p-[10px]">
           <div className="aspect-[3/4] bg-[#090909]" />
           <div className="mt-3 h-4 w-2/3 bg-white/5" />
@@ -37,7 +37,7 @@ function EventWallLoading() {
 export default async function EventosPage() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--magma-obsidian)" }}>
-      <main className="max-w-7xl mx-auto px-5 sm:px-8 pb-24">
+      <main className="max-w-[1800px] mx-auto px-5 sm:px-8 pb-24">
         <div className="flex flex-wrap items-center justify-between gap-4 py-5 md:py-6">
           <div>
           <h1 className="magma-page-title"

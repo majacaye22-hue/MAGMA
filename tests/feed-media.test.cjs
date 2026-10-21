@@ -61,6 +61,10 @@ test('video loads near viewport, plays only on demand, and pauses offscreen or h
   const element = FeedVideo({ src: 'https://media.test/video.mp4' });
   const media = element.props.children[0], button = element.props.children[1];
   assert.equal(media.props.src, undefined); assert.equal(media.props.autoPlay, undefined);
+  assert.equal(media.props.style.maxHeight, undefined);
+  const fittedMedia = FeedVideo({ src: 'https://media.test/video.mp4', fitScreen: true }).props.children[0];
+  assert.equal(fittedMedia.props.style.maxHeight, 'min(560px, 60svh)');
+  assert.equal(fittedMedia.props.style.objectFit, 'contain');
   const cleanup = effect();
   assert.equal(observers[0].options.rootMargin, '200px 0px');
   observers[0].callback([{ isIntersecting: false }]); assert.equal(video.src, '');

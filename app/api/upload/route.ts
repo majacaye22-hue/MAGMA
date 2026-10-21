@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
 import { isHeic } from '@/lib/photo-format'
 import convert from 'heic-convert'
+import { PROFILE_OFFERINGS_ENABLED } from '@/lib/profile-offerings'
+import { portfolioPdfError } from '@/lib/portfolio-pdf'
 
 export const runtime = 'nodejs'
 
@@ -59,13 +61,15 @@ export async function POST(request: NextRequest) {
   }
 
   const heic = isHeic(file)
-  if (!heic && !ALLOWED_TYPES.has(file.type)) {
+  const portfolioPdf = formData.get('purpose') === 'portfolio-pdf' && PROFILE_OFFERINGS_ENABLED && !colectivoId
+  if (portfolioPdf && portfolioPdfError(file)) return NextResponse.json({ error: portfolioPdfError(file) }, { status: 415 })
+  if (!portfolioPdf && !heic && !ALLOWED_TYPES.has(file.type)) {
     return NextResponse.json({ error: 'este formato no es compatible.' }, { status: 415 })
   }
 
   if (isDev) console.log('[api/upload]', file.name, file.type, `${(file.size / 1024 / 1024).toFixed(2)} MB`)
 
-  const fileExt = heic ? 'jpg' : file.name.split('.').pop() ?? 'bin'
+  const fileExt = portfolioPdf ? 'pdf' : heic ? 'jpg' : file.name.split('.').pop() ?? 'bin'
   const fileName = `${colectivoId ? `${colectivoId}/` : ''}${crypto.randomUUID()}.${fileExt.replace(/[^a-z0-9]/gi, '')}`
 
   let buffer: Buffer
@@ -76,6 +80,8 @@ export async function POST(request: NextRequest) {
     if (isDev) console.error('[api/upload] failed to read file bytes:', err)
     return NextResponse.json({ error: 'no pudimos leer el archivo. vuelve a intentarlo.' }, { status: 500 })
   }
+
+  if (portfolioPdf && buffer.subarray(0, 5).toString('ascii') !== '%PDF-') return NextResponse.json({ error: 'el archivo no es un PDF válido.' }, { status: 415 })
 
   if (heic) {
     try {

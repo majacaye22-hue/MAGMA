@@ -1,9 +1,11 @@
 "use client";
 import { CircleButton } from "@/app/components/CircleButton";
 import { Echoes } from "./Echoes";
+import Offerings from "./Offerings";
+import { PROFILE_OFFERINGS_ENABLED } from "@/lib/profile-offerings";
 import projectStyles from "@/app/proyectos/proyectos.module.css";
 
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect } from "react";
 import { FeedImage } from "@/app/components/FeedImage";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -15,7 +17,8 @@ import { ProjectCard, type Project } from "@/app/components/ProjectCard";
 import { CreateProjectModal } from "@/app/components/CreateProjectModal";
 
 const isDev = process.env.NODE_ENV !== 'production';
-const PROFILE_FILTERS = ["todo", "publicaciones", "ecos", "letras", "proyectos", "colectivos", "agenda", "guardados", "borradores"] as const;
+const PROFILE_FILTERS = ["publicaciones", "ecos", "proyectos", "comparto", "colectivos", "agenda", "guardados", "borradores"] as const;
+const MAIN_PROFILE_TABS = ["publicaciones", "proyectos", "comparto", "colectivos", "agenda"] as const;
 
 type ProfileColectivo = {
   id: string;
@@ -306,18 +309,27 @@ export function ProfileView({
   posts,
   isOwnProfile,
   currentUserId,
+  creditedWorks,
 }: {
   profile: ProfileData;
   posts: Post[];
   isOwnProfile: boolean;
   currentUserId: string | null;
+  creditedWorks?: React.ReactNode;
 }) {
   const router = useRouter();
   const profileParams = useSearchParams();
-  const requestedFilter = profileParams.get("tab");
-  const profileFilter = PROFILE_FILTERS.find(filter => filter === requestedFilter && (filter !== "borradores" || (isOwnProfile && currentUserId === profile.id))) ?? "todo";
+  // Legacy writing-only links now open the complete publications feed.
+  const requestedFilter = profileParams.get("tab") === "letras" ? "publicaciones" : profileParams.get("tab");
+  const [offeringAvailability, setOfferingAvailability] = useState<{ profileId: string; hasItems: boolean } | null>(null);
+  const hasOfferings = offeringAvailability?.profileId === profile.id && offeringAvailability.hasItems;
+  const sharingVisible = PROFILE_OFFERINGS_ENABLED && (isOwnProfile || hasOfferings);
+  const profileFilter = PROFILE_FILTERS.find(filter => filter === requestedFilter && (filter !== "comparto" || (PROFILE_OFFERINGS_ENABLED && (sharingVisible || offeringAvailability?.profileId !== profile.id))) && (filter !== "borradores" || (isOwnProfile && currentUserId === profile.id))) ?? "publicaciones";
+  const publicationsActive = ["publicaciones", "ecos"].includes(profileFilter);
+  const activeMainTab = publicationsActive ? "publicaciones" : profileFilter;
   const showSection = (section: typeof PROFILE_FILTERS[number]) => profileFilter === section;
   const [messagingLoading, setMessagingLoading] = useState(false);
+  const [messageError, setMessageError] = useState("");
   const [collections, setCollections] = useState<Collection[]>([]);
   const [collectionsLoaded, setCollectionsLoaded] = useState(false);
   const [colectivosLoaded, setColectivosLoaded] = useState(false);
@@ -398,44 +410,50 @@ export function ProfileView({
       }, () => { loadFailed("guardados"); setCollectionsLoaded(true); });
   }, [profile.id, retryLoad]);
 
-  async function handleMessage() {
+  async function handleMessage(offeringId?: string | React.MouseEvent) {
+    const referenceQuery = typeof offeringId === 'string' ? `&offering=${encodeURIComponent(offeringId)}` : '';
     if (!currentUserId) { router.push("/auth/login"); return; }
+    if (messagingLoading) return;
     setMessagingLoading(true);
+    setMessageError("");
     const supabase = getSupabaseClient();
 
     // Canonical order: smaller uuid is participant_1
     const [p1, p2] = [currentUserId, profile.id].sort();
 
+    try {
     // Find existing conversation
-    const { data: existing } = await supabase
+    const { data: existing, error: lookupError } = await supabase
       .from("conversations")
       .select("id")
       .eq("participant_1", p1)
       .eq("participant_2", p2)
-      .single();
+      .maybeSingle().abortSignal(AbortSignal.timeout(10000));
+    if (lookupError) throw lookupError;
 
     if (existing) {
-      router.push(`/mensajes?c=${existing.id}`);
+      router.push(`/mensajes?c=${existing.id}${referenceQuery}`);
       return;
     }
 
     // Create new conversation
-    const { data: created } = await supabase
+    const { data: created, error: createError } = await supabase
       .from("conversations")
       .insert({ participant_1: p1, participant_2: p2 })
       .select("id")
-      .single();
+      .single().abortSignal(AbortSignal.timeout(10000));
 
-    setMessagingLoading(false);
-    if (created) router.push(`/mensajes?c=${created.id}`);
+    if (createError || !created) throw createError ?? new Error('conversation unavailable');
+    router.push(`/mensajes?c=${created.id}${referenceQuery}`);
+    } catch {
+      setMessageError("no se pudo abrir la conversación. inténtalo de nuevo.");
+    } finally { setMessagingLoading(false); }
   }
 
   // Tab filtering — covers all post types
 
   // Letters are publications too; the server supplies all posts newest first.
-  const visiblePosts = profileFilter === "letras"
-    ? posts.filter((post) => post.type === "escrito")
-    : posts;
+  const visiblePosts = posts;
 
   const projectsSection = (projects.length > 0 || isOwnProfile) && (
     <section aria-label="proyectos personales" className="text-white">
@@ -489,14 +507,6 @@ export function ProfileView({
     </section>
   );
 
-  const boardGroups: { key: string; content: ReactNode }[][] = [
-    posts.map(post => ({ key: `post-${post.id}`, content: <PublicationPreview post={post} moodboard /> })),
-    projects.map(project => ({ key: `project-${project.id}`, content: <ProjectCard project={project} /> })),
-    colectivos.map(col => ({ key: `colectivo-${col.id}`, content: <ProfileColectivoCard col={col} /> })),
-    attendingEvents.filter(event => !posts.some(post => post.id === event.id)).map(event => ({ key: `event-${event.id}`, content: <Link href={`/post/${event.id}`} className="block text-white">{(event.media_url || event.media_base64) && <FeedImage src={(event.media_url || event.media_base64)!} alt={event.title} className="h-auto w-full rounded-lg" />}<p className="mt-2 text-xs text-white/60">{isOwnProfile ? "voy a ir" : "agenda"}</p><p className="mt-1 text-sm">{event.title}</p></Link> })),
-    collections.filter(col => isOwnProfile || col.is_public).map(col => ({ key: `collection-${col.id}`, content: <Link href={`/colecciones/${profile.username}/${col.id}`} className="block rounded-lg bg-white/5 p-5 text-white hover:bg-white/10"><span className="text-xs text-white/60">colección{!col.is_public ? " · privada" : ""}</span><p className="mt-4 break-words text-xl">{col.name}</p><p className="mt-3 text-xs">{col.collection_posts.length} obras ↗</p></Link> })),
-  ];
-  const boardItems = Array.from({ length: Math.max(...boardGroups.map(group => group.length)) }, (_, index) => boardGroups.flatMap(group => group[index] ? [group[index]] : [])).flat();
 
   return (
     <div style={{ backgroundColor: "var(--magma-obsidian)", color: "#fff", minHeight: "100vh" }}>
@@ -544,41 +554,41 @@ export function ProfileView({
             )}
 
 
-
             </div>
           </div>
 
 
         </div>
 
+        {messageError && <p role="alert" className="my-3 text-white">{messageError}</p>}
         {/* Works grid */}
         {Object.keys(loadErrors).length > 0 && <div role="alert" className="py-4">
           <p>{Object.values(loadErrors).join(" · ")}</p>
           <button type="button" className="underline" onClick={() => { setLoadErrors({}); setCollectionsLoaded(false); setRetryLoad((n) => n + 1); }}>reintentar</button>
         </div>}
         <div className="pt-1 pb-16">
-          <nav aria-label="filtrar perfil" className="mb-3 flex gap-6 overflow-x-auto" style={{ fontFamily: mono }}>
-            {PROFILE_FILTERS.filter(filter => filter !== "borradores" || (isOwnProfile && currentUserId === profile.id)).map((filter) => (
-              <button key={filter} type="button" aria-pressed={profileFilter === filter}
+          <nav aria-label="filtrar perfil" className="mb-2 flex gap-2 overflow-x-auto sm:gap-4" style={{ fontFamily: mono }}>
+            {MAIN_PROFILE_TABS.filter(filter => filter !== "comparto" || sharingVisible).map((filter) => (
+              <button key={filter} type="button" aria-pressed={activeMainTab === filter}
                 onClick={() => router.replace(`/profile/${encodeURIComponent(profile.username)}?tab=${filter}`, { scroll: false })}
-                className="min-h-11 shrink-0 cursor-pointer border-0 px-0 py-2 text-sm hover:!text-[var(--magma-red)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--magma-red)]"
-                style={{ background: "transparent", color: profileFilter === filter ? "var(--magma-red)" : "#fff", fontWeight: 400 }}>
-                {filter}
+                className="min-h-12 shrink-0 cursor-pointer border-0 px-2 py-3 text-base sm:text-lg hover:!text-[var(--magma-red)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--magma-red)]"
+                style={{ background: "transparent", color: activeMainTab === filter ? "var(--magma-red)" : "#fff", fontWeight: 700 }}>
+                {filter === "comparto" ? "portafolio" : filter}
               </button>
             ))}
           </nav>
+          {publicationsActive && <nav aria-label="tipo de publicación" className="mb-4 flex gap-3 px-2">
+            {([['publicaciones', 'todas'], ['ecos', 'ecos']] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={profileFilter === value} className="min-h-11 text-xs focus-visible:outline-2 focus-visible:outline-[var(--magma-red)]" style={{ color: profileFilter === value ? 'var(--magma-red)' : '#fff' }} onClick={() => router.replace(`/profile/${encodeURIComponent(profile.username)}?tab=${value}`, { scroll: false })}>{label}</button>)}
+          </nav>}
+          {PROFILE_OFFERINGS_ENABLED && <div hidden={profileFilter !== "comparto"}>
+            <Offerings key={profile.id} profileId={profile.id} own={isOwnProfile} onMessage={handleMessage} messaging={messagingLoading} onAvailability={setOfferingAvailability} workOptions={isOwnProfile ? [...projects.map(project => ({ path: `/proyecto/${project.id}`, title: project.title })), ...posts.map(post => ({ path: `/post/${post.id}`, title: post.title }))] : []} />
+          </div>}
           {profileFilter === "borradores" && isOwnProfile && currentUserId === profile.id && <section aria-label="borradores privados">
             <p className="mb-5 text-sm text-[var(--magma-muted)]">privado · guardados en este navegador. no se sincronizan entre dispositivos.</p>
             <DraftList key={currentUserId} userId={currentUserId} />
           </section>}
           {profileFilter === "ecos" && <Echoes profileId={profile.id} currentUserId={currentUserId} />}
-          {profileFilter === "todo" && <section aria-label="mood board del perfil">
-            <div className="columns-1 gap-4 sm:columns-2 lg:columns-3 xl:columns-4">
-              {boardItems.map(item => <div key={item.key} className="mb-5 break-inside-avoid">{item.content}</div>)}
-            </div>
-            {!boardItems.length && <p className="py-6 text-sm">{collectionsLoaded && colectivosLoaded ? "este archivo todavía está en blanco" : "cargando archivo…"}</p>}
-          </section>}
-          <section hidden={!showSection("publicaciones") && profileFilter !== "letras"} aria-label="publicaciones">
+          <section hidden={!showSection("publicaciones")} aria-label="publicaciones">
             <div className="mb-6 flex items-center justify-between gap-4">
               <h2 className="text-2xl">publicaciones</h2>
               {isOwnProfile && <Link href="/upload" className="ml-auto text-xs" style={{ color: "var(--magma-ash)" }}>+ publicar</Link>}
@@ -586,7 +596,8 @@ export function ProfileView({
             <div className="grid grid-cols-2 items-start gap-x-5 gap-y-9 md:grid-cols-3 lg:grid-cols-4">
               {visiblePosts.map((post) => <PublicationPreview key={post.id} post={post} />)}
             </div>
-            {visiblePosts.length === 0 && <p className="py-6 text-sm">{profileFilter === "letras" ? "todavía no hay letras" : "todavía no hay publicaciones"}</p>}
+            {visiblePosts.length === 0 && <p className="py-6 text-sm">todavía no hay publicaciones</p>}
+            {creditedWorks}
           </section>
           <div hidden={profileFilter !== "proyectos"}>
           {loadErrors.proyectos ? <p role="alert">no se pudieron cargar los proyectos</p> : projectsSection || <section><h2 className="text-xl mb-3">proyectos personales</h2><p className="py-6 text-sm text-white">todavía no hay proyectos</p></section>}

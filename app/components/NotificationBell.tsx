@@ -6,7 +6,7 @@ import { getSupabaseClient } from "@/lib/supabase";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 
 type Notification = {
-  id: string; kind: "mention" | "comment" | "conversation" | "message" | "colectivo_request" | "colectivo_approved" | "colectivo_rejected";
+  id: string; kind: "mention" | "comment" | "conversation" | "message" | "colectivo_request" | "colectivo_approved" | "colectivo_rejected" | "event_cancelled" | "event_postponed" | "event_updated";
   colectivo_id: string | null;
   actor?: { username: string | null } | null;
   post_id: string | null; conversation_id: string | null;
@@ -109,7 +109,7 @@ export function NotificationBell() {
           return;
         }
         setOpen(false);
-        router.push(item.kind === "message" ? `/mensajes?c=${item.conversation_id}` : `/post/${item.post_id}${item.kind === "mention" ? "" : "#comments"}`);
+        router.push(item.kind === "message" ? `/mensajes?c=${item.conversation_id}` : `/post/${item.post_id}${item.kind === "mention" || item.kind.startsWith("event_") ? "" : "#comments"}`);
       }
     } catch { setError(true); }
     finally { setBusy(false); }
@@ -137,7 +137,7 @@ export function NotificationBell() {
         <ul className="max-h-[65vh] overflow-y-auto">
           {items.map((item) => <li key={item.id} className="border-b border-white/10">
             <button disabled={busy} className={`w-full text-left p-4 hover:bg-white/10 disabled:opacity-50 ${!item.read_at ? "bg-white/5" : ""}`} onClick={() => void markRead(item)}>
-              <span className="block text-sm">{!item.read_at && <span aria-label="sin leer" className="mr-2 text-[#E12120]">●</span>}{item.kind === "mention" ? (item.actor?.username ? `@${item.actor.username} te mencionó en una publicación` : "te mencionaron en una publicación") : item.kind === "colectivo_request" ? "nueva solicitud para tu colectivo" : item.kind === "colectivo_approved" ? "aprobaron tu solicitud al colectivo" : item.kind === "colectivo_rejected" ? "no se aprobó tu solicitud al colectivo" : item.kind === "message" ? "tienes un nuevo mensaje" : item.kind === "comment" ? "comentaron tu publicación" : "hay un nuevo comentario en una conversación en la que participaste"}</span>
+              <span className="block text-sm">{!item.read_at && <span aria-label="sin leer" className="mr-2 text-[#E12120]">●</span>}{item.kind === "event_cancelled" ? "se canceló un evento al que te invitaron o confirmaste asistencia" : item.kind === "event_postponed" ? "se pospuso un evento al que te invitaron o confirmaste asistencia" : item.kind === "event_updated" ? "cambió la fecha o el lugar de un evento; revisa los detalles" : item.kind === "mention" ? (item.actor?.username ? `@${item.actor.username} te mencionó en una publicación` : "te mencionaron en una publicación") : item.kind === "colectivo_request" ? "nueva solicitud para tu colectivo" : item.kind === "colectivo_approved" ? "aprobaron tu solicitud al colectivo" : item.kind === "colectivo_rejected" ? "no se aprobó tu solicitud al colectivo" : item.kind === "message" ? "tienes un nuevo mensaje" : item.kind === "comment" ? "comentaron tu publicación" : "hay un nuevo comentario en una conversación en la que participaste"}</span>
               <time dateTime={item.created_at} className="block mt-1 text-xs text-white/60">{new Date(item.created_at).toLocaleString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false })}</time>
             </button>
           </li>)}
