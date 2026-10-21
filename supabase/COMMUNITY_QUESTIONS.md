@@ -1,6 +1,6 @@
 # Community questions — local pilot
 
-Not deployed or migrated remotely. Enable only after staging database/privacy acceptance.
+October 21: migrated to magma-staging only. Hosted rollback checks in `test_staging_features.sql` passed; staging-only flag configured. Authenticated browser acceptance remains pending. Production is unchanged.
 
 ## Workflow
 

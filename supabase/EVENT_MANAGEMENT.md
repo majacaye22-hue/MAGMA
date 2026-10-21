@@ -1,6 +1,6 @@
 # Event people and lifecycle
 
-Local implementation; not applied to staging or production. No email or payment processing.
+October 21: applied to magma-staging only; hosted rollback role/notification checks in `test_staging_features.sql` passed and staging-only flags configured. Authenticated browser acceptance remains pending. Production unchanged. No email or payment processing.
 
 ## Enable safely
 

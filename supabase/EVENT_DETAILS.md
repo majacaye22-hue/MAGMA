@@ -1,6 +1,6 @@
 # Event details — first implementation tranche
 
-Local implementation, not deployed or applied to staging/production.
+October 21: applied to magma-staging only; the all-features optimized build and hosted integration checks passed. Staging-only flag configured. Browser creation/editing and overnight/multiday acceptance remain pending; production is unchanged.
 
 ## Rollout
 

@@ -1,16 +1,23 @@
 # MAGMA — Roles and Product Map
 
 **Purpose:** Canonical running inventory of Magma's people, permissions, pages, and internal tools.
-**Last updated:** October 20, 2026
+**Last updated:** October 21, 2026
 
 Update this file whenever a role, route, major workflow, or product area is added, removed, or renamed.
+
+## Staging feature activation — October 21
+
+- Applied `event_details.sql`, `event_management.sql` and `community_questions.sql` to `magma-staging` (`jbzkdzcaqmxsmmyrlwif`) only. Existing collaboration/invitation migrations were already present with RLS enabled.
+- `supabase/test_staging_features.sql` passed against the full hosted migration stack, using synthetic accounts in a rollback-only transaction. It covers pending-invite isolation, post credit versus project membership, contribution retention/withdrawal, event roles and participant removal, cancellation deduplication, stale status writes, closed RSVP rejection, private notification removal after membership loss, anonymous author/read isolation, private reply notifications, identity-safe blocking/reset, idempotency and quota after deletion.
+- Updated older rollback test fixtures to satisfy the current signup guard; the guard itself is unchanged. No real invitations, notifications or emails were sent.
+- Configured all five flags (`COLLABORATIONS`, `EVENT_INVITATIONS`, `EVENT_DETAILS`, `EVENT_MANAGEMENT`, `COMMUNITY_QUESTIONS`, each prefixed `NEXT_PUBLIC_` and suffixed `_ENABLED`) for `codex/magma-preview` only. Production flags, credentials and database remain unchanged. Authenticated browser acceptance still requires a signed-in staging session; SQL checks are not a substitute for that UI journey.
 
 ## Hosted staging release — October 20
 
 - All current Magma implementation and research sources are committed and pushed to `codex/magma-preview`; remote `main` and production are unchanged. Unrelated local tool configuration and the résumé script are excluded.
 - Vercel's branch-specific Supabase URL was verified as `https://jbzkdzcaqmxsmmyrlwif.supabase.co`. Other preview branches inherit production credentials: do not deploy staging work on a different branch without first configuring isolated credentials.
 - Preview deployments are enabled in `vercel.json`, using the verified webpack build. Local checks: 108 tests, TypeScript, staging-configured optimized build, and event-details/event-management/community-question SQL harnesses passed. Existing HEIC bundler and middleware deprecation warnings remain.
-- Code delivery is not feature activation: collaboration, event-invitation, event-details, event-management and community-question flags remain unset/off on the hosted preview. The attempted flag save was blocked by safety review and was not completed. Existing collaboration/invitation migrations were previously applied to staging; the three newer migrations and hosted privacy acceptance remain pending. No remote migration was applied during this release.
+- At the initial October 20 release, the five feature flags remained off after safety review blocked activation. The October 21 follow-up above supersedes that activation status.
 
 ## Technical readiness checkpoint — October 14
 

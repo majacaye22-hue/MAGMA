@@ -4,6 +4,14 @@ Scope: functionality, access control, reliability and launch operations. Visual 
 
 ## Baseline verified October 14
 
+### October 21 staging activation
+
+- [x] Applied event details, event management and community questions migrations to staging only.
+- [x] Hosted rollback-only `supabase/test_staging_features.sql` passed against deployed policies/triggers; zero synthetic Auth accounts remain. Private question tables deny client reads, and anonymous API clients cannot execute publishing.
+- [x] 108 tests, TypeScript and optimized staging build with all five feature flags enabled passed.
+- [x] Five feature flags saved exclusively for Vercel branch `codex/magma-preview`; production unchanged.
+- [ ] Complete signed-in desktop/mobile, multi-account browser acceptance before inviting friends. Database permission checks do not prove the complete UI journey.
+
 ### October 15 addition: event invitations (staging migrated, local preview enabled)
 
 - [x] Local PostgreSQL permission matrix: only host invites, only recipient responds, no direct table writes, duplicates preserve responses, outsiders cannot read, blocks/private membership/hidden events respected, past events cannot receive responses.
