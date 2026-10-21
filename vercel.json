@@ -1,8 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "next build --webpack",
   "git": {
     "deploymentEnabled": {
-      "codex/magma-preview": false
+      "codex/magma-preview": true
     }
   }
 }
