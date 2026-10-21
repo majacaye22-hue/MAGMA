@@ -9,7 +9,7 @@ const mono = "var(--font-space-mono), monospace";
 const syne = "var(--font-syne), sans-serif";
 
 const TYPE_COLOR: Record<string, string> = {
-  arte: "#D85A30", fotografía: "#378ADD", música: "#5DCAA5",
+  arte: "#E12120", fotografía: "#378ADD", música: "#FF641F",
   evento: "#EF9F27", escrito: "#7F77DD",
 };
 
@@ -56,6 +56,7 @@ export function CompartirObraButton({
       supabase
         .from("posts")
         .select("id, title, type, media_url, cover_url, media_type")
+        .is("audience_colectivo_id", null)
         .eq("author_id", currentUserId)
         .order("created_at", { ascending: false }),
       supabase
@@ -99,8 +100,8 @@ export function CompartirObraButton({
       <button
         onClick={() => setOpen(true)}
         style={{
-          fontSize: "10px", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em",
-          padding: "8px 16px", border: "0.5px solid #D85A30", color: "#D85A30",
+          fontSize: "var(--magma-text-small)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em",
+          padding: "8px 16px", border: "0.5px solid #E12120", color: "var(--magma-ash)",
           backgroundColor: "transparent", cursor: "pointer",
         }}
       >
@@ -131,12 +132,12 @@ export function CompartirObraButton({
           >
             {/* Header */}
             <div style={{ padding: "16px 20px", borderBottom: "0.5px solid #2a2a28", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span style={{ fontSize: "11px", color: "#e8e4dc", fontFamily: syne, fontWeight: 700 }}>
+              <span style={{ fontSize: "var(--magma-text-small)", color: "#F2F4F8", fontFamily: syne, fontWeight: 700 }}>
                 compartir obra al colectivo
               </span>
               <button
                 onClick={() => setOpen(false)}
-                style={{ fontSize: "14px", color: "#5F5E5A", background: "none", border: "none", cursor: "pointer", lineHeight: 1 }}
+                style={{ fontSize: "var(--magma-text-body)", color: "var(--magma-muted)", background: "none", border: "none", cursor: "pointer", lineHeight: 1 }}
               >
                 ×
               </button>
@@ -152,7 +153,7 @@ export function CompartirObraButton({
                 onChange={(e) => setQuery(e.target.value)}
                 style={{
                   width: "100%", backgroundColor: "transparent", border: "0.5px solid #2a2a28",
-                  color: "#e8e4dc", fontFamily: mono, fontSize: "12px", padding: "8px 10px", outline: "none",
+                  color: "#F2F4F8", fontFamily: mono, fontSize: "var(--magma-text-small)", padding: "8px 10px", outline: "none",
                 }}
               />
             </div>
@@ -160,9 +161,9 @@ export function CompartirObraButton({
             {/* Post list */}
             <div style={{ overflowY: "auto", flex: 1 }}>
               {loading ? (
-                <p style={{ padding: "24px", fontSize: "11px", color: "#444441", fontFamily: mono, textAlign: "center" }}>cargando...</p>
+                <p style={{ padding: "24px", fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, textAlign: "center" }}>cargando...</p>
               ) : filtered.length === 0 ? (
-                <p style={{ padding: "24px", fontSize: "11px", color: "#444441", fontFamily: mono, textAlign: "center" }}>
+                <p style={{ padding: "24px", fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, textAlign: "center" }}>
                   {posts.length === 0 ? "no tienes obras publicadas" : "sin resultados"}
                 </p>
               ) : (
@@ -197,16 +198,16 @@ export function CompartirObraButton({
 
                       {/* Title + type */}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontSize: "13px", color: "#e8e4dc", fontFamily: syne, fontWeight: 700, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <p style={{ fontSize: "var(--magma-text-body)", color: "#F2F4F8", fontFamily: syne, fontWeight: 700, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {post.title ?? "(sin título)"}
                         </p>
-                        <p style={{ fontSize: "9px", color: accent, fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em", marginTop: "3px" }}>
+                        <p style={{ fontSize: "var(--magma-text-small)", color: accent, fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em", marginTop: "3px" }}>
                           {post.type}
                         </p>
                       </div>
 
                       {/* Status */}
-                      <span style={{ fontSize: "9px", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.1em", color: post.already_shared ? "#5DCAA5" : "#444441", flexShrink: 0 }}>
+                      <span style={{ fontSize: "var(--magma-text-small)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.1em", color: post.already_shared ? "var(--magma-ash)" : "var(--magma-muted)", flexShrink: 0 }}>
                         {sharing === post.id ? "..." : post.already_shared ? "✓ compartido" : "compartir"}
                       </span>
                     </button>
@@ -221,10 +222,10 @@ export function CompartirObraButton({
                 href={`/upload?colectivo=${colectivoSlug}`}
                 onClick={() => setOpen(false)}
                 style={{
-                  fontSize: "10px", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em",
-                  color: "#5F5E5A", textDecoration: "none",
+                  fontSize: "var(--magma-text-small)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em",
+                  color: "var(--magma-muted)", textDecoration: "none",
                 }}
-                className="hover:text-[#e8e4dc] transition-colors"
+                className="hover:text-[#F2F4F8] transition-colors"
               >
                 + subir obra nueva →
               </Link>

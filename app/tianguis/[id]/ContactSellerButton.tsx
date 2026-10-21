@@ -63,16 +63,16 @@ export function ContactSellerButton({
 
   return (
     <div>
-      <button
+      <button data-magma-glow={/magma-(red|orange|hot)|#E12120|#7f77dd/i.test(String(loading ? "#2a2a28" : "#E12120"))}
         onClick={handleClick}
         disabled={loading}
         style={{
           width: "100%",
           padding: "14px",
-          backgroundColor: loading ? "#2a2a28" : "#D85A30",
-          color: loading ? "#5F5E5A" : "#0c0c0b",
+          backgroundColor: loading ? "#2a2a28" : "#E12120",
+          color: loading ? "var(--magma-muted)" : "#0c0c0b",
           fontFamily: mono,
-          fontSize: "11px",
+          fontSize: "var(--magma-text-small)",
           textTransform: "uppercase",
           letterSpacing: "0.14em",
           border: "none",
@@ -83,7 +83,7 @@ export function ContactSellerButton({
         {loading ? "..." : "quiero esto →"}
       </button>
       {err && (
-        <p style={{ marginTop: "8px", fontSize: "10px", color: "#D85A30", fontFamily: mono }}>{err}</p>
+        <p style={{ marginTop: "8px", fontSize: "var(--magma-text-small)", color: "var(--magma-ash)", fontFamily: mono }}>{err}</p>
       )}
     </div>
   );

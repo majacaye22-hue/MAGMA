@@ -11,16 +11,16 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   backgroundColor: "transparent",
   border: "0.5px solid #2a2a28",
-  color: "#e8e4dc",
+  color: "#F2F4F8",
   fontFamily: mono,
-  fontSize: "12px",
+  fontSize: "var(--magma-text-small)",
   padding: "10px 12px",
   outline: "none",
 };
 
 const labelStyle: React.CSSProperties = {
-  fontSize: "9px",
-  color: "#5F5E5A",
+  fontSize: "var(--magma-text-small)",
+  color: "var(--magma-muted)",
   fontFamily: mono,
   textTransform: "uppercase",
   letterSpacing: "0.14em",
@@ -130,12 +130,12 @@ export function CreateProjectModal({
         {/* Header */}
         <div style={{ padding: "20px 24px 16px", borderBottom: "0.5px solid #2a2a28", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <p style={{ color: "#D85A30", fontFamily: mono, fontSize: "8px", letterSpacing: "0.16em", marginBottom: "5px", textTransform: "uppercase" }}>abrir un cuaderno</p>
-            <h2 style={{ fontSize: "18px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800, margin: 0 }}>nuevo proyecto</h2>
+            <p style={{ color: "var(--magma-ash)", fontFamily: mono, fontSize: "var(--magma-text-small)", letterSpacing: "0.16em", marginBottom: "5px", textTransform: "uppercase" }}>abrir un cuaderno</p>
+            <h2 style={{ fontSize: "18px", color: "#F2F4F8", fontFamily: syne, fontWeight: 800, margin: 0 }}>nuevo proyecto</h2>
           </div>
-          <button
+          <button data-magma-glow={/magma-(red|orange|hot)|#E12120|#7f77dd/i.test(String(submitting ? "#2a2a28" : "#E12120"))}
             onClick={onClose}
-            style={{ background: "none", border: "none", color: "#5F5E5A", cursor: "pointer", fontSize: "18px", lineHeight: 1, padding: "0 4px" }}
+            style={{ background: "none", border: "none", color: "var(--magma-muted)", cursor: "pointer", fontSize: "18px", lineHeight: 1, padding: "0 4px" }}
           >
             ×
           </button>
@@ -155,7 +155,7 @@ export function CreateProjectModal({
               onDrop={(e) => { e.preventDefault(); setCoverDragOver(false); const f = e.dataTransfer.files[0]; if (f) handleCoverFile(f); }}
               style={{
                 height: "120px",
-                border: `1px dashed ${coverDragOver ? "#D85A30" : "#2a2a28"}`,
+                border: `1px dashed ${coverDragOver ? "#E12120" : "#2a2a28"}`,
                 cursor: "pointer",
                 position: "relative",
                 overflow: "hidden",
@@ -167,7 +167,7 @@ export function CreateProjectModal({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={coverPreview} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
               ) : (
-                <span style={{ fontSize: "10px", color: "#444441", fontFamily: mono }}>arrastra o haz clic · jpg, png, webp</span>
+                <span style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono }}>arrastra o haz clic · jpg, png, webp</span>
               )}
             </div>
             <input ref={fileInputRef} type="file" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleCoverFile(f); }} className="hidden" aria-hidden />
@@ -196,33 +196,33 @@ export function CreateProjectModal({
           <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
             <label style={{ ...labelStyle, marginBottom: 0 }}>links — opcional</label>
             <div style={{ position: "relative" }}>
-              <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", fontSize: "9px", color: "#5DCAA5", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.1em", pointerEvents: "none" }}>spotify</span>
+              <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", fontSize: "var(--magma-text-small)", color: "var(--magma-ash)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.1em", pointerEvents: "none" }}>spotify</span>
               <input type="url" value={spotify} onChange={(e) => setSpotify(e.target.value)} placeholder="https://open.spotify.com/..." style={{ ...inputStyle, paddingLeft: "72px" }} />
             </div>
             <div style={{ position: "relative" }}>
-              <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", fontSize: "9px", color: "#D85A30", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.1em", pointerEvents: "none" }}>soundcloud</span>
+              <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", fontSize: "var(--magma-text-small)", color: "var(--magma-ash)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.1em", pointerEvents: "none" }}>soundcloud</span>
               <input type="url" value={soundcloud} onChange={(e) => setSoundcloud(e.target.value)} placeholder="https://soundcloud.com/..." style={{ ...inputStyle, paddingLeft: "94px" }} />
             </div>
             <div style={{ position: "relative" }}>
-              <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", fontSize: "9px", color: "#888780", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.1em", pointerEvents: "none" }}>ig</span>
+              <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.1em", pointerEvents: "none" }}>ig</span>
               <input type="url" value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="https://instagram.com/..." style={{ ...inputStyle, paddingLeft: "40px" }} />
             </div>
             <div style={{ position: "relative" }}>
-              <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", fontSize: "9px", color: "#888780", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.1em", pointerEvents: "none" }}>web</span>
+              <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.1em", pointerEvents: "none" }}>web</span>
               <input type="url" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://..." style={{ ...inputStyle, paddingLeft: "50px" }} />
             </div>
           </div>
 
-          {err && <p style={{ fontSize: "10px", color: "#D85A30", fontFamily: mono }}>{err}</p>}
+          {err && <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-ash)", fontFamily: mono }}>{err}</p>}
 
           <button
             type="submit"
             disabled={submitting}
             style={{
-              backgroundColor: submitting ? "#2a2a28" : "#D85A30",
-              color: submitting ? "#5F5E5A" : "#0c0c0b",
+              backgroundColor: submitting ? "#2a2a28" : "#E12120",
+              color: submitting ? "var(--magma-muted)" : "#0c0c0b",
               fontFamily: mono,
-              fontSize: "10px",
+              fontSize: "var(--magma-text-small)",
               textTransform: "uppercase",
               letterSpacing: "0.14em",
               padding: "12px",

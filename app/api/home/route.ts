@@ -7,7 +7,7 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const [{ data: posts, error: postsError }, { data: comments, error: commentsError }] = await Promise.all([
-    authClient.from("posts").select("*, profiles!posts_author_id_fkey(username, display_name)").order("created_at", { ascending: false }),
+    authClient.from("posts").select("*, profiles!posts_author_id_fkey(username, display_name)").is("audience_colectivo_id", null).order("created_at", { ascending: false }),
     authClient.from("comments").select("post_id"),
   ]);
 

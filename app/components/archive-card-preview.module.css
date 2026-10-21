@@ -1,0 +1,62 @@
+/* Shared analog archive framing. Artwork is never filtered or textured. */
+.card {
+  background: #10100f !important;
+  border: 1px solid #49463f !important;
+  border-radius: 2px !important;
+  box-shadow: none !important;
+  padding: 10px !important;
+  color: #ffffff;
+}
+
+.label {
+  padding: 3px 3px 12px;
+  font-family: var(--font-space-mono), monospace;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.format {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 7px;
+  color: #ffffff;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+
+.format > span {
+  width: 5px;
+  height: 5px;
+  background: var(--magma-red);
+}
+
+.byline {
+  font-size: 13px;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+.byline time { color: #ffffff; }
+.byline a:hover { color: var(--magma-red); }
+.byline a:focus-visible { outline: 1px solid var(--magma-red); outline-offset: 3px; }
+
+.card :global(.magma-vein-card) {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+.card :global(.magma-vein-card)::after { display: none; }
+
+.card :global(.magma-editorial-actions) {
+  padding: 0 3px !important;
+}
+
+.card :global(.magma-editorial-actions) > div {
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 8px 0 !important;
+}

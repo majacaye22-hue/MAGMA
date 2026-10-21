@@ -1,18 +1,15 @@
 import type { Metadata, Viewport } from "next";
-import { Space_Mono, Syne } from "next/font/google";
+import { Geist_Mono } from "next/font/google";
+import { GeistPixelSquare } from "geist/font/pixel";
 import "./globals.css";
 import { Navbar } from "@/app/components/navbar";
 import { GeoBanner } from "@/app/components/GeoBanner";
+import { Footer } from "@/app/components/Footer";
+import { UploadModal } from "@/app/components/UploadModal";
 
-const spaceMono = Space_Mono({
-  weight: ["400", "700"],
+const logoFont = Geist_Mono({
   subsets: ["latin"],
-  variable: "--font-space-mono",
-});
-
-const syne = Syne({
-  subsets: ["latin"],
-  variable: "--font-syne",
+  variable: "--font-logo",
 });
 
 export const metadata: Metadata = {
@@ -34,12 +31,14 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`${spaceMono.variable} ${syne.variable} h-full`}
+      className={`${logoFont.variable} ${GeistPixelSquare.variable} h-full`}
     >
       <body className="min-h-full flex flex-col">
         <Navbar />
         <GeoBanner />
         {children}
+        <Footer />
+        <UploadModal />
       </body>
     </html>
   );

@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
 import { ProfileView, type ProfileData } from "./ProfileView";
 import type { Post } from "@/app/components/card-art";
+import { CreditedWorks } from '@/app/components/CreditedWorks';
+import { COLLABORATIONS_ENABLED } from '@/lib/collaborations';
 
 export default async function ProfilePage({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params;
@@ -26,15 +28,12 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
   const isOwnProfile = currentUserId === profile.id;
 
   // Fetch posts with profiles join — author_id matches profile.id (= auth uid)
-  const [{ data: postsData, error: postsError }, { count: commentCount }, { count: colectivoCount }] = await Promise.all([
-    supabase
+  const { data: postsData, error: postsError } = await supabase
       .from("posts")
       .select("*, profiles!posts_author_id_fkey(username, display_name)")
       .eq("author_id", profile.id)
-      .order("created_at", { ascending: false }),
-    supabase.from("comments").select("id", { count: "exact", head: true }).eq("author_id", profile.id),
-    supabase.from("colectivo_members").select("colectivo_id", { count: "exact", head: true }).eq("user_id", profile.id),
-  ]);
+      .is("audience_colectivo_id", null)
+      .order("created_at", { ascending: false });
 
   if (postsError) throw new Error(`No se pudieron cargar las obras: ${postsError.message}`);
   const posts = (postsData ?? []) as Post[];
@@ -47,7 +46,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
         posts={posts}
         isOwnProfile={isOwnProfile}
         currentUserId={currentUserId}
-        laTrama={{ comments: commentCount ?? 0, colectivos: colectivoCount ?? 0 }}
+        creditedWorks={COLLABORATIONS_ENABLED ? <CreditedWorks profileId={profile.id} userId={currentUserId} /> : undefined}
       />
     </div>
   );

@@ -21,16 +21,17 @@ function stripHtml(html: string): string {
 }
 
 const TYPE_COLOR: Record<string, string> = {
-  arte: "#D85A30",
+  arte: "#E12120",
   fotografía: "#378ADD",
-  música: "#5DCAA5",
+  música: "var(--magma-orange)",
   evento: "#888780",
   escrito: "#7F77DD",
 };
 
 function PostTile({ post }: { post: PostInCollection }) {
   const isAudio = post.media_type?.startsWith("audio/") || post.type === "música";
-  const thumb = isAudio ? post.cover_url : post.media_url;
+  const isVideo = post.type === "video" || post.media_type?.startsWith("video/");
+  const thumb = isAudio || isVideo ? post.cover_url : post.media_url;
   const accent = TYPE_COLOR[post.type] ?? "#888780";
 
   if (post.type === "escrito") {
@@ -51,18 +52,18 @@ function PostTile({ post }: { post: PostInCollection }) {
             height: "100%",
           }}
         >
-          <span style={{ fontSize: "9px", color: accent, fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.16em" }}>
+          <span style={{ fontSize: "var(--magma-text-small)", color: accent, fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.16em" }}>
             letra
           </span>
           {post.title && (
-            <p style={{ fontSize: "15px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800, lineHeight: 1.2, letterSpacing: "-0.01em" }}>
+            <p style={{ fontSize: "var(--magma-text-body)", color: "#F2F4F8", fontFamily: syne, fontWeight: 800, lineHeight: 1.2, letterSpacing: "-0.01em" }}>
               {post.title}
             </p>
           )}
           {post.body && (
             <p style={{
-              fontSize: "11px",
-              color: "#5F5E5A",
+              fontSize: "var(--magma-text-small)",
+              color: "var(--magma-muted)",
               fontFamily: mono,
               lineHeight: 1.7,
               display: "-webkit-box",
@@ -70,10 +71,10 @@ function PostTile({ post }: { post: PostInCollection }) {
               WebkitBoxOrient: "vertical",
               overflow: "hidden",
             }}>
-              {post.body.slice(0, 200)}
+              {stripHtml(post.body).slice(0, 200)}
             </p>
           )}
-          <span style={{ fontSize: "10px", color: "#2a2a28", fontFamily: mono, marginTop: "auto" }}>
+          <span style={{ fontSize: "var(--magma-text-small)", color: "#2a2a28", fontFamily: mono, marginTop: "auto" }}>
             @{post.profiles?.username ?? "anon"}
           </span>
         </div>
@@ -95,7 +96,7 @@ function PostTile({ post }: { post: PostInCollection }) {
         ) : (
           <div style={{ width: "100%", aspectRatio: "1/1", backgroundColor: "#1a1a18", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
             {post.title && (
-              <p style={{ fontSize: "14px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800, textAlign: "center", lineHeight: 1.2 }}>
+              <p style={{ fontSize: "var(--magma-text-body)", color: "#F2F4F8", fontFamily: syne, fontWeight: 800, textAlign: "center", lineHeight: 1.2 }}>
                 {post.title}
               </p>
             )}
@@ -103,14 +104,14 @@ function PostTile({ post }: { post: PostInCollection }) {
         )}
         {/* Type badge */}
         <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: "4px" }}>
-          <p style={{ fontSize: "11px", color: "#e8e4dc", fontFamily: syne, fontWeight: 700, lineHeight: 1.2 }}>
+          <p style={{ fontSize: "var(--magma-text-small)", color: "#F2F4F8", fontFamily: syne, fontWeight: 700, lineHeight: 1.2 }}>
             {post.title}
           </p>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <span style={{ fontSize: "9px", color: accent, fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em" }}>
+            <span style={{ fontSize: "var(--magma-text-small)", color: accent, fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em" }}>
               {post.type}
             </span>
-            <span style={{ fontSize: "9px", color: "#444441", fontFamily: mono }}>
+            <span style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono }}>
               @{post.profiles?.username ?? "anon"}
             </span>
           </div>
@@ -148,11 +149,15 @@ export default async function CollectionDetailPage({
   const isOwner = user?.id === profile.id;
   if (!collection.is_public && !isOwner) notFound();
 
-  const { data: collectionPosts } = await supabase
+  const { data: collectionPosts, error: collectionPostsError } = await supabase
     .from("collection_posts")
-    .select("posts(id, title, type, media_url, media_type, cover_url, body, profiles(username))")
+    .select("posts(id, title, type, media_url, media_type, cover_url, body, profiles!posts_author_id_fkey(username))")
     .eq("collection_id", id)
     .order("created_at", { ascending: false });
+
+  if (collectionPostsError) {
+    throw new Error(`No se pudieron cargar las obras de la colección: ${collectionPostsError.message}`);
+  }
 
   const posts = ((collectionPosts ?? []) as unknown as { posts: PostInCollection | null }[])
     .map((cp) => cp.posts)
@@ -167,7 +172,7 @@ export default async function CollectionDetailPage({
           <Link
             href={`/colecciones/${username}`}
             className="text-xs tracking-widest uppercase"
-            style={{ color: "#5F5E5A", fontFamily: mono, textDecoration: "none" }}
+            style={{ color: "var(--magma-muted)", fontFamily: mono, textDecoration: "none" }}
           >
             ← @{username} / colecciones
           </Link>
@@ -175,21 +180,21 @@ export default async function CollectionDetailPage({
 
         {/* Header */}
         <div style={{ marginBottom: "40px", display: "flex", alignItems: "baseline", gap: "16px" }}>
-          <h1 style={{ fontSize: "24px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800 }}>
+          <h1 className="magma-page-title" style={{ color: "#F2F4F8", fontFamily: syne, fontWeight: 800 }}>
             {collection.name}
           </h1>
-          <span style={{ fontSize: "10px", color: "#444441", fontFamily: mono }}>
+          <span style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono }}>
             {posts.length} {posts.length === 1 ? "obra" : "obras"}
           </span>
           {!collection.is_public && (
-            <span style={{ fontSize: "9px", color: "#2a2a28", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em", border: "0.5px solid #2a2a28", padding: "2px 8px" }}>
+            <span style={{ fontSize: "var(--magma-text-small)", color: "#2a2a28", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em", border: "0.5px solid #2a2a28", padding: "2px 8px" }}>
               privada
             </span>
           )}
         </div>
 
         {posts.length === 0 ? (
-          <p className="text-xs tracking-widest uppercase" style={{ color: "#444441", fontFamily: mono }}>
+          <p className="text-xs tracking-widest uppercase" style={{ color: "var(--magma-muted)", fontFamily: mono }}>
             sin obras en esta colección
           </p>
         ) : (

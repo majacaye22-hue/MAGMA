@@ -23,3 +23,9 @@ private colectivo, a gated feed). This stays additive, not mandatory, until
 there's a solid base audience — making it required to post/participate
 before that point creates a cold-start problem (can't get verified without
 an event, can't justify an event without users).
+
+# Living product map
+
+`MAGMA_PROJECT_MAP.md` is the canonical inventory of Magma roles, routes,
+internal tools, and planned product workflows. Update it whenever a role,
+page, major workflow, or route status is added, removed, or renamed.

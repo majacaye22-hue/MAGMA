@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase";
+import { MagmaWordmark } from "@/app/components/MagmaWordmark";
 
 const mono = "var(--font-space-mono), monospace";
 const syne = "var(--font-syne), sans-serif";
@@ -135,17 +136,17 @@ export default function AdminPage() {
 
         {/* Header */}
         <div>
-          <p style={{ fontSize: "10px", color: "#444441", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.16em", marginBottom: "8px" }}>
-            magma / admin
+          <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.16em", marginBottom: "8px" }}>
+            <MagmaWordmark style={{ fontSize: "1em" }} /> / admin
           </p>
-          <h1 style={{ fontSize: "28px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800 }}>
+          <h1 className="magma-page-title" style={{ color: "#F2F4F8", fontFamily: syne, fontWeight: 800 }}>
             Radio Settings
           </h1>
         </div>
 
         {/* Live toggle */}
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          <label style={{ fontSize: "10px", color: "#5F5E5A", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.14em" }}>
+          <label style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.14em" }}>
             Estado
           </label>
           <div style={{ display: "flex", gap: "12px" }}>
@@ -156,17 +157,17 @@ export default function AdminPage() {
                 style={{
                   padding: "10px 24px",
                   fontFamily: mono,
-                  fontSize: "11px",
+                  fontSize: "var(--magma-text-small)",
                   textTransform: "uppercase",
                   letterSpacing: "0.12em",
                   border: settings?.is_live === val
-                    ? `0.5px solid ${val ? "#D85A30" : "#444441"}`
+                    ? `0.5px solid ${val ? "#E12120" : "#444441"}`
                     : "0.5px solid #2a2a28",
                   backgroundColor: settings?.is_live === val
                     ? val ? "#1a1012" : "#141412"
                     : "transparent",
                   color: settings?.is_live === val
-                    ? val ? "#D85A30" : "#888780"
+                    ? val ? "var(--magma-ash)" : "#888780"
                     : "#444441",
                   cursor: "pointer",
                 }}
@@ -179,7 +180,7 @@ export default function AdminPage() {
 
         {/* DJ Name */}
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          <label style={{ fontSize: "10px", color: "#5F5E5A", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.14em" }}>
+          <label style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.14em" }}>
             DJ / Artista
           </label>
           <input
@@ -189,9 +190,9 @@ export default function AdminPage() {
             style={{
               backgroundColor: "#0e0e0d",
               border: "0.5px solid #2a2a28",
-              color: "#e8e4dc",
+              color: "#F2F4F8",
               fontFamily: mono,
-              fontSize: "13px",
+              fontSize: "var(--magma-text-body)",
               padding: "10px 14px",
               outline: "none",
               width: "100%",
@@ -201,7 +202,7 @@ export default function AdminPage() {
 
         {/* Description */}
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          <label style={{ fontSize: "10px", color: "#5F5E5A", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.14em" }}>
+          <label style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.14em" }}>
             Descripción del set
           </label>
           <input
@@ -211,9 +212,9 @@ export default function AdminPage() {
             style={{
               backgroundColor: "#0e0e0d",
               border: "0.5px solid #2a2a28",
-              color: "#e8e4dc",
+              color: "#F2F4F8",
               fontFamily: mono,
-              fontSize: "13px",
+              fontSize: "var(--magma-text-body)",
               padding: "10px 14px",
               outline: "none",
               width: "100%",
@@ -223,7 +224,7 @@ export default function AdminPage() {
 
         {/* Stream URL */}
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          <label style={{ fontSize: "10px", color: "#5F5E5A", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.14em" }}>
+          <label style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.14em" }}>
             Stream URL (YouTube embed)
           </label>
           <input
@@ -233,28 +234,28 @@ export default function AdminPage() {
             style={{
               backgroundColor: "#0e0e0d",
               border: "0.5px solid #2a2a28",
-              color: "#e8e4dc",
+              color: "#F2F4F8",
               fontFamily: mono,
-              fontSize: "13px",
+              fontSize: "var(--magma-text-body)",
               padding: "10px 14px",
               outline: "none",
               width: "100%",
             }}
           />
-          <p style={{ fontSize: "10px", color: "#444441", fontFamily: mono }}>
+          <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono }}>
             usa el formato: https://www.youtube.com/embed/VIDEO_ID
           </p>
         </div>
 
         {/* Save button */}
-        <button
+        <button data-magma-glow={/magma-(red|orange|hot)|#E12120|#7f77dd/i.test(String(saved ? "var(--magma-hot)" : "var(--magma-red)"))}
           onClick={handleSave}
           disabled={saving}
           style={{
-            backgroundColor: saved ? "#5DCAA5" : "#D85A30",
+            backgroundColor: saved ? "var(--magma-hot)" : "var(--magma-red)",
             color: "#0c0c0b",
             fontFamily: mono,
-            fontSize: "11px",
+            fontSize: "var(--magma-text-small)",
             textTransform: "uppercase",
             letterSpacing: "0.14em",
             padding: "14px 32px",
@@ -269,7 +270,7 @@ export default function AdminPage() {
         </button>
 
         {saveError && (
-          <p style={{ fontSize: "11px", color: "#D85A30", fontFamily: mono }}>
+          <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-ash)", fontFamily: mono }}>
             error al guardar, intenta de nuevo
           </p>
         )}
@@ -280,10 +281,10 @@ export default function AdminPage() {
         {/* Slot requests section */}
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           <div>
-            <h2 style={{ fontSize: "18px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800, marginBottom: "4px" }}>
+            <h2 style={{ fontSize: "18px", color: "#F2F4F8", fontFamily: syne, fontWeight: 800, marginBottom: "4px" }}>
               Solicitudes de slot
             </h2>
-            <p style={{ fontSize: "10px", color: "#444441", fontFamily: mono }}>
+            <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono }}>
               {requests.length === 0 ? "sin solicitudes pendientes" : `${requests.length} pendiente${requests.length > 1 ? "s" : ""}`}
             </p>
           </div>
@@ -306,10 +307,10 @@ export default function AdminPage() {
                   >
                     {/* Name + genre */}
                     <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                      <span style={{ fontSize: "14px", color: "#e8e4dc", fontFamily: syne, fontWeight: 700 }}>
+                      <span style={{ fontSize: "var(--magma-text-body)", color: "#F2F4F8", fontFamily: syne, fontWeight: 700 }}>
                         {req.username}
                       </span>
-                      <span style={{ fontSize: "11px", color: "#888780", fontFamily: mono, lineHeight: 1.5 }}>
+                      <span style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, lineHeight: 1.5 }}>
                         {req.genre}
                       </span>
                     </div>
@@ -317,17 +318,17 @@ export default function AdminPage() {
                     {/* Meta row */}
                     <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
                       {req.platform && (
-                        <span style={{ fontSize: "9px", color: "#5F5E5A", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                        <span style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.1em" }}>
                           {req.platform}
                         </span>
                       )}
                       {req.preferred_date && (
-                        <span style={{ fontSize: "9px", color: "#5F5E5A", fontFamily: mono }}>
+                        <span style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono }}>
                           {req.preferred_date}
                         </span>
                       )}
                       {req.preferred_time && (
-                        <span style={{ fontSize: "9px", color: "#5F5E5A", fontFamily: mono }}>
+                        <span style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono }}>
                           {req.preferred_time.slice(0, 5)}
                         </span>
                       )}
@@ -336,7 +337,7 @@ export default function AdminPage() {
                           href={req.stream_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          style={{ fontSize: "9px", color: "#378ADD", fontFamily: mono, textDecoration: "none" }}
+                          style={{ fontSize: "var(--magma-text-small)", color: "#378ADD", fontFamily: mono, textDecoration: "none" }}
                         >
                           link →
                         </a>
@@ -349,9 +350,9 @@ export default function AdminPage() {
                         onClick={() => handleSlotAction(req.id, "approve")}
                         disabled={busy}
                         style={{
-                          fontSize: "9px", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em",
-                          padding: "6px 16px", border: "0.5px solid #5DCAA5",
-                          backgroundColor: "#0d1a14", color: "#5DCAA5",
+                          fontSize: "var(--magma-text-small)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em",
+                          padding: "6px 16px", border: "0.5px solid var(--magma-orange)",
+                          backgroundColor: "var(--magma-rock)", color: "var(--magma-ash)",
                           cursor: busy ? "default" : "pointer", opacity: busy ? 0.5 : 1,
                         }}
                       >
@@ -361,9 +362,9 @@ export default function AdminPage() {
                         onClick={() => handleSlotAction(req.id, "reject")}
                         disabled={busy}
                         style={{
-                          fontSize: "9px", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em",
+                          fontSize: "var(--magma-text-small)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em",
                           padding: "6px 16px", border: "0.5px solid #2a2a28",
-                          backgroundColor: "transparent", color: "#888780",
+                          backgroundColor: "transparent", color: "var(--magma-muted)",
                           cursor: busy ? "default" : "pointer", opacity: busy ? 0.5 : 1,
                         }}
                       >
@@ -382,12 +383,12 @@ export default function AdminPage() {
 
         {/* DJs section */}
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          <h2 style={{ fontSize: "18px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800 }}>
+          <h2 style={{ fontSize: "18px", color: "#F2F4F8", fontFamily: syne, fontWeight: 800 }}>
             DJs
           </h2>
 
           {djs.length === 0 ? (
-            <p style={{ fontSize: "12px", color: "#444441", fontFamily: mono }}>ningún DJ todavía</p>
+            <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono }}>ningún DJ todavía</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
               {djs.map((dj) => (
@@ -399,10 +400,10 @@ export default function AdminPage() {
                   }}
                 >
                   <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                    <span style={{ fontSize: "13px", color: "#e8e4dc", fontFamily: syne, fontWeight: 700 }}>
+                    <span style={{ fontSize: "var(--magma-text-body)", color: "#F2F4F8", fontFamily: syne, fontWeight: 700 }}>
                       {dj.name || "(sin nombre)"}
                     </span>
-                    <span style={{ fontSize: "10px", color: "#444441", fontFamily: mono }}>
+                    <span style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono }}>
                       {dj.user_id}
                     </span>
                   </div>
@@ -410,10 +411,10 @@ export default function AdminPage() {
                   <button
                     onClick={() => toggleApproval(dj)}
                     style={{
-                      fontSize: "9px", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em",
-                      padding: "5px 12px", border: `0.5px solid ${dj.approved ? "#444441" : "#5DCAA5"}`,
-                      backgroundColor: dj.approved ? "transparent" : "#0d1a14",
-                      color: dj.approved ? "#888780" : "#5DCAA5",
+                      fontSize: "var(--magma-text-small)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em",
+                      padding: "5px 12px", border: `0.5px solid ${dj.approved ? "#444441" : "var(--magma-orange)"}`,
+                      backgroundColor: dj.approved ? "transparent" : "var(--magma-rock)",
+                      color: dj.approved ? "var(--magma-muted)" : "var(--magma-ash)",
                       cursor: "pointer",
                     }}
                   >

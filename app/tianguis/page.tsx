@@ -56,22 +56,22 @@ export default async function TianguisPage({
         {/* Header */}
         <div style={{ paddingTop: "40px", paddingBottom: "28px", display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
           <div>
-            <h1 style={{ fontSize: "32px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800, lineHeight: 1, marginBottom: "6px" }}>
+            <h1 className="magma-page-title" style={{ color: "#F2F4F8", fontFamily: syne, fontWeight: 800, marginBottom: "6px" }}>
               tianguis
             </h1>
-            <p style={{ fontSize: "11px", color: "#5F5E5A", fontFamily: mono, letterSpacing: "0.05em" }}>
+            <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, letterSpacing: "0.05em" }}>
               compra y vende — directo entre artistas
             </p>
           </div>
           <Link
             href="/tianguis/crear"
             style={{
-              fontSize: "10px",
+              fontSize: "var(--magma-text-small)",
               fontFamily: mono,
               textTransform: "uppercase",
               letterSpacing: "0.12em",
-              color: "#D85A30",
-              border: "0.5px solid #D85A30",
+              color: "var(--magma-ash)",
+              border: "0.5px solid #E12120",
               padding: "8px 16px",
               textDecoration: "none",
             }}
@@ -85,18 +85,18 @@ export default async function TianguisPage({
           {CATEGORIES.map((cat) => {
             const isActive = cat === activeCategory;
             return (
-              <Link
+              <Link data-magma-glow={/magma-(red|orange|hot)|#E12120|#7f77dd/i.test(String(isActive ? "#E12120" : "transparent"))}
                 key={cat}
                 href={cat === "todo" ? "/tianguis" : `/tianguis?cat=${cat}`}
                 style={{
                   fontFamily: mono,
-                  fontSize: "10px",
+                  fontSize: "var(--magma-text-small)",
                   textTransform: "uppercase",
                   letterSpacing: "0.12em",
                   padding: "6px 14px",
-                  border: `0.5px solid ${isActive ? "#D85A30" : "#2a2a28"}`,
-                  color: isActive ? "#0c0c0b" : "#888780",
-                  backgroundColor: isActive ? "#D85A30" : "transparent",
+                  border: `0.5px solid ${isActive ? "#E12120" : "#2a2a28"}`,
+                  color: isActive ? "#0c0c0b" : "var(--magma-muted)",
+                  backgroundColor: isActive ? "#E12120" : "transparent",
                   textDecoration: "none",
                   transition: "all 0.15s ease",
                 }}
@@ -110,10 +110,10 @@ export default async function TianguisPage({
         {/* Grid */}
         {listings.length === 0 ? (
           <div style={{ paddingTop: "80px", textAlign: "center" }}>
-            <p style={{ fontSize: "11px", color: "#444441", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em" }}>
+            <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em" }}>
               sin publicaciones todavía
             </p>
-            <Link href="/tianguis/crear" style={{ display: "inline-block", marginTop: "16px", fontSize: "10px", color: "#D85A30", fontFamily: mono, textDecoration: "underline" }}>
+            <Link href="/tianguis/crear" style={{ display: "inline-block", marginTop: "16px", fontSize: "var(--magma-text-small)", color: "var(--magma-ash)", fontFamily: mono, textDecoration: "underline" }}>
               publica el primero →
             </Link>
           </div>
@@ -136,15 +136,15 @@ export default async function TianguisPage({
                         />
                       ) : (
                         <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          <span style={{ fontSize: "10px", color: "#2a2a28", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.1em" }}>sin imagen</span>
+                          <span style={{ fontSize: "var(--magma-text-small)", color: "#2a2a28", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.1em" }}>sin imagen</span>
                         </div>
                       )}
                       {/* Category badge */}
                       <div style={{ position: "absolute", top: "10px", left: "10px" }}>
                         <span style={{
-                          fontSize: "8px", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em",
+                          fontSize: "var(--magma-text-small)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em",
                           padding: "3px 8px", backgroundColor: "rgba(12,12,11,0.85)",
-                          border: "0.5px solid #2a2a28", color: "#D85A30",
+                          border: "0.5px solid #2a2a28", color: "var(--magma-ash)",
                         }}>
                           {listing.category}
                         </span>
@@ -153,19 +153,19 @@ export default async function TianguisPage({
 
                     {/* Info */}
                     <div style={{ padding: "14px 16px", borderTop: "0.5px solid #2a2a28" }}>
-                      <p style={{ fontSize: "14px", color: "#e8e4dc", fontFamily: syne, fontWeight: 700, lineHeight: 1.2, marginBottom: "8px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <p style={{ fontSize: "var(--magma-text-body)", color: "#F2F4F8", fontFamily: syne, fontWeight: 700, lineHeight: 1.2, marginBottom: "8px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {listing.title}
                       </p>
                       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
-                        <p style={{ fontSize: "16px", color: "#D85A30", fontFamily: mono, fontWeight: "bold", lineHeight: 1 }}>
-                          ${listing.price} <span style={{ fontSize: "10px", color: "#5F5E5A" }}>{listing.currency}</span>
+                        <p style={{ fontSize: "16px", color: "var(--magma-ash)", fontFamily: mono, fontWeight: "bold", lineHeight: 1 }}>
+                          ${listing.price} <span style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)" }}>{listing.currency}</span>
                         </p>
                         <div style={{ textAlign: "right" }}>
                           {listing.profiles?.username && (
-                            <p style={{ fontSize: "9px", color: "#5F5E5A", fontFamily: mono }}>@{listing.profiles.username}</p>
+                            <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono }}>@{listing.profiles.username}</p>
                           )}
                           {listing.location && (
-                            <p style={{ fontSize: "9px", color: "#444441", fontFamily: mono }}>{listing.location}</p>
+                            <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono }}>{listing.location}</p>
                           )}
                         </div>
                       </div>

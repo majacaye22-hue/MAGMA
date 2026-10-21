@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
+import { EVENT_SALA_ENABLED } from "@/lib/features";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!EVENT_SALA_ENABLED) return NextResponse.json({ error: "not found" }, { status: 404 });
   const { id } = await params;
   const authClient = await createClient();
   const { data: { user } } = await authClient.auth.getUser();

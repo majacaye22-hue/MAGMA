@@ -8,7 +8,7 @@ import { getSupabaseClient } from "@/lib/supabase";
 const mono = "var(--font-space-mono), monospace";
 const syne = "var(--font-syne), sans-serif";
 
-const AVATAR_COLORS = ["#D85A30", "#5DCAA5", "#7F77DD", "#EF9F27", "#378ADD", "#7EC8E3"];
+const AVATAR_COLORS = ["#E83B20", "#FF641F", "#FFB21C", "#102B66", "#7F77DD", "#378ADD"];
 
 function slugify(text: string): string {
   return text
@@ -88,16 +88,16 @@ export default function CrearColectivoPage() {
     width: "100%",
     backgroundColor: "transparent",
     border: "0.5px solid #2a2a28",
-    color: "#e8e4dc",
+    color: "#F2F4F8",
     fontFamily: mono,
-    fontSize: "13px",
+    fontSize: "var(--magma-text-body)",
     padding: "10px 12px",
     outline: "none",
   };
 
   const labelStyle: React.CSSProperties = {
-    fontSize: "9px",
-    color: "#5F5E5A",
+    fontSize: "var(--magma-text-small)",
+    color: "var(--magma-muted)",
     fontFamily: mono,
     textTransform: "uppercase",
     letterSpacing: "0.14em",
@@ -109,12 +109,12 @@ export default function CrearColectivoPage() {
     <div className="min-h-screen" style={{ backgroundColor: "#0c0c0b" }}>
       <div style={{ maxWidth: "520px", margin: "0 auto", padding: "40px 24px 80px" }}>
         <div style={{ marginBottom: "32px" }}>
-          <Link href="/colectivos" style={{ fontSize: "10px", color: "#5F5E5A", fontFamily: mono, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.12em" }}>
+          <Link href="/colectivos" style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, textDecoration: "none", textTransform: "uppercase", letterSpacing: "0.12em" }}>
             ← colectivos
           </Link>
         </div>
 
-        <h1 style={{ fontSize: "28px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800, marginBottom: "32px" }}>
+        <h1 className="magma-page-title" style={{ color: "#F2F4F8", fontFamily: syne, fontWeight: 800, marginBottom: "32px" }}>
           crear colectivo
         </h1>
 
@@ -160,7 +160,7 @@ export default function CrearColectivoPage() {
 
           {/* Cover image */}
           <div>
-            <label style={labelStyle}>imagen de portada <span style={{ color: "#444441" }}>— opcional</span></label>
+            <label style={labelStyle}>imagen de portada <span style={{ color: "var(--magma-muted)" }}>— opcional</span></label>
             <div
               role="button"
               tabIndex={0}
@@ -184,9 +184,9 @@ export default function CrearColectivoPage() {
             >
               {coverFileName ? (
                 <>
-                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 9.5L7 13.5L15 5.5" stroke="#5DCAA5" strokeWidth="1.5" strokeLinecap="square" /></svg>
-                  <span style={{ fontSize: "11px", color: "#888780", fontFamily: mono }}>{coverFileName}</span>
-                  <span style={{ fontSize: "9px", color: "#444441", fontFamily: mono, textDecoration: "underline" }}>cambiar imagen</span>
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 9.5L7 13.5L15 5.5" stroke="var(--magma-orange)" strokeWidth="1.5" strokeLinecap="square" /></svg>
+                  <span style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono }}>{coverFileName}</span>
+                  <span style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, textDecoration: "underline" }}>cambiar imagen</span>
                 </>
               ) : (
                 <>
@@ -194,7 +194,7 @@ export default function CrearColectivoPage() {
                     <path d="M10 13V4M10 4L6.5 7.5M10 4L13.5 7.5" stroke="#444441" strokeWidth="1.2" strokeLinecap="square" />
                     <path d="M3 14V16.5H17V14" stroke="#444441" strokeWidth="1.2" strokeLinecap="square" />
                   </svg>
-                  <span style={{ fontSize: "11px", color: "#5F5E5A", fontFamily: mono }}>arrastra o haz clic · jpg, png, webp</span>
+                  <span style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono }}>arrastra o haz clic · jpg, png, webp</span>
                 </>
               )}
             </div>
@@ -213,7 +213,7 @@ export default function CrearColectivoPage() {
                   style={{
                     width: "28px", height: "28px", borderRadius: "2px",
                     backgroundColor: c,
-                    border: avatarColor === c ? "2px solid #e8e4dc" : "2px solid transparent",
+                    border: avatarColor === c ? "2px solid #F2F4F8" : "2px solid transparent",
                     cursor: "pointer",
                     flexShrink: 0,
                   }}
@@ -222,23 +222,24 @@ export default function CrearColectivoPage() {
             </div>
           </div>
 
-          {/* Privacy */}
+          {/* Directory visibility; membership always requires approval. */}
           <div>
-            <label style={labelStyle}>privacidad</label>
+            <label style={labelStyle}>visibilidad</label>
             <div style={{ display: "flex", gap: "12px" }}>
-              {[{ val: false, label: "público — cualquiera puede unirse" }, { val: true, label: "privado — aprobación requerida" }].map(({ val, label }) => (
+              {[{ val: false, label: "visible en cartelera de colectivos" }, { val: true, label: "solo con enlace" }].map(({ val, label }) => (
                 <button
                   key={String(val)}
                   type="button"
                   onClick={() => setIsPrivate(val)}
+                  aria-pressed={isPrivate === val}
                   style={{
                     flex: 1,
                     padding: "10px 12px",
-                    fontSize: "10px",
+                    fontSize: "var(--magma-text-small)",
                     fontFamily: mono,
                     textAlign: "left",
-                    border: `0.5px solid ${isPrivate === val ? "#D85A30" : "#2a2a28"}`,
-                    color: isPrivate === val ? "#D85A30" : "#5F5E5A",
+                    border: `0.5px solid ${isPrivate === val ? "#E12120" : "#2a2a28"}`,
+                    color: isPrivate === val ? "var(--magma-ash)" : "var(--magma-muted)",
                     backgroundColor: "transparent",
                     cursor: "pointer",
                   }}
@@ -249,18 +250,22 @@ export default function CrearColectivoPage() {
             </div>
           </div>
 
+          <p style={{ color: "var(--magma-muted)", fontFamily: mono, fontSize: "var(--magma-text-small)" }}>
+            las solicitudes de ingreso requieren aprobación. “solo con enlace” oculta el colectivo del directorio; no hace su contenido privado.
+          </p>
+
           {err && (
-            <p style={{ fontSize: "10px", color: "#D85A30", fontFamily: mono }}>{err}</p>
+            <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-ash)", fontFamily: mono }}>{err}</p>
           )}
 
-          <button
+          <button data-magma-glow={/magma-(red|orange|hot)|#E12120|#7f77dd/i.test(String(loading ? "#2a2a28" : "#E12120"))}
             type="submit"
             disabled={loading}
             style={{
-              backgroundColor: loading ? "#2a2a28" : "#D85A30",
-              color: loading ? "#5F5E5A" : "#0c0c0b",
+              backgroundColor: loading ? "#2a2a28" : "#E12120",
+              color: loading ? "var(--magma-muted)" : "#0c0c0b",
               fontFamily: mono,
-              fontSize: "10px",
+              fontSize: "var(--magma-text-small)",
               textTransform: "uppercase",
               letterSpacing: "0.14em",
               padding: "12px",

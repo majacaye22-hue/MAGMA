@@ -38,9 +38,16 @@ CREATE POLICY "profiles: owner update"
 
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "posts: public read"
+CREATE POLICY "posts: community read, owner and cuidadorx hidden read"
   ON posts FOR SELECT
-  USING (auth.uid() IS NOT NULL);
+  USING (
+    auth.uid() IS NOT NULL
+    AND (
+      (is_hidden = false AND moderation_status = 'approved')
+      OR author_id = auth.uid()
+      OR EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_moderator = true)
+    )
+  );
 
 CREATE POLICY "posts: authenticated insert"
   ON posts FOR INSERT
@@ -48,8 +55,13 @@ CREATE POLICY "posts: authenticated insert"
 
 CREATE POLICY "posts: owner update"
   ON posts FOR UPDATE
-  USING    (auth.uid() = author_id)
-  WITH CHECK (auth.uid() = author_id);
+  USING    (auth.uid() = author_id AND is_hidden = false)
+  WITH CHECK (auth.uid() = author_id AND is_hidden = false);
+
+CREATE POLICY "posts: cuidadorx update"
+  ON posts FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_moderator = true))
+  WITH CHECK (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_moderator = true));
 
 CREATE POLICY "posts: owner or moderator delete"
   ON posts FOR DELETE
@@ -59,6 +71,33 @@ CREATE POLICY "posts: owner or moderator delete"
       SELECT 1 FROM profiles WHERE id = auth.uid() AND is_moderator = true
     )
   );
+
+ALTER TABLE moderation_actions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "moderation actions: author or moderator read"
+  ON moderation_actions FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM posts
+      WHERE posts.id = moderation_actions.post_id
+        AND posts.author_id = auth.uid()
+    )
+    OR EXISTS (
+      SELECT 1 FROM profiles
+      WHERE profiles.id = auth.uid() AND profiles.is_moderator = true
+    )
+  );
+
+-- ─── POST APPRECIATIONS ──────────────────────────────────────
+
+ALTER TABLE post_appreciations ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "post_appreciations: owner read" ON post_appreciations
+  FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "post_appreciations: owner insert" ON post_appreciations
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "post_appreciations: owner delete" ON post_appreciations
+  FOR DELETE USING (auth.uid() = user_id);
 
 -- ─── COLLECTIONS ─────────────────────────────────────────────
 

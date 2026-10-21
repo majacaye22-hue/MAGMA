@@ -30,10 +30,12 @@ CREATE TABLE profiles (
   display_name     text,
   bio              text,
   location         text,
+  hometown         text CHECK (char_length(hometown) <= 100),
   disciplines      text[],
   avatar_url       text,
   avatar_color     text DEFAULT '#D85A30',
   cover_image_url  text,
+  cover_shape     text NOT NULL DEFAULT 'vertical' CHECK (cover_shape IN ('horizontal', 'vertical')),
   is_moderator     boolean DEFAULT false NOT NULL,
   casa_name        text,
   casa_tone        text,
@@ -71,6 +73,7 @@ CREATE TABLE posts (
   type           text NOT NULL,  -- arte | fotografía | música | video | evento | escrito
   media_url      text,
   media_type     text,
+  soundcloud_url text,
   media_base64   text,           -- legacy; new uploads go to storage
   cover_url      text,           -- album art for música
   tags           text[],
@@ -83,7 +86,12 @@ CREATE TABLE posts (
   open_collab    boolean NOT NULL DEFAULT false,
   collab_description text,
   comments_enabled boolean NOT NULL DEFAULT true,
+  is_sensitive   boolean NOT NULL DEFAULT false,
   is_hidden      boolean DEFAULT false NOT NULL,
+  moderation_status text NOT NULL DEFAULT 'pending' CHECK (moderation_status IN ('pending', 'approved', 'rejected')),
+  moderation_note text,
+  moderated_at   timestamptz,
+  moderated_by   uuid REFERENCES profiles(id) ON DELETE SET NULL,
   created_at     timestamp DEFAULT now()
 );
 
@@ -91,7 +99,7 @@ ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "posts: community read, owner and cuidadorx hidden read"
   ON posts FOR SELECT USING (
-    auth.uid() IS NOT NULL AND (is_hidden = false OR author_id = auth.uid() OR EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_moderator = true))
+    auth.uid() IS NOT NULL AND ((is_hidden = false AND moderation_status = 'approved') OR author_id = auth.uid() OR EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_moderator = true))
   );
 
 CREATE POLICY "posts: authenticated insert"
@@ -113,6 +121,137 @@ CREATE POLICY "posts: owner or moderator delete"
     auth.uid() = author_id
     OR EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_moderator = true)
   );
+
+CREATE OR REPLACE FUNCTION public.enforce_post_moderation()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  actor_is_moderator boolean;
+BEGIN
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid() AND is_moderator = true
+  ) INTO actor_is_moderator;
+
+  IF actor_is_moderator THEN
+    RETURN NEW;
+  END IF;
+
+  IF TG_OP = 'INSERT' THEN
+    NEW.moderation_status := CASE WHEN COALESCE(NEW.is_sensitive, false) THEN 'pending' ELSE 'approved' END;
+    NEW.moderation_note := NULL;
+    NEW.moderated_at := NULL;
+    NEW.moderated_by := NULL;
+    RETURN NEW;
+  END IF;
+
+  IF ROW(NEW.title, NEW.body, NEW.content, NEW.type, NEW.media_url,
+         NEW.soundcloud_url, NEW.media_base64, NEW.cover_url, NEW.tags,
+         NEW.event_date, NEW.venue, NEW.address, NEW.open_collab,
+         NEW.collab_description, NEW.is_sensitive)
+     IS DISTINCT FROM
+     ROW(OLD.title, OLD.body, OLD.content, OLD.type, OLD.media_url,
+         OLD.soundcloud_url, OLD.media_base64, OLD.cover_url, OLD.tags,
+         OLD.event_date, OLD.venue, OLD.address, OLD.open_collab,
+         OLD.collab_description, OLD.is_sensitive) THEN
+    NEW.moderation_status := CASE
+      WHEN COALESCE(NEW.is_sensitive, false) OR OLD.moderation_status = 'rejected'
+        OR OLD.is_hidden OR (OLD.is_sensitive AND OLD.moderation_status = 'pending')
+      THEN 'pending' ELSE 'approved' END;
+    NEW.moderation_note := NULL;
+    NEW.moderated_at := NULL;
+    NEW.moderated_by := NULL;
+  ELSE
+    NEW.moderation_status := OLD.moderation_status;
+    NEW.moderation_note := OLD.moderation_note;
+    NEW.moderated_at := OLD.moderated_at;
+    NEW.moderated_by := OLD.moderated_by;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER posts_enforce_moderation BEFORE INSERT OR UPDATE ON posts
+  FOR EACH ROW EXECUTE FUNCTION enforce_post_moderation();
+
+CREATE INDEX posts_moderation_queue_idx ON posts (moderation_status, created_at)
+  WHERE moderation_status = 'pending';
+
+CREATE TABLE moderation_actions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id uuid NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  moderator_id uuid REFERENCES profiles(id) ON DELETE SET NULL,
+  action text NOT NULL CHECK (action IN ('approved', 'rejected')),
+  note text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX moderation_actions_post_created_idx ON moderation_actions (post_id, created_at DESC);
+CREATE INDEX moderation_actions_moderator_created_idx ON moderation_actions (moderator_id, created_at DESC);
+
+ALTER TABLE moderation_actions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "moderation actions: author or moderator read" ON moderation_actions FOR SELECT
+  USING (
+    EXISTS (SELECT 1 FROM posts WHERE posts.id = moderation_actions.post_id AND posts.author_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.is_moderator = true)
+  );
+
+CREATE OR REPLACE FUNCTION review_post(p_post_id uuid, p_status text, p_note text DEFAULT NULL)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_moderator = true) THEN
+    RAISE EXCEPTION 'moderator access required';
+  END IF;
+  IF p_status NOT IN ('approved', 'rejected') THEN RAISE EXCEPTION 'invalid moderation status'; END IF;
+  UPDATE posts SET moderation_status = p_status, moderation_note = NULLIF(trim(p_note), ''),
+    moderated_at = now(), moderated_by = auth.uid()
+  WHERE id = p_post_id AND moderation_status = 'pending';
+  IF NOT FOUND THEN RAISE EXCEPTION 'pending post not found'; END IF;
+  INSERT INTO moderation_actions (post_id, moderator_id, action, note)
+  VALUES (p_post_id, auth.uid(), p_status, NULLIF(trim(p_note), ''));
+END;
+$$;
+REVOKE ALL ON FUNCTION review_post(uuid, text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION review_post(uuid, text, text) TO authenticated;
+
+-- ─── POST APPRECIATIONS ────────────────────────────────────────────────────
+
+CREATE TABLE post_appreciations (
+  post_id    uuid NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  user_id    uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (post_id, user_id)
+);
+
+ALTER TABLE post_appreciations ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "post_appreciations: owner read" ON post_appreciations
+  FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "post_appreciations: owner insert" ON post_appreciations
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "post_appreciations: owner delete" ON post_appreciations
+  FOR DELETE USING (auth.uid() = user_id);
+
+CREATE OR REPLACE FUNCTION sync_post_appreciation_count()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    UPDATE posts SET upvotes = COALESCE(upvotes, 0) + 1 WHERE id = NEW.post_id;
+    RETURN NEW;
+  END IF;
+  UPDATE posts SET upvotes = GREATEST(COALESCE(upvotes, 0) - 1, 0) WHERE id = OLD.post_id;
+  RETURN OLD;
+END;
+$$;
+
+CREATE TRIGGER post_appreciations_count_insert AFTER INSERT ON post_appreciations
+  FOR EACH ROW EXECUTE FUNCTION sync_post_appreciation_count();
+CREATE TRIGGER post_appreciations_count_delete AFTER DELETE ON post_appreciations
+  FOR EACH ROW EXECUTE FUNCTION sync_post_appreciation_count();
 
 -- ─── COLLECTIONS ─────────────────────────────────────────────────────────────
 
@@ -173,7 +312,7 @@ CREATE TABLE event_notes (
 ALTER TABLE event_attendances ENABLE ROW LEVEL SECURITY;
 ALTER TABLE event_notes ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "event attendances: owner read" ON event_attendances FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "event attendances: authenticated read" ON event_attendances FOR SELECT USING (auth.uid() IS NOT NULL);
 CREATE POLICY "event attendances: owner insert" ON event_attendances FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "event attendances: owner delete" ON event_attendances FOR DELETE USING (auth.uid() = user_id);
 CREATE POLICY "event notes: owner or public read" ON event_notes FOR SELECT

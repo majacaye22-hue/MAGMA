@@ -1,4 +1,11 @@
 "use client";
+import { EventDetailsFields } from "@/app/components/EventDetailsFields";
+import { EVENT_DETAILS_ENABLED, emptyEventDetails, eventDetailsPayload, eventTimestamp, eventLocalParts, restoreEventDetails, type EventDetails } from "@/lib/event-details";
+
+import { PhotoPicker } from "@/app/components/PhotoPicker";
+import { MentionInput } from "@/app/components/MentionInput";
+import { supportsCarousel, postImages, uploadPhotos } from "@/lib/post-images";
+import { EventTimeInput } from "@/app/components/EventTimeInput";
 
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
@@ -6,6 +13,10 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { normalizeSoundCloudUrl } from "@/lib/soundcloud";
+import { COLLABORATIONS_ENABLED } from '@/lib/collaborations';
+import { CollaborationPanel } from '@/app/components/CollaborationPanel';
+import { PostProjectLinks } from '@/app/components/PostProjectLinks';
 
 const RichEditor = dynamic(
   () => import("@/app/components/editor/RichEditor").then((m) => m.RichEditor),
@@ -18,18 +29,18 @@ const syne = "var(--font-syne), sans-serif";
 const inputStyle: React.CSSProperties = {
   backgroundColor: "#141412",
   border: "0.5px solid #2a2a28",
-  color: "#e8e4dc",
+  color: "#F2F4F8",
   fontFamily: mono,
-  fontSize: "13px",
+  fontSize: "var(--magma-text-body)",
   outline: "none",
   width: "100%",
   padding: "10px 12px",
 };
 
 const labelStyle: React.CSSProperties = {
-  color: "#5F5E5A",
+  color: "var(--magma-muted)",
   fontFamily: mono,
-  fontSize: "10px",
+  fontSize: "var(--magma-text-small)",
   textTransform: "uppercase",
   letterSpacing: "0.12em",
   display: "block",
@@ -39,13 +50,16 @@ const labelStyle: React.CSSProperties = {
 type PostType = "arte" | "música" | "fotografía" | "evento" | "escrito";
 
 interface PostData {
+  audience_colectivo_id?: string | null;
   id: string;
   title: string | null;
   body: string | null;
   content: string | null;
   type: PostType;
   media_url: string | null;
+  image_urls?: string[] | null;
   media_type: string | null;
+  soundcloud_url: string | null;
   tags: string[] | null;
   author_id: string | null;
   event_date: string | null;
@@ -55,6 +69,7 @@ interface PostData {
   price: string | null;
   open_collab: boolean | null;
   comments_enabled: boolean | null;
+  is_sensitive: boolean | null;
 }
 
 export default function EditPostPage() {
@@ -68,11 +83,14 @@ export default function EditPostPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [postType, setPostType] = useState<PostType>("arte");
+  const [colectivoId, setColectivoId] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<(File | string)[]>([]);
   const [existingMediaUrl, setExistingMediaUrl] = useState<string | null>(null);
 
   // Form fields
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [soundCloudUrl, setSoundCloudUrl] = useState("");
   const [richContent, setRichContent] = useState("");
   const richContentRef = useRef("");
   const [tags, setTags] = useState("");
@@ -83,9 +101,11 @@ export default function EditPostPage() {
   const [address, setAddress] = useState("");
   const [isFree, setIsFree] = useState(true);
   const [price, setPrice] = useState("");
+  const [eventDetails, setEventDetails] = useState(emptyEventDetails);
   const [openCollab, setOpenCollab] = useState(false);
   const [collabDescription, setCollabDescription] = useState("");
   const [commentsEnabled, setCommentsEnabled] = useState(true);
+  const [isSensitive, setIsSensitive] = useState(false);
 
   // File upload
   const [newFile, setNewFile] = useState<File | null>(null);
@@ -123,35 +143,42 @@ export default function EditPostPage() {
 
       const p = post as PostData;
       setPostType(p.type);
+      setColectivoId(p.audience_colectivo_id ?? null);
       setTitle(p.title ?? "");
       setDescription(p.body ?? "");
+      setSoundCloudUrl(p.soundcloud_url ?? "");
       setRichContent(p.content ?? "");
       richContentRef.current = p.content ?? "";
       setTags(p.tags ? p.tags.join(", ") : "");
       setExistingMediaUrl(p.media_url);
+      setPhotos(postImages(p));
 
       if (p.event_date) {
-        const d = new Date(p.event_date);
-        setEventDate(d.toISOString().slice(0, 10));
-        setEventTime(d.toISOString().slice(11, 16));
+        const d = eventLocalParts(p.event_date);
+        setEventDate(d.date);
+        setEventTime(d.time);
       }
+      setEventDetails(restoreEventDetails(p as PostData & EventDetails));
       setVenue(p.venue ?? "");
       setAddress(p.address ?? "");
       setIsFree(p.is_free ?? true);
       setPrice(p.price ?? "");
       setOpenCollab(p.open_collab ?? false);
       setCommentsEnabled(p.comments_enabled !== false);
+      setIsSensitive(p.is_sensitive === true);
       setCollabDescription((p as PostData & { collab_description?: string | null }).collab_description ?? "");
 
       // Fetch user's projects and this post's current project link
-      const [{ data: projects }, { data: linked }] = await Promise.all([
-        supabase.from("projects").select("id, title").eq("author_id", session.user.id).order("created_at", { ascending: false }),
-        supabase.from("post_projects").select("project_id").eq("post_id", id).maybeSingle(),
-      ]);
-      setUserProjects(projects ?? []);
-      const currentProjectId = linked?.project_id ?? "";
-      setSelectedProject(currentProjectId);
-      setInitialProject(currentProjectId);
+      if (!COLLABORATIONS_ENABLED) {
+        const [{ data: projects }, { data: linked }] = await Promise.all([
+          supabase.from("projects").select("id, title").eq("author_id", session.user.id).order("created_at", { ascending: false }),
+          supabase.from("post_projects").select("project_id").eq("post_id", id).order('created_at').limit(1).maybeSingle(),
+        ]);
+        setUserProjects(projects ?? []);
+        const currentProjectId = linked?.project_id ?? "";
+        setSelectedProject(currentProjectId);
+        setInitialProject(currentProjectId);
+      }
 
       setLoading(false);
     })();
@@ -177,12 +204,23 @@ export default function EditPostPage() {
     try {
       if (!userId || !accessToken) { setError("debes iniciar sesión"); setSaving(false); return; }
 
-      let mediaUrl = existingMediaUrl;
+      const normalizedSoundCloudUrl = postType === "música" && soundCloudUrl.trim()
+        ? normalizeSoundCloudUrl(soundCloudUrl)
+        : null;
+      if (postType === "música" && soundCloudUrl.trim() && !normalizedSoundCloudUrl) {
+        setError("pega un enlace válido de SoundCloud que comience con https://");
+        setSaving(false);
+        return;
+      }
+
+      const imageUrls = supportsCarousel(postType) && photos.length ? await uploadPhotos(photos, colectivoId) : null;
+      let mediaUrl = supportsCarousel(postType) ? imageUrls?.[0] ?? null : existingMediaUrl;
 
       // Upload new file if one was selected
-      if (newFile) {
+      if (newFile && !supportsCarousel(postType)) {
         const formData = new FormData();
         formData.append("file", newFile);
+        if (colectivoId) formData.append("colectivo_id", colectivoId);
         const response = await fetch("/api/upload", { method: "POST", body: formData });
         const { url, error: uploadError } = await response.json();
         if (uploadError) throw new Error(uploadError);
@@ -192,9 +230,7 @@ export default function EditPostPage() {
       // Build event_date
       let event_date: string | null = null;
       if (postType === "evento" && eventDate) {
-        event_date = eventTime
-          ? new Date(`${eventDate}T${eventTime}`).toISOString()
-          : new Date(eventDate).toISOString();
+        event_date = eventTimestamp(eventDate, eventTime);
       }
 
       const updatePayload: Record<string, unknown> = {
@@ -202,10 +238,13 @@ export default function EditPostPage() {
         body: postType !== "escrito" ? (description.trim() || null) : null,
         content: postType === "escrito" ? sanitizeHtml(richContentRef.current) : null,
         media_url: mediaUrl,
+        ...(supportsCarousel(postType) ? { image_urls: imageUrls } : {}),
+        soundcloud_url: normalizedSoundCloudUrl,
         tags: tags ? tags.split(",").map((t) => t.trim()).filter(Boolean) : null,
         open_collab: openCollab,
         collab_description: openCollab && collabDescription.trim() ? collabDescription.trim() : null,
         comments_enabled: commentsEnabled,
+        is_sensitive: isSensitive,
       };
 
       if (postType === "evento") {
@@ -214,6 +253,7 @@ export default function EditPostPage() {
         updatePayload.address = address.trim() || null;
         updatePayload.is_free = isFree;
         updatePayload.price = !isFree && price.trim() ? price.trim() : null;
+        if (EVENT_DETAILS_ENABLED) Object.assign(updatePayload, eventDetailsPayload(eventDetails, event_date));
       }
 
       // Use direct fetch to avoid gotrue-js internal getSession() deadlock
@@ -237,13 +277,15 @@ export default function EditPostPage() {
       }
 
       // Update project linkage if changed
-      if (selectedProject !== initialProject) {
+      if (!COLLABORATIONS_ENABLED && selectedProject !== initialProject) {
         const supabase = getSupabaseClient();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase as any).from("post_projects").delete().eq("post_id", id);
+        const { error: unlinkError } = initialProject ? await supabase.from("post_projects").delete().eq("post_id", id).eq('project_id', initialProject) : { error: null };
+        if (unlinkError) throw unlinkError;
+        setInitialProject('');
         if (selectedProject) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (supabase as any).from("post_projects").insert({ post_id: id, project_id: selectedProject });
+          const { error: linkError } = await supabase.from("post_projects").insert({ post_id: id, project_id: selectedProject });
+          if (linkError) throw linkError;
+          setInitialProject(selectedProject);
         }
       }
 
@@ -278,17 +320,17 @@ export default function EditPostPage() {
           <Link
             href={`/post/${id}`}
             className="flex items-center justify-center shrink-0"
-            style={{ width: "28px", height: "28px", border: "0.5px solid #2a2a28", color: "#888780" }}
+            style={{ width: "28px", height: "28px", border: "0.5px solid #2a2a28", color: "var(--magma-muted)" }}
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M7.5 2L3.5 6L7.5 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="square" />
             </svg>
           </Link>
           <div>
-            <h1 style={{ fontSize: "22px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800, lineHeight: 1 }}>
+            <h1 className="magma-page-title" style={{ color: "#F2F4F8", fontFamily: syne, fontWeight: 800, }}>
               editar
             </h1>
-            <p style={{ fontSize: "10px", color: "#5F5E5A", fontFamily: mono, marginTop: "4px", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+            <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, marginTop: "4px", textTransform: "uppercase", letterSpacing: "0.1em" }}>
               {postType}
             </p>
           </div>
@@ -299,7 +341,7 @@ export default function EditPostPage() {
           {/* Título */}
           <div>
             <label style={labelStyle}>
-              Título{isEscrito && <span style={{ color: "#444441" }}> — opcional</span>}
+              Título{isEscrito && <span style={{ color: "var(--magma-muted)" }}> — opcional</span>}
             </label>
             <input
               type="text"
@@ -324,10 +366,10 @@ export default function EditPostPage() {
           {!isEscrito && (
             <div>
               <label style={labelStyle}>Descripción</label>
-              <textarea
+              <MentionInput
                 rows={3}
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onValueChange={setDescription}
                 placeholder="describe el proceso, la intención, el contexto..."
                 style={{ ...inputStyle, resize: "vertical", lineHeight: 1.6 }}
                 className="focus:outline-none"
@@ -335,18 +377,38 @@ export default function EditPostPage() {
             </div>
           )}
 
+          {postType === "música" && (
+            <div>
+              <label style={labelStyle}>
+                SoundCloud <span style={{ color: "var(--magma-muted)" }}>— track, playlist o set</span>
+              </label>
+              <input
+                type="url"
+                value={soundCloudUrl}
+                onChange={(event) => setSoundCloudUrl(event.target.value)}
+                placeholder="https://soundcloud.com/artista/track"
+                style={inputStyle}
+                className="focus:outline-none"
+              />
+              <p style={{ color: "var(--magma-muted)", fontFamily: mono, fontSize: "var(--magma-text-small)", lineHeight: 1.5, marginTop: "6px" }}>
+                Pega el enlace normal de SoundCloud; no el código iframe.
+              </p>
+            </div>
+          )}
+
           {/* File upload — non-escrito */}
-          {!isEscrito && (
+          {supportsCarousel(postType) && <PhotoPicker items={photos} onChange={setPhotos} disabled={saving} />}
+          {!isEscrito && !supportsCarousel(postType) && (
             <div>
               <label style={labelStyle}>
                 Archivo
-                <span style={{ color: "#444441" }}> — opcional, reemplaza el actual</span>
+                <span style={{ color: "var(--magma-muted)" }}> — opcional, reemplaza el actual</span>
               </label>
 
               {/* Show current media if no new file selected */}
               {existingMediaUrl && !newFileName && (
-                <div style={{ marginBottom: "8px", fontSize: "10px", color: "#5F5E5A", fontFamily: mono }}>
-                  archivo actual: <span style={{ color: "#888780" }}>{existingMediaUrl.split("/").pop()}</span>
+                <div style={{ marginBottom: "8px", fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono }}>
+                  archivo actual: <span style={{ color: "var(--magma-muted)" }}>{existingMediaUrl.split("/").pop()}</span>
                 </div>
               )}
 
@@ -361,20 +423,20 @@ export default function EditPostPage() {
                 className="flex flex-col items-center justify-center gap-3 cursor-pointer"
                 style={{
                   minHeight: "100px",
-                  border: `1px dashed ${dragOver ? "#D85A30" : "#2a2a28"}`,
+                  border: `1px dashed ${dragOver ? "#E12120" : "#2a2a28"}`,
                   backgroundColor: "#141412",
                 }}
               >
                 {newFileName ? (
                   <>
                     <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                      <path d="M3 9.5L7 13.5L15 5.5" stroke="#5DCAA5" strokeWidth="1.5" strokeLinecap="square" />
+                      <path d="M3 9.5L7 13.5L15 5.5" stroke="var(--magma-orange)" strokeWidth="1.5" strokeLinecap="square" />
                     </svg>
-                    <span style={{ fontSize: "11px", color: "#888780", fontFamily: mono }}>{newFileName}</span>
-                    <span style={{ fontSize: "9px", color: "#444441", fontFamily: mono, textDecoration: "underline" }}>cambiar archivo</span>
+                    <span style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono }}>{newFileName}</span>
+                    <span style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, textDecoration: "underline" }}>cambiar archivo</span>
                   </>
                 ) : (
-                  <span style={{ fontSize: "11px", color: "#5F5E5A", fontFamily: mono }}>
+                  <span style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono }}>
                     arrastra o haz clic para reemplazar
                   </span>
                 )}
@@ -385,7 +447,7 @@ export default function EditPostPage() {
 
           {/* Tags */}
           <div>
-            <label style={labelStyle}>Tags <span style={{ color: "#444441" }}>separados por coma</span></label>
+            <label style={labelStyle}>Tags <span style={{ color: "var(--magma-muted)" }}>separados por coma</span></label>
             <input
               type="text"
               value={tags}
@@ -422,8 +484,8 @@ export default function EditPostPage() {
                   <input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} style={{ ...inputStyle, colorScheme: "dark" }} className="focus:outline-none" />
                 </div>
                 <div>
-                  <label style={labelStyle}>Hora</label>
-                  <input type="time" value={eventTime} onChange={(e) => setEventTime(e.target.value)} style={{ ...inputStyle, colorScheme: "dark" }} className="focus:outline-none" />
+                  <label style={labelStyle}>Hora · 24 h</label>
+                  <EventTimeInput value={eventTime} onChange={setEventTime} style={inputStyle} />
                 </div>
               </div>
 
@@ -447,7 +509,7 @@ export default function EditPostPage() {
                       style={{
                         border: `0.5px solid ${isFree === val ? "#EF9F27" : "#2a2a28"}`,
                         backgroundColor: isFree === val ? "#EF9F270d" : "#141412",
-                        color: isFree === val ? "#EF9F27" : "#888780",
+                        color: isFree === val ? "#EF9F27" : "var(--magma-muted)",
                         fontFamily: mono,
                       }}
                     >
@@ -467,9 +529,11 @@ export default function EditPostPage() {
           )}
 
           {/* Collab toggle */}
+          {EVENT_DETAILS_ENABLED && postType === "evento" && <EventDetailsFields value={eventDetails} onChange={setEventDetails} />}
           <button
             type="button"
             onClick={() => setOpenCollab((v) => !v)}
+            aria-pressed={openCollab}
             className="flex items-start gap-3 cursor-pointer text-left w-full"
             style={{ background: "none", border: "none", padding: 0 }}
           >
@@ -479,8 +543,8 @@ export default function EditPostPage() {
                 width: "16px",
                 height: "16px",
                 flexShrink: 0,
-                border: `0.5px solid ${openCollab ? "#5DCAA5" : "#2a2a28"}`,
-                backgroundColor: openCollab ? "rgba(93,202,165,0.12)" : "transparent",
+                border: "1.5px solid #F2F4F8",
+                backgroundColor: openCollab ? "#F2F4F8" : "transparent",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -488,15 +552,15 @@ export default function EditPostPage() {
             >
               {openCollab && (
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                  <path d="M1.5 5L4 7.5L8.5 2.5" stroke="#5DCAA5" strokeWidth="1.2" strokeLinecap="square" />
+                  <path d="M1.5 5L4 7.5L8.5 2.5" stroke="#090a0d" strokeWidth="1.8" strokeLinecap="square" />
                 </svg>
               )}
             </div>
             <div className="flex flex-col gap-0.5">
-              <span style={{ fontSize: "11px", color: openCollab ? "#5DCAA5" : "#888780", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em" }}>
+              <span style={{ fontSize: "var(--magma-text-small)", color: openCollab ? "var(--magma-ash)" : "var(--magma-muted)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em" }}>
                 abierto a colaboración
               </span>
-              <span style={{ fontSize: "10px", color: "#444441", fontFamily: mono, lineHeight: 1.5 }}>
+              <span style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, lineHeight: 1.5 }}>
                 invita a otros artistas a participar o comentar este proyecto
               </span>
             </div>
@@ -510,10 +574,11 @@ export default function EditPostPage() {
               onChange={(e) => setCollabDescription(e.target.value)}
               style={{
                 backgroundColor: "#141412",
-                border: "0.5px solid #5DCAA5",
-                color: "#e8e4dc",
+                border: "1px solid #65616b",
+                borderRadius: "8px",
+                color: "#F2F4F8",
                 fontFamily: mono,
-                fontSize: "12px",
+                fontSize: "var(--magma-text-small)",
                 outline: "none",
                 width: "100%",
                 padding: "10px 12px",
@@ -538,8 +603,8 @@ export default function EditPostPage() {
                 width: "16px",
                 height: "16px",
                 flexShrink: 0,
-                border: `0.5px solid ${commentsEnabled ? "#D85A30" : "#2a2a28"}`,
-                backgroundColor: commentsEnabled ? "rgba(216,90,48,0.12)" : "transparent",
+                border: "1.5px solid #F2F4F8",
+                backgroundColor: commentsEnabled ? "#F2F4F8" : "transparent",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -547,15 +612,15 @@ export default function EditPostPage() {
             >
               {commentsEnabled && (
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                  <path d="M1.5 5L4 7.5L8.5 2.5" stroke="#D85A30" strokeWidth="1.2" strokeLinecap="square" />
+                  <path d="M1.5 5L4 7.5L8.5 2.5" stroke="#090a0d" strokeWidth="1.8" strokeLinecap="square" />
                 </svg>
               )}
             </div>
             <div className="flex flex-col gap-0.5">
-              <span style={{ fontSize: "11px", color: commentsEnabled ? "#D85A30" : "#888780", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em" }}>
+              <span style={{ fontSize: "var(--magma-text-small)", color: commentsEnabled ? "var(--magma-ash)" : "var(--magma-muted)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em" }}>
                 permitir comentarios
               </span>
-              <span style={{ fontSize: "10px", color: "#444441", fontFamily: mono, lineHeight: 1.5 }}>
+              <span style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, lineHeight: 1.5 }}>
                 {commentsEnabled
                   ? "otras personas pueden responder a esta publicación"
                   : "la conversación queda cerrada; los comentarios existentes seguirán visibles"}
@@ -563,11 +628,54 @@ export default function EditPostPage() {
             </div>
           </button>
 
+          {/* Sensitive content toggle */}
+          <button
+            type="button"
+            onClick={() => setIsSensitive((value) => !value)}
+            className="flex items-start gap-3 cursor-pointer text-left w-full"
+            style={{ background: "none", border: "none", padding: 0 }}
+            aria-pressed={isSensitive}
+          >
+            <div
+              style={{
+                marginTop: "2px",
+                width: "16px",
+                height: "16px",
+                flexShrink: 0,
+                border: "1.5px solid #F2F4F8",
+                backgroundColor: isSensitive ? "#F2F4F8" : "transparent",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {isSensitive && (
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                  <path d="M1.5 5L4 7.5L8.5 2.5" stroke="#090a0d" strokeWidth="1.8" strokeLinecap="square" />
+                </svg>
+              )}
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <span style={{ fontSize: "var(--magma-text-small)", color: isSensitive ? "#EF9F27" : "var(--magma-muted)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em" }}>
+                contenido sensible
+              </span>
+              <span style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, lineHeight: 1.5 }}>
+                {isSensitive
+                  ? "la publicación quedará oculta hasta que cada persona elija verla"
+                  : "actívalo para desnudez, sexualidad, violencia gráfica u otro material que merezca una advertencia"}
+              </span>
+            </div>
+          </button>
+
           {/* Agregar a proyecto */}
-          {userProjects.length > 0 && (
+          {COLLABORATIONS_ENABLED && <>
+            <PostProjectLinks postId={id} privatePost={Boolean(colectivoId)} />
+            {userId && <CollaborationPanel kind="post" targetId={id} ownerId={userId} userId={userId} />}
+          </>}
+          {!COLLABORATIONS_ENABLED && userProjects.length > 0 && (
             <div>
               <label style={labelStyle}>
-                Agregar a proyecto <span style={{ color: "#444441" }}>— opcional</span>
+                Agregar a proyecto <span style={{ color: "var(--magma-muted)" }}>— opcional</span>
               </label>
               <select
                 value={selectedProject}
@@ -580,7 +688,7 @@ export default function EditPostPage() {
                   backgroundPosition: "right 12px center",
                   paddingRight: "32px",
                   cursor: "pointer",
-                  color: selectedProject ? "#e8e4dc" : "#5F5E5A",
+                  color: selectedProject ? "#F2F4F8" : "var(--magma-muted)",
                 }}
                 className="focus:outline-none"
               >
@@ -595,16 +703,16 @@ export default function EditPostPage() {
           <div style={{ height: "0.5px", backgroundColor: "#2a2a28" }} />
 
           {error && (
-            <p style={{ fontSize: "11px", color: "#D85A30", fontFamily: mono }}>{error}</p>
+            <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-ash)", fontFamily: mono }}>{error}</p>
           )}
 
           <div className="flex items-center gap-4">
-            <button
+            <button data-magma-glow={/magma-(red|orange|hot)|#E12120|#7f77dd/i.test(String(isEscrito ? "#7F77DD" : "#E12120"))}
               type="submit"
               disabled={saving}
               className="py-3 text-sm tracking-widest uppercase cursor-pointer hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
               style={{
-                backgroundColor: isEscrito ? "#7F77DD" : "#D85A30",
+                backgroundColor: isEscrito ? "#7F77DD" : "#E12120",
                 color: "#0c0c0b",
                 fontFamily: mono,
                 border: "none",
@@ -615,7 +723,7 @@ export default function EditPostPage() {
             </button>
             <Link
               href={`/post/${id}`}
-              style={{ fontSize: "11px", color: "#5F5E5A", fontFamily: mono, textDecoration: "none" }}
+              style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, textDecoration: "none" }}
               className="hover:opacity-70"
             >
               cancelar

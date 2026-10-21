@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase"
+import { MagmaWordmark } from "@/app/components/MagmaWordmark";
 
 const mono = "var(--font-space-mono), monospace";
 const syne = "var(--font-syne), sans-serif";
@@ -16,14 +17,6 @@ interface RadioSettings {
   dj_name: string;
   set_description: string;
   is_live: boolean;
-}
-
-interface ChatMessage {
-  id: string;
-  body: string;
-  created_at: string;
-  user_id: string;
-  profiles: { username: string; display_name: string | null } | null;
 }
 
 interface ScheduleSlot {
@@ -44,21 +37,48 @@ const SCHEDULE: ScheduleSlot[] = [
 ];
 
 const STATUS_COLOR: Record<ScheduleSlot["status"], string> = {
-  "en vivo": "#D85A30",
-  "próximo": "#EF9F27",
-  "disponible": "#5DCAA5",
+  "en vivo": "var(--magma-red)",
+  "próximo": "var(--magma-hot)",
+  "disponible": "var(--magma-orange)",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function relativeTime(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return "ahora";
-  if (mins < 60) return `${mins}m`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h`;
-  return `${Math.floor(hrs / 24)}d`;
+function RadioSignal({ live = false }: { live?: boolean }) {
+  const bars = [22, 42, 68, 36, 76, 52, 88, 46, 72, 30, 58, 82, 40, 64, 26, 48, 78, 34];
+
+  return (
+    <div
+      className="relative flex min-h-[260px] items-center justify-center overflow-hidden rounded-xl md:min-h-[360px]"
+      style={{
+        background: "radial-gradient(circle at 50% 46%, rgba(240,68,46,0.18) 0%, rgba(115,28,20,0.12) 28%, rgba(16,43,102,0.08) 48%, var(--magma-rock) 76%)",
+        border: "0.5px solid var(--magma-border)",
+        boxShadow: "0 22px 70px rgba(0,0,0,0.28)",
+      }}
+      aria-hidden="true"
+    >
+      <div className="absolute inset-6 rounded-full" style={{ border: "0.5px solid rgba(215,212,205,0.08)" }} />
+      <div className="absolute inset-14 rounded-full" style={{ border: "0.5px solid rgba(255,100,31,0.14)" }} />
+      <div className="flex h-28 items-center gap-1.5 px-8">
+        {bars.map((height, index) => (
+          <span
+            key={`${height}-${index}`}
+            style={{
+              width: "3px",
+              height: `${height}%`,
+              borderRadius: "999px",
+              backgroundColor: live ? "var(--magma-orange)" : "var(--magma-red)",
+              opacity: live ? 0.95 : 0.48,
+              animation: live ? `radio-wave ${0.8 + (index % 5) * 0.12}s ease-in-out infinite alternate` : undefined,
+            }}
+          />
+        ))}
+      </div>
+      <span style={{ bottom: "20px", color: "var(--magma-muted)", fontFamily: mono, fontSize: "var(--magma-text-small)", letterSpacing: "0.2em", position: "absolute", textTransform: "uppercase" }}>
+        señal desde ciudad de méxico
+      </span>
+    </div>
+  );
 }
 
 // ─── Live hero ────────────────────────────────────────────────────────────────
@@ -75,41 +95,41 @@ function LiveHero({ settings, listeners }: { settings: RadioSettings; listeners:
               width: "7px",
               height: "7px",
               borderRadius: "50%",
-              backgroundColor: "#D85A30",
+              backgroundColor: "#E12120",
               animation: "pulse-dot 1.4s ease-in-out infinite",
               flexShrink: 0,
             }}
           />
-          <span style={{ fontSize: "10px", color: "#D85A30", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.18em" }}>
+          <span style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-ash)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.18em" }}>
             en vivo ahora
           </span>
         </div>
 
-        <h1 style={{ fontSize: "40px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800, lineHeight: 1, letterSpacing: "-0.02em", marginTop: "-4px" }}>
-          MAGMA<br /><span style={{ color: "#D85A30" }}>RADIO</span>
+        <h1 className="magma-page-title" style={{ color: "#F2F4F8", fontFamily: syne, fontWeight: 800, letterSpacing: "-0.02em", marginTop: "-4px" }}>
+          <MagmaWordmark style={{ fontSize: "1em" }} /><br /><span style={{ color: "var(--magma-ash)" }}>RADIO</span>
         </h1>
 
         <div className="flex flex-col gap-1">
-          <p style={{ fontSize: "18px", color: "#e8e4dc", fontFamily: syne, fontWeight: 700 }}>
+          <p style={{ fontSize: "18px", color: "#F2F4F8", fontFamily: syne, fontWeight: 700 }}>
             {settings.dj_name || "DJ Lava"}
           </p>
-          <p style={{ fontSize: "13px", color: "#888780", fontFamily: mono, lineHeight: 1.6 }}>
+          <p style={{ fontSize: "var(--magma-text-body)", color: "var(--magma-muted)", fontFamily: mono, lineHeight: 1.6 }}>
             {settings.set_description || "Mezcla en vivo desde la Ciudad de México"}
           </p>
         </div>
 
-        <span style={{ fontSize: "11px", color: "#444441", fontFamily: mono }}>
+        <span style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono }}>
           {listeners} escuchando ahora
         </span>
 
-        <a
+        <a data-magma-glow={/magma-(red|orange|hot)|#E12120|#7f77dd/i.test(String("var(--magma-red)"))}
           href="#stream"
           style={{
             display: "inline-block",
-            backgroundColor: "#D85A30",
-            color: "#0c0c0b",
+            backgroundColor: "var(--magma-red)",
+            color: "var(--magma-ash)",
             fontFamily: mono,
-            fontSize: "11px",
+            fontSize: "var(--magma-text-small)",
             textTransform: "uppercase",
             letterSpacing: "0.14em",
             padding: "12px 28px",
@@ -161,11 +181,11 @@ function LiveHero({ settings, listeners }: { settings: RadioSettings; listeners:
               width: "5px",
               height: "5px",
               borderRadius: "50%",
-              backgroundColor: "#D85A30",
+              backgroundColor: "#E12120",
               animation: "pulse-dot 1.4s ease-in-out infinite",
             }}
           />
-          <span style={{ fontSize: "9px", color: "#D85A30", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.14em" }}>
+          <span style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-ash)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.14em" }}>
             en vivo
           </span>
         </div>
@@ -178,50 +198,55 @@ function LiveHero({ settings, listeners }: { settings: RadioSettings; listeners:
 
 function OfflineHero() {
   return (
-    <div className="flex flex-col items-center justify-center text-center pt-20 pb-16" style={{ gap: "20px" }}>
-      <div className="flex items-center gap-2">
+    <div className="grid grid-cols-1 gap-8 py-10 md:grid-cols-[0.8fr_1.2fr] md:items-center md:py-14">
+      <div className="flex flex-col items-start" style={{ gap: "20px" }}>
+        <div className="flex items-center gap-2">
         <span
           style={{
             display: "inline-block",
             width: "7px",
             height: "7px",
             borderRadius: "50%",
-            backgroundColor: "#444441",
+            backgroundColor: "var(--magma-muted)",
             flexShrink: 0,
           }}
         />
-        <span style={{ fontSize: "10px", color: "#444441", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.18em" }}>
+        <span style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.18em" }}>
           fuera del aire
         </span>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
-        <h1 style={{ fontSize: "40px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800, lineHeight: 1, letterSpacing: "-0.02em" }}>
-          MAGMA <span style={{ color: "#D85A30" }}>RADIO</span>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "8px" }}>
+        <h1 className="magma-page-title" style={{ color: "var(--magma-ash)", fontFamily: syne, fontWeight: 800, letterSpacing: "-0.055em" }}>
+          frecuencia<br /><span style={{ color: "var(--magma-ash)" }}>magma</span>
         </h1>
-        <p style={{ fontSize: "13px", color: "#5F5E5A", fontFamily: mono, letterSpacing: "0.08em" }}>
-          próximamente
+        <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, lineHeight: 1.7, maxWidth: "420px" }}>
+          Sesiones, mezclas y transmisiones independientes hechas desde la ciudad. Cuando la señal despierta, nos encontramos aquí.
         </p>
       </div>
 
       <div
         style={{
-          width: "320px",
+          width: "100%",
+          maxWidth: "420px",
           padding: "20px 24px",
-          border: "0.5px solid #2a2a28",
-          backgroundColor: "#0e0e0d",
+          border: "0.5px solid var(--magma-border)",
+          borderRadius: "12px",
+          backgroundColor: "var(--magma-rock)",
           display: "flex",
           flexDirection: "column",
           gap: "8px",
           marginTop: "12px",
         }}
       >
-        <p style={{ fontSize: "9px", color: "#5F5E5A", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: "4px" }}>
+        <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-ash)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: "4px" }}>
           próxima transmisión
         </p>
-        <p style={{ fontSize: "16px", color: "#e8e4dc", fontFamily: syne, fontWeight: 700 }}>DJ Lava</p>
-        <p style={{ fontSize: "11px", color: "#888780", fontFamily: mono }}>20:00 · Techno industrial / ritual beats</p>
+        <p style={{ fontSize: "16px", color: "var(--magma-ash)", fontFamily: syne, fontWeight: 700 }}>DJ Lava</p>
+        <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono }}>20:00 · Techno industrial / ritual beats</p>
       </div>
+      </div>
+      <RadioSignal />
     </div>
   );
 }
@@ -232,8 +257,8 @@ function Schedule({ isLive }: { isLive: boolean }) {
   const router = useRouter();
 
   return (
-    <div>
-      <h2 style={{ fontSize: "12px", color: "#5F5E5A", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: "24px" }}>
+    <div className="rounded-xl" style={{ backgroundColor: "var(--magma-rock)", border: "0.5px solid var(--magma-border)", padding: "22px" }}>
+      <h2 style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-ash)", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: "24px" }}>
         programación de hoy
       </h2>
 
@@ -249,24 +274,24 @@ function Schedule({ isLive }: { isLive: boolean }) {
               className="flex items-center gap-5"
               style={{
                 padding: "16px 20px",
-                backgroundColor: active ? "#141412" : "transparent",
-                border: active ? "0.5px solid #2a2a28" : "0.5px solid transparent",
-                borderLeft: `2px solid ${active ? accent : "#2a2a28"}`,
+                backgroundColor: active ? "rgba(16,43,102,0.12)" : "transparent",
+                border: active ? "0.5px solid var(--magma-border)" : "0.5px solid transparent",
+                borderLeft: `2px solid ${active ? accent : "var(--magma-border)"}`,
               }}
             >
-              <span style={{ fontSize: "13px", color: active ? "#e8e4dc" : "#5F5E5A", fontFamily: mono, minWidth: "44px" }}>
+              <span style={{ fontSize: "var(--magma-text-body)", color: active ? "#F2F4F8" : "var(--magma-muted)", fontFamily: mono, minWidth: "44px" }}>
                 {slot.time}
               </span>
 
               <div className="flex flex-col gap-0.5 flex-1">
                 {isAvailable ? (
-                  <span style={{ fontSize: "12px", color: "#444441", fontFamily: mono }}>slot disponible</span>
+                  <span style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono }}>slot disponible</span>
                 ) : (
                   <>
-                    <span style={{ fontSize: "14px", color: active ? "#e8e4dc" : "#888780", fontFamily: syne, fontWeight: 700 }}>
+                    <span style={{ fontSize: "var(--magma-text-body)", color: active ? "#F2F4F8" : "var(--magma-muted)", fontFamily: syne, fontWeight: 700 }}>
                       {slot.artist}
                     </span>
-                    <span style={{ fontSize: "11px", color: "#5F5E5A", fontFamily: mono }}>
+                    <span style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono }}>
                       {slot.description}
                     </span>
                   </>
@@ -277,13 +302,13 @@ function Schedule({ isLive }: { isLive: boolean }) {
                 <button
                   onClick={() => router.push(`/radio/solicitar?time=${encodeURIComponent(slot.time)}`)}
                   style={{
-                    fontSize: "9px",
-                    color: "#5DCAA5",
+                    fontSize: "var(--magma-text-small)",
+                    color: "var(--magma-ash)",
                     fontFamily: mono,
                     textTransform: "uppercase",
                     letterSpacing: "0.12em",
-                    border: "0.5px solid #0F6E56",
-                    backgroundColor: "#0d1a14",
+                    border: "0.5px solid var(--magma-red)",
+                    backgroundColor: "var(--magma-rock)",
                     padding: "3px 8px",
                     cursor: "pointer",
                     whiteSpace: "nowrap",
@@ -295,12 +320,12 @@ function Schedule({ isLive }: { isLive: boolean }) {
               ) : slot.status === "en vivo" ? (
                 <span
                   style={{
-                    fontSize: "9px",
-                    color: "#D85A30",
+                    fontSize: "var(--magma-text-small)",
+                    color: "var(--magma-ash)",
                     fontFamily: mono,
                     textTransform: "uppercase",
                     letterSpacing: "0.12em",
-                    border: "0.5px solid #D85A30",
+                    border: "0.5px solid #E12120",
                     backgroundColor: "#1a1012",
                     padding: "3px 8px",
                     whiteSpace: "nowrap",
@@ -311,7 +336,7 @@ function Schedule({ isLive }: { isLive: boolean }) {
               ) : (
                 <span
                   style={{
-                    fontSize: "9px",
+                    fontSize: "var(--magma-text-small)",
                     color: "#EF9F27",
                     fontFamily: mono,
                     textTransform: "uppercase",
@@ -333,155 +358,6 @@ function Schedule({ isLive }: { isLive: boolean }) {
   );
 }
 
-// ─── Live chat ────────────────────────────────────────────────────────────────
-
-function LiveChat({ currentUserId }: { currentUserId: string | null }) {
-  const supabase = getSupabaseClient();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState("");
-  const [sending, setSending] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    // Initial load
-    supabase
-      .from("radio_chat")
-      .select("*, profiles(username, display_name)")
-      .order("created_at", { ascending: true })
-      .limit(100)
-      .then((res: { data: ChatMessage[] | null }) => {
-        if (res.data) setMessages(res.data);
-      });
-
-    // Realtime subscription
-    const channel = supabase
-      .channel("radio_chat_room")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "radio_chat" },
-        async (payload: { new: { id: string } }) => {
-          const { data } = await supabase
-            .from("radio_chat")
-            .select("*, profiles(username, display_name)")
-            .eq("id", payload.new.id)
-            .single();
-          if (data) setMessages((prev) => [...prev, data as ChatMessage]);
-        }
-      )
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, []);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  async function handleSend(e: React.FormEvent) {
-    e.preventDefault();
-    const trimmed = input.trim();
-    if (!trimmed || sending || !currentUserId) return;
-    setSending(true);
-    await supabase.from("radio_chat").insert({ body: trimmed, user_id: currentUserId });
-    setInput("");
-    setSending(false);
-  }
-
-  return (
-    <div
-      className="flex flex-col"
-      style={{ backgroundColor: "#0e0e0d", border: "0.5px solid #2a2a28" }}
-    >
-      {/* Header */}
-      <div style={{ padding: "12px 16px", borderBottom: "0.5px solid #2a2a28", display: "flex", alignItems: "center", gap: "8px" }}>
-        <span
-          style={{
-            display: "inline-block",
-            width: "6px",
-            height: "6px",
-            borderRadius: "50%",
-            backgroundColor: "#5DCAA5",
-            animation: "pulse 2s infinite",
-          }}
-        />
-        <span style={{ fontSize: "10px", color: "#5F5E5A", fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.12em" }}>
-          chat en vivo
-        </span>
-      </div>
-
-      {/* Messages */}
-      <div className="flex flex-col gap-3 overflow-y-auto" style={{ padding: "16px", height: "400px" }}>
-        {messages.length === 0 && (
-          <p style={{ fontSize: "11px", color: "#444441", fontFamily: mono }}>sin mensajes todavía</p>
-        )}
-        {messages.map((m) => (
-          <div key={m.id} className="flex flex-col gap-0.5">
-            <div className="flex items-baseline gap-2">
-              <span style={{ fontSize: "10px", color: "#888780", fontFamily: mono }}>
-                @{m.profiles?.username ?? "anon"}
-              </span>
-              <span style={{ fontSize: "9px", color: "#444441", fontFamily: mono }}>
-                {relativeTime(m.created_at)}
-              </span>
-            </div>
-            <p style={{ fontSize: "12px", color: "#e8e4dc", fontFamily: mono, lineHeight: 1.5, wordBreak: "break-word" }}>
-              {m.body}
-            </p>
-          </div>
-        ))}
-        <div ref={bottomRef} />
-      </div>
-
-      {/* Input */}
-      <div style={{ borderTop: "0.5px solid #2a2a28", padding: "12px" }}>
-        {currentUserId ? (
-          <form onSubmit={handleSend} className="flex gap-2">
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="di algo..."
-              maxLength={200}
-              style={{
-                flex: 1,
-                backgroundColor: "#141412",
-                border: "0.5px solid #2a2a28",
-                color: "#e8e4dc",
-                fontFamily: mono,
-                fontSize: "12px",
-                outline: "none",
-                padding: "7px 10px",
-                minWidth: 0,
-              }}
-            />
-            <button
-              type="submit"
-              disabled={sending || !input.trim()}
-              className="shrink-0 disabled:opacity-40 cursor-pointer"
-              style={{
-                backgroundColor: "#D85A30",
-                color: "#0c0c0b",
-                fontFamily: mono,
-                fontSize: "10px",
-                border: "none",
-                padding: "7px 14px",
-                textTransform: "uppercase",
-                letterSpacing: "0.1em",
-              }}
-            >
-              {sending ? "..." : "enviar"}
-            </button>
-          </form>
-        ) : (
-          <p style={{ fontSize: "11px", color: "#5F5E5A", fontFamily: mono }}>
-            <Link href="/auth/login?redirectTo=/radio" style={{ color: "#888780", textDecoration: "underline" }}>entra</Link>
-            {" "}para chatear
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function RadioPage() {
@@ -489,7 +365,6 @@ export default function RadioPage() {
   const [settings, setSettings] = useState<RadioSettings | null>(null);
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [listeners] = useState(47);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
     // Fetch radio settings
@@ -498,15 +373,13 @@ export default function RadioPage() {
       if (data) setSettings(data as RadioSettings);
       setLoadingSettings(false);
 
-      const { data: { user } } = await supabase.auth.getUser();
-      setCurrentUserId(user?.id ?? null);
     })();
   }, []);
 
   const isLive = settings?.is_live ?? false;
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#0c0c0b" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "var(--magma-obsidian)" }}>
       <style>{`
         @keyframes pulse {
           0%, 100% { opacity: 1; }
@@ -515,6 +388,10 @@ export default function RadioPage() {
         @keyframes pulse-dot {
           0%, 100% { opacity: 1; transform: scale(1); }
           50% { opacity: 0.6; transform: scale(0.85); }
+        }
+        @keyframes radio-wave {
+          from { transform: scaleY(0.55); opacity: 0.5; }
+          to { transform: scaleY(1); opacity: 1; }
         }
       `}</style>
 
@@ -530,24 +407,21 @@ export default function RadioPage() {
           <OfflineHero />
         )}
 
-        <div className="flex flex-wrap items-center justify-between gap-3 pb-6">
-          <p style={{ color: "#5F5E5A", fontFamily: mono, fontSize: "10px", lineHeight: 1.5 }}>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl px-5 py-4" style={{ background: "linear-gradient(105deg, rgba(115,28,20,0.08), rgba(16,43,102,0.045), var(--magma-rock))", border: "0.5px solid var(--magma-border)", marginBottom: "32px" }}>
+          <p style={{ color: "var(--magma-muted)", fontFamily: mono, fontSize: "var(--magma-text-small)", lineHeight: 1.5 }}>
             ¿tienes un set, sesión o transmisión que compartir?
           </p>
           <Link
             href="/radio/solicitar"
-            style={{ border: "0.5px solid #5DCAA5", color: "#5DCAA5", fontFamily: mono, fontSize: "10px", letterSpacing: "0.12em", padding: "9px 14px", textDecoration: "none", textTransform: "uppercase" }}
+            style={{ border: "0.5px solid var(--magma-orange)", color: "var(--magma-ash)", fontFamily: mono, fontSize: "var(--magma-text-small)", letterSpacing: "0.12em", padding: "9px 14px", textDecoration: "none", textTransform: "uppercase" }}
           >
             solicitar un slot →
           </Link>
         </div>
 
-        <div style={{ height: "0.5px", backgroundColor: "#2a2a28", marginBottom: "40px" }} />
-
-        {/* Schedule + Chat */}
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_340px] gap-8" style={{ alignItems: "start" }}>
+        {/* Schedule */}
+        <div className="grid grid-cols-1 gap-8" style={{ alignItems: "start" }}>
           <Schedule isLive={isLive} />
-          <LiveChat currentUserId={currentUserId} />
         </div>
       </main>
     </div>

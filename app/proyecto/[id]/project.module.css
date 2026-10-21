@@ -1,0 +1,27 @@
+.page { color: #fff; }
+.compactPreview { --post-media-height: clamp(440px, calc(100svh - 220px), 680px); }
+.page :is(a, button):focus-visible {
+  outline: 2px solid var(--magma-red);
+  outline-offset: 3px;
+}
+.links a {
+  color: #fff !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  min-height: 44px;
+}
+.links a:hover { color: var(--magma-red) !important; opacity: 1; }
+.actions > :is(a, button) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 14px !important;
+  border: 1px solid var(--magma-red) !important;
+  border-radius: 2px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #fff !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+.actions > :is(a, button):hover { background: var(--magma-red) !important; }

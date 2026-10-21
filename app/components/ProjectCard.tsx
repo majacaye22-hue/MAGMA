@@ -45,7 +45,7 @@ function SoundCloudIcon() {
   );
 }
 
-export function ProjectCard({ project }: { project: Project }) {
+export function ProjectCard({ project, portrait = false }: { project: Project; portrait?: boolean }) {
   const links = project.links ?? {};
 
   function navigate() {
@@ -61,15 +61,17 @@ export function ProjectCard({ project }: { project: Project }) {
       style={{
         display: "block",
         cursor: "pointer",
-        backgroundColor: "#141412",
-        border: "0.5px solid #2a2a28",
+        backgroundColor: "var(--magma-rock)",
+        border: "0.5px solid var(--magma-border)",
+        borderRadius: "12px",
+        boxShadow: "0 10px 28px rgba(16, 43, 102, 0.12)",
         overflow: "hidden",
         transition: "border-color 0.15s ease",
       }}
-      className="hover:border-[#D85A30] group"
+      className="hover:border-[#FF641F] group"
     >
       {/* Cover */}
-      <div style={{ height: "140px", backgroundColor: "#1a1a18", position: "relative", overflow: "hidden" }}>
+      <div style={{ ...(portrait ? { aspectRatio: "4 / 5" } : { height: "140px" }), backgroundColor: "var(--magma-obsidian)", position: "relative", overflow: "hidden" }}>
         {project.cover_image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -89,18 +91,18 @@ export function ProjectCard({ project }: { project: Project }) {
 
       {/* Info */}
       <div style={{ padding: "12px 14px" }}>
-        <p style={{ fontSize: "13px", color: "#e8e4dc", fontFamily: syne, fontWeight: 700, lineHeight: 1.2, marginBottom: "4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <p style={{ fontSize: "var(--magma-text-body)", color: "var(--magma-ash)", fontFamily: syne, fontWeight: 700, lineHeight: 1.2, marginBottom: "4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {project.title}
         </p>
         {project.creator && (
-          <p style={{ color: "#D85A30", fontFamily: mono, fontSize: "9px", marginBottom: project.description ? "7px" : 0 }}>
+          <p style={{ color: "var(--magma-ash)", fontFamily: mono, fontSize: "var(--magma-text-small)", marginBottom: project.description ? "7px" : 0 }}>
             cuaderno de @{project.creator.username}
           </p>
         )}
         {project.description && (
           <p style={{
-            fontSize: "10px",
-            color: "#5F5E5A",
+            fontSize: "var(--magma-text-small)",
+            color: "var(--magma-muted)",
             fontFamily: mono,
             lineHeight: 1.5,
             overflow: "hidden",
@@ -122,14 +124,14 @@ export function ProjectCard({ project }: { project: Project }) {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                style={{ color: "#5DCAA5" }}
+                style={{ color: "var(--magma-ash)" }}
                 className="hover:opacity-70 transition-opacity"
               >
                 <SpotifyIcon />
               </a>
             )}
             {links.soundcloud && (
-              <a href={links.soundcloud} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: "#D85A30" }} className="hover:opacity-70 transition-opacity" aria-label="SoundCloud">
+              <a href={links.soundcloud} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: "var(--magma-ash)" }} className="hover:opacity-70 transition-opacity" aria-label="SoundCloud">
                 <SoundCloudIcon />
               </a>
             )}
@@ -139,7 +141,7 @@ export function ProjectCard({ project }: { project: Project }) {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                style={{ color: "#888780" }}
+                style={{ color: "var(--magma-muted)" }}
                 className="hover:opacity-70 transition-opacity"
               >
                 <InstagramIcon />
@@ -151,7 +153,7 @@ export function ProjectCard({ project }: { project: Project }) {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                style={{ color: "#888780" }}
+                style={{ color: "var(--magma-muted)" }}
                 className="hover:opacity-70 transition-opacity"
               >
                 <WebIcon />

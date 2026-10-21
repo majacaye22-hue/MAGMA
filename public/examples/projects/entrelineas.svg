@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="400" viewBox="0 0 800 400">
+<defs>
+  <linearGradient id="ink" x1="0" y1="0" x2="1" y2="1">
+    <stop stop-color="#0c0c0b"/><stop offset=".32" stop-color="#E12120"/><stop offset=".62" stop-color="#E12120"/><stop offset="1" stop-color="#0c0c0b"/>
+  </linearGradient>
+  <filter id="flow" x="-30%" y="-50%" width="160%" height="200%" color-interpolation-filters="sRGB">
+    <feTurbulence type="fractalNoise" baseFrequency=".006 .012" numOctaves="2" seed="125" result="noise"/>
+    <feDisplacementMap in="SourceGraphic" in2="noise" scale="42" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+  <filter id="soft" x="-30%" y="-50%" width="160%" height="200%"><feGaussianBlur stdDeviation="18"/></filter>
+  <filter id="grain" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+    <feTurbulence type="fractalNoise" baseFrequency=".7" numOctaves="2" seed="72"/>
+    <feColorMatrix type="matrix" values="0 0 0 0 .047 0 0 0 0 .047 0 0 0 0 .043 0 0 0 .25 0"/>
+  </filter>
+</defs>
+<rect width="800" height="400" fill="#0c0c0b"/>
+<g fill="none" filter="url(#flow)">
+  <path d="M-70 60C190 300 180 -120 420 120S500 450 880 340" stroke="#E12120" stroke-width="125" opacity=".35" filter="url(#soft)"/>
+  <path d="M-70 60C190 300 180 -120 420 120S500 450 880 340" stroke="url(#ink)" stroke-width="82"/>
+  <path d="M-50 170C200 410 290 10 480 190S650 420 890 230" stroke="#E12120" stroke-width="24" opacity=".65"/>
+  <path d="M-70 60C190 300 180 -120 420 120S500 450 880 340" stroke="#0c0c0b" stroke-width="18" opacity=".7"/>
+</g>
+<rect width="800" height="400" filter="url(#grain)"/>
+</svg>

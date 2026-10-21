@@ -5,40 +5,17 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
+import { MagmaLogo } from "@/app/components/MagmaLogo";
+import { NotificationBell } from "@/app/components/NotificationBell";
+import { COLLABORATIONS_ENABLED } from '@/lib/collaborations';
 
 interface Profile {
   username: string;
   display_name: string | null;
+  is_moderator: boolean;
 }
 
-function getInitials(p: Profile): string {
-  if (p.display_name) {
-    return p.display_name
-      .split(" ")
-      .slice(0, 2)
-      .map((w) => w[0])
-      .join("")
-      .toUpperCase();
-  }
-  return p.username.slice(0, 2).toUpperCase();
-}
 
-function MagmaLogo() {
-  return (
-    <span
-      style={{ fontFamily: "var(--font-syne), sans-serif", fontWeight: 800 }}
-      className="text-2xl tracking-tight select-none"
-    >
-      {"MAGMA".split("").map((l, i) =>
-        l === "A" ? (
-          <span key={i} style={{ color: "#D85A30" }}>{l}</span>
-        ) : (
-          <span key={i} style={{ color: "#e8e4dc" }}>{l}</span>
-        )
-      )}
-    </span>
-  );
-}
 
 function HamburgerIcon({ open }: { open: boolean }) {
   return (
@@ -62,12 +39,15 @@ function HamburgerIcon({ open }: { open: boolean }) {
 const mono = "var(--font-space-mono), monospace";
 
 const NAV_LINKS = [
-  { href: "/explorar",   label: "explorar" },
-  { href: "/proyectos",  label: "proyectos" },
+  { href: "/",           label: "explorar" },
   { href: "/eventos",    label: "cartelera" },
-  { href: "/radio",      label: "radio" },
   { href: "/colectivos", label: "colectivos" },
+  { href: "/proyectos",  label: "proyectos" },
+];
+const ACTION_LINKS = [
   { href: "/upload",     label: "subir obra" },
+  { href: "/mensajes",   label: "mensajes" },
+  { href: "/buscar",     label: "buscar" },
 ];
 
 export function Navbar() {
@@ -78,13 +58,66 @@ export function Navbar() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [moderationQueue, setModerationQueue] = useState<{ username: string; pending: boolean } | null>(null);
+  const hasPendingModeration = profile?.is_moderator === true && moderationQueue?.username === profile.username && moderationQueue.pending;
 
-  // Close both menus on navigation
   useEffect(() => {
-    setMobileOpen(false);
-    setDropdownOpen(false);
+    if (!profile?.is_moderator) return;
+    let disposed = false;
+    let request = 0;
+    const username = profile.username;
+    const refresh = async () => {
+      const version = ++request;
+      try {
+        const { data, error } = await supabase.from("posts").select("id")
+          .eq("moderation_status", "pending").limit(1).abortSignal(AbortSignal.timeout(10000));
+        if (!disposed && version === request && !error) {
+          setModerationQueue({ username, pending: Boolean(data?.length) });
+        }
+      } catch { /* Keep the last known queue state on a temporary connection failure. */ }
+    };
+    const wake = () => { if (!document.hidden) void refresh(); };
+    void refresh();
+    const channel = supabase.channel("moderation-menu-queue")
+      .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, wake)
+      .subscribe((status: string) => { if (status === "SUBSCRIBED") wake(); });
+    const timer = window.setInterval(wake, 15000);
+    window.addEventListener("focus", wake);
+    window.addEventListener("magma:moderation-changed", wake);
+    document.addEventListener("visibilitychange", wake);
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", wake);
+      window.removeEventListener("magma:moderation-changed", wake);
+      document.removeEventListener("visibilitychange", wake);
+      void supabase.removeChannel(channel);
+    };
+  }, [profile?.username, profile?.is_moderator, supabase, pathname]);
+
+  const moderationLabel = <>moderación{hasPendingModeration && <>
+    <span aria-hidden="true" className="ml-2 inline-block h-2 w-2 rounded-full bg-[#DC143C]" />
+    <span className="sr-only"> · publicaciones pendientes de revisión</span>
+  </>}</>;
+
+  function scrollToTopAfterNavigation() {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (!window.location.hash) window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      });
+    });
+  }
+
+  // Run after the route commits so Next's own scroll restoration cannot
+  // overwrite the top position during a client-side transition.
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      setMobileOpen(false);
+      setDropdownOpen(false);
+    });
+    scrollToTopAfterNavigation();
+    return () => cancelAnimationFrame(frame);
   }, [pathname]);
 
   useEffect(() => {
@@ -93,14 +126,13 @@ export function Navbar() {
     async function loadProfile(userId: string) {
       const { data } = await client
         .from("profiles")
-        .select("username, display_name")
+        .select("username, display_name, is_moderator")
         .eq("id", userId)
         .maybeSingle();
       setProfile(data ?? null);
-      void fetchUnread(userId);
     }
 
-    // Read session immediately on mount so the avatar appears without waiting
+    // Read session immediately on mount so the account menu appears without waiting
     // for the async onAuthStateChange event.
     client.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => {
       if (session?.user) void loadProfile(session.user.id);
@@ -112,33 +144,12 @@ export function Navbar() {
           void loadProfile(session.user.id);
         } else {
           setProfile(null);
-          setUnreadCount(0);
         }
       }
     );
 
     return () => subscription.unsubscribe();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  async function fetchUnread(uid: string) {
-    const { data: convos } = await supabase
-      .from("conversations")
-      .select("id")
-      .or(`participant_1.eq.${uid},participant_2.eq.${uid}`);
-
-    if (!convos || convos.length === 0) return;
-
-    const ids = convos.map((c: { id: string }) => c.id);
-    const { count } = await supabase
-      .from("messages")
-      .select("id", { count: "exact", head: true })
-      .in("conversation_id", ids)
-      .eq("read", false)
-      .neq("sender_id", uid);
-
-    setUnreadCount(count ?? 0);
-  }
 
   // Close desktop dropdown when clicking outside
   useEffect(() => {
@@ -158,18 +169,18 @@ export function Navbar() {
     router.refresh();
   }
 
-  function linkColor(href: string) {
-    return pathname.startsWith(href) ? "#D85A30" : "#888780";
+  function isActiveLink(href: string) {
+    return href === "/" ? pathname === "/" || pathname === "/explorar" : pathname === href || pathname.startsWith(href + "/");
   }
 
-  const unreadBadge = unreadCount > 0 ? (
-    <span
-      className="flex items-center justify-center text-[9px] font-bold"
-      style={{ minWidth: "16px", height: "16px", borderRadius: "2px", backgroundColor: "#D85A30", color: "#0c0c0b", padding: "0 4px" }}
-    >
-      {unreadCount > 99 ? "99+" : unreadCount}
-    </span>
-  ) : null;
+  function handlePrimaryNavigation() {
+    setMobileOpen(false);
+    setDropdownOpen(false);
+    scrollToTopAfterNavigation();
+  }
+
+
+  if (pathname === "/auth/login") return null;
 
   return (
     <header
@@ -181,21 +192,42 @@ export function Navbar() {
       }}
     >
       {/* ── Top bar (always visible) ── */}
-      <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-        <Link href="/" onClick={() => setMobileOpen(false)}>
+      <div className="max-w-[1600px] mx-auto px-6 min-h-14 py-2 flex flex-wrap items-center gap-x-4 gap-y-2 xl:grid xl:grid-cols-[minmax(0,1fr)_390px_minmax(0,1fr)]">
+        <Link href="/" onClick={handlePrimaryNavigation} className="order-1 shrink-0">
           <MagmaLogo />
         </Link>
 
-        {/* Desktop nav — hidden below md */}
-        <div className="hidden md:flex items-center gap-5">
+
+        {/* Desktop nav — hidden below xl */}
+        <nav aria-label="navegación principal" className="order-2 hidden xl:flex xl:col-start-2 xl:row-start-1 items-center justify-center gap-4 py-1">
           {NAV_LINKS.map(({ href, label }) => (
             <Link
               key={href}
               href={href}
-              className="text-xs"
-              style={{ color: linkColor(href), fontFamily: mono }}
+              onClick={handlePrimaryNavigation}
+              className="magma-nav-link magma-nav-primary"
+              aria-current={isActiveLink(href) ? "page" : undefined}
             >
               {label}
+            </Link>
+          ))}
+
+        </nav>
+        <div className="order-3 mr-12 hidden xl:flex xl:col-start-3 xl:row-start-1 justify-self-end items-center justify-end gap-1">
+          {ACTION_LINKS.filter(({ href }) => href !== "/upload").map(({ href, label }) => (
+            <Link key={href} href={href} onClick={handlePrimaryNavigation}
+              className={`magma-nav-link magma-nav-action whitespace-nowrap text-xs ${href !== "/upload" ? "order-last" : ""}`}
+              aria-label={label}
+              title={href !== "/upload" ? label : undefined}
+              aria-current={isActiveLink(href) ? "page" : undefined}>
+              {href === "/mensajes" ? (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <rect x="3" y="5" width="18" height="14" rx="1" stroke="currentColor" strokeWidth="1.4" />
+                  <path d="m3 6 9 7 9-7M3 18l6-6m12 6-6-6" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+                </svg>
+              ) : href === "/buscar" ? (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5" /></svg>
+              ) : label}
             </Link>
           ))}
 
@@ -204,17 +236,11 @@ export function Navbar() {
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setDropdownOpen((o) => !o)}
-                  className="flex items-center justify-center text-xs font-bold cursor-pointer"
-                  style={{
-                    width: "28px",
-                    height: "28px",
-                    borderRadius: "2px",
-                    backgroundColor: "#D85A30",
-                    color: "#0c0c0b",
-                    fontFamily: "var(--font-syne), sans-serif",
-                  }}
+                  className="magma-nav-account flex items-center justify-center text-xs font-bold cursor-pointer"
+                  aria-label={`menú de @${profile.username}`}
+                  aria-expanded={dropdownOpen}
                 >
-                  {getInitials(profile)}
+                  @{profile.username}
                 </button>
 
                 {dropdownOpen && (
@@ -231,31 +257,35 @@ export function Navbar() {
                       href={`/profile/${profile.username}`}
                       onClick={() => setDropdownOpen(false)}
                       className="px-4 py-3 text-xs hover:bg-[#1e1e1b] transition-colors"
-                      style={{ color: "#e8e4dc", fontFamily: mono }}
+                      style={{ color: "#F2F4F8", fontFamily: mono }}
                     >
                       mi perfil
                     </Link>
+                    <Link href="/likes" onClick={() => setDropdownOpen(false)} className="px-4 py-3 text-xs hover:bg-[#1e1e1b] transition-colors border-t" style={{ color: "#F2F4F8", fontFamily: mono, borderColor: "#2a2a28" }}>mis likes ✦</Link>
+                    {COLLABORATIONS_ENABLED && <Link href="/colaboraciones" onClick={() => setDropdownOpen(false)} className="px-4 py-3 text-xs border-t border-[#2a2a28]">invitaciones</Link>}
                     <Link
-                      href="/mensajes"
+                      href="/circulo"
                       onClick={() => setDropdownOpen(false)}
-                      className="px-4 py-3 text-xs hover:bg-[#1e1e1b] transition-colors border-t flex items-center justify-between"
-                      style={{ color: "#e8e4dc", fontFamily: mono, borderColor: "#2a2a28" }}
-                    >
-                      mensajes
-                      {unreadBadge}
-                    </Link>
+                      className="px-4 py-3 text-xs border-t border-[#2a2a28]"
+                    >mi círculo</Link>
                     <Link
                       href="/upload"
                       onClick={() => setDropdownOpen(false)}
                       className="px-4 py-3 text-xs hover:bg-[#1e1e1b] transition-colors border-t"
-                      style={{ color: "#e8e4dc", fontFamily: mono, borderColor: "#2a2a28" }}
+                      style={{ color: "#F2F4F8", fontFamily: mono, borderColor: "#2a2a28" }}
                     >
                       subir obra
                     </Link>
+                    {profile.is_moderator === true && <Link
+                      href="/mod"
+                      onClick={() => setDropdownOpen(false)}
+                      className="px-4 py-3 text-xs hover:bg-[#1e1e1b] transition-colors border-t"
+                      style={{ color: "#ffffff", fontFamily: mono, borderColor: "#2a2a28" }}
+                    >{moderationLabel}</Link>}
                     <button
                       onClick={handleSignOut}
                       className="px-4 py-3 text-xs text-left cursor-pointer hover:bg-[#1e1e1b] transition-colors border-t"
-                      style={{ color: "#5F5E5A", fontFamily: mono, borderColor: "#2a2a28" }}
+                      style={{ color: "var(--magma-muted)", fontFamily: mono, borderColor: "#2a2a28" }}
                     >
                       salir
                     </button>
@@ -265,19 +295,19 @@ export function Navbar() {
             </>
           ) : (
             <div className="flex items-center gap-4">
-              <Link
+              <Link data-magma-glow={/magma-(red|orange|hot)|#E12120|#7f77dd/i.test(String("var(--magma-red)"))}
                 href="/auth/login"
                 className="text-xs"
-                style={{ color: "#888780", fontFamily: mono }}
+                style={{ color: "var(--magma-muted)", fontFamily: mono }}
               >
                 entrar
               </Link>
-              <Link
+              <Link data-magma-glow={/magma-(red|orange|hot)|#E12120|#7f77dd/i.test(String("var(--magma-red)"))}
                 href="/auth/register"
                 className="px-3 py-1 text-xs cursor-pointer"
                 style={{
-                  backgroundColor: "#D85A30",
-                  color: "#0c0c0b",
+                  backgroundColor: "var(--magma-red)",
+                  color: "var(--magma-ash)",
                   fontFamily: mono,
                 }}
               >
@@ -287,13 +317,9 @@ export function Navbar() {
           )}
         </div>
 
-        {/* Mobile right: unread badge shortcut + hamburger — hidden at md+ */}
-        <div className="flex items-center gap-3 md:hidden">
-          {unreadCount > 0 && (
-            <Link href="/mensajes" style={{ lineHeight: 0 }}>
-              {unreadBadge}
-            </Link>
-          )}
+        <div className="order-3 ml-auto xl:order-4 xl:col-start-3 xl:row-start-1 xl:justify-self-end xl:ml-0"><NotificationBell /></div>
+        {/* Mobile right: hamburger — hidden at xl+ */}
+        <div className="order-4 flex items-center gap-3 xl:hidden">
           <button
             onClick={() => setMobileOpen((o) => !o)}
             className="flex items-center justify-center cursor-pointer"
@@ -306,20 +332,21 @@ export function Navbar() {
         </div>
       </div>
 
-      {/* ── Mobile drawer — hidden at md+ ── */}
+      {/* ── Mobile drawer — hidden at xl+ ── */}
       {mobileOpen && (
         <div
-          className="md:hidden border-t flex flex-col"
+          className="xl:hidden border-t flex flex-col"
           style={{ borderColor: "#2a2a28", backgroundColor: "rgba(12,12,11,0.97)" }}
         >
           {/* Primary nav links */}
-          {NAV_LINKS.map(({ href, label }) => (
+          {[...NAV_LINKS, ...ACTION_LINKS].map(({ href, label }) => (
             <Link
               key={href}
               href={href}
-              onClick={() => setMobileOpen(false)}
-              className="px-6 py-4 text-xs border-b"
-              style={{ color: linkColor(href), fontFamily: mono, borderColor: "#1e1e1e", letterSpacing: "0.1em" }}
+              onClick={handlePrimaryNavigation}
+              className="magma-nav-link px-6 py-4 text-xs border-b"
+              aria-current={isActiveLink(href) ? "page" : undefined}
+              style={{ borderColor: "#1e1e1e", letterSpacing: "0.1em" }}
             >
               {label}
             </Link>
@@ -335,23 +362,27 @@ export function Navbar() {
                 href={`/profile/${profile.username}`}
                 onClick={() => setMobileOpen(false)}
                 className="px-6 py-4 text-xs border-b"
-                style={{ color: "#e8e4dc", fontFamily: mono, borderColor: "#1e1e1e", letterSpacing: "0.1em" }}
+                style={{ color: "#F2F4F8", fontFamily: mono, borderColor: "#1e1e1e", letterSpacing: "0.1em" }}
               >
                 mi perfil
               </Link>
+              <Link href="/likes" onClick={() => setMobileOpen(false)} className="px-6 py-4 text-xs border-b" style={{ color: "#F2F4F8", fontFamily: mono, borderColor: "#1e1e1e" }}>mis likes ✦</Link>
+              {COLLABORATIONS_ENABLED && <Link href="/colaboraciones" onClick={() => setMobileOpen(false)} className="px-6 py-4 text-xs border-b border-[#1e1e1e]">invitaciones</Link>}
               <Link
-                href="/mensajes"
+                href="/circulo"
                 onClick={() => setMobileOpen(false)}
-                className="px-6 py-4 text-xs border-b flex items-center justify-between"
-                style={{ color: "#e8e4dc", fontFamily: mono, borderColor: "#1e1e1e", letterSpacing: "0.1em" }}
-              >
-                mensajes
-                {unreadBadge}
-              </Link>
+                className="px-6 py-4 text-xs border-b border-[#1e1e1e]"
+              >mi círculo</Link>
+              {profile.is_moderator === true && <Link
+                href="/mod"
+                onClick={() => setMobileOpen(false)}
+                className="px-6 py-4 text-xs border-b"
+                style={{ color: "#ffffff", fontFamily: mono, borderColor: "#1e1e1e" }}
+              >{moderationLabel}</Link>}
               <button
                 onClick={handleSignOut}
                 className="px-6 py-4 text-xs text-left cursor-pointer border-b"
-                style={{ color: "#5F5E5A", fontFamily: mono, borderColor: "#1e1e1e", letterSpacing: "0.1em" }}
+                style={{ color: "var(--magma-muted)", fontFamily: mono, borderColor: "#1e1e1e", letterSpacing: "0.1em" }}
               >
                 salir
               </button>
@@ -362,7 +393,7 @@ export function Navbar() {
                 href="/auth/login"
                 onClick={() => setMobileOpen(false)}
                 className="px-6 py-4 text-xs border-b"
-                style={{ color: "#888780", fontFamily: mono, borderColor: "#1e1e1e", letterSpacing: "0.1em" }}
+                style={{ color: "var(--magma-muted)", fontFamily: mono, borderColor: "#1e1e1e", letterSpacing: "0.1em" }}
               >
                 entrar
               </Link>
@@ -370,7 +401,7 @@ export function Navbar() {
                 href="/auth/register"
                 onClick={() => setMobileOpen(false)}
                 className="mx-4 my-3 py-3 text-xs text-center block"
-                style={{ backgroundColor: "#D85A30", color: "#0c0c0b", fontFamily: mono, letterSpacing: "0.1em" }}
+                style={{ backgroundColor: "var(--magma-red)", color: "var(--magma-ash)", fontFamily: mono, letterSpacing: "0.1em" }}
               >
                 únete
               </Link>

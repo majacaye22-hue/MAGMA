@@ -1,8 +1,10 @@
 "use client";
 
-import { useEditor, EditorContent } from "@tiptap/react";
+import { useEditor, EditorContent, type Editor } from "@tiptap/react";
+import { useEffect, useRef, useState } from "react";
+import { MentionSuggestions } from "@/app/components/MentionInput";
+import { mentionAtCursor, profileMentionHref } from "@/lib/mentions";
 import StarterKit from "@tiptap/starter-kit";
-import Placeholder from "@tiptap/extension-placeholder";
 
 const mono = "var(--font-space-mono), monospace";
 
@@ -33,7 +35,7 @@ function ToolBtn({
         background: "none",
         border: "none",
         cursor: "pointer",
-        color: active ? "#D85A30" : "#888780",
+        color: active ? "var(--magma-ash)" : "var(--magma-muted)",
         borderRadius: "2px",
         transition: "color 0.1s",
       }}
@@ -105,26 +107,77 @@ interface Props {
 }
 
 export function RichEditor({ value, onChange, minHeight = 320 }: Props) {
+  const writingArea = useRef<HTMLDivElement>(null);
+  const writingCursor = useRef<HTMLSpanElement>(null);
+  const [mention, setMention] = useState<{ query: string; from: number; to: number } | null>(null);
+  function trackMention(editor: Editor) {
+    const { $from, empty } = editor.state.selection;
+    const before = $from.parent.textBetween(0, $from.parentOffset, "\n", "\ufffc");
+    const token = empty && !editor.isActive("codeBlock") ? mentionAtCursor(before, before.length) : null;
+    setMention(token ? { query: token.query, from: $from.pos - (before.length - token.from), to: $from.pos } : null);
+  }
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
       StarterKit.configure({
         bulletList: { keepMarks: true },
         heading: { levels: [2, 3] },
+        link: { openOnClick: false, autolink: false, linkOnPaste: false },
       }),
-      Placeholder.configure({ placeholder: "escribe lo que quieras..." }),
     ],
     content: value || "",
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
+      trackMention(editor);
     },
+    onSelectionUpdate: ({ editor }) => trackMention(editor),
     editorProps: {
       attributes: {
         class: "rich-editor-content",
-        style: `min-height:${minHeight}px; outline:none; padding:16px; font-family:var(--font-space-mono),monospace; font-size:14px; color:#e8e4dc; line-height:1.85; word-break:break-word;`,
+        style: `min-height:${minHeight}px; outline:none; padding:16px; font-family:var(--font-space-mono),monospace; font-size:14px; color:#F2F4F8; line-height:1.85; word-break:break-word;`,
       },
     },
   });
+
+  useEffect(() => {
+    const area = writingArea.current;
+    const cursor = writingCursor.current;
+    if (!editor || !area || !cursor) return;
+    let frame = 0;
+    function update() {
+      if (!editor || editor.isDestroyed || !area || !cursor) return;
+      const selection = editor.state.selection;
+      cursor.style.visibility = selection.empty && (editor.isFocused || editor.isEmpty) && !editor.view.composing ? "visible" : "hidden";
+      const point = editor.view.coordsAtPos(selection.from);
+      const bounds = area.getBoundingClientRect();
+      cursor.style.left = `${point.left - bounds.left}px`;
+      cursor.style.top = `${point.bottom - bounds.top - 2}px`;
+      cursor.style.width = `${Math.max(8, (point.bottom - point.top) * 0.5)}px`;
+    }
+    function schedule() {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(update);
+    }
+    editor.on("transaction", schedule);
+    editor.on("focus", schedule);
+    editor.on("blur", schedule);
+    area.addEventListener("compositionstart", schedule);
+    area.addEventListener("compositionend", schedule);
+    window.addEventListener("scroll", schedule, true);
+    const resize = new ResizeObserver(schedule);
+    resize.observe(area);
+    schedule();
+    return () => {
+      cancelAnimationFrame(frame);
+      editor.off("transaction", schedule);
+      editor.off("focus", schedule);
+      editor.off("blur", schedule);
+      area.removeEventListener("compositionstart", schedule);
+      area.removeEventListener("compositionend", schedule);
+      window.removeEventListener("scroll", schedule, true);
+      resize.disconnect();
+    };
+  }, [editor]);
 
   if (!editor) return null;
 
@@ -168,6 +221,7 @@ export function RichEditor({ value, onChange, minHeight = 320 }: Props) {
 
   return (
     <div
+      className="rich-editor-shell"
       style={{
         backgroundColor: "#141412",
         border: "0.5px solid #2a2a28",
@@ -193,15 +247,40 @@ export function RichEditor({ value, onChange, minHeight = 320 }: Props) {
       </div>
 
       {/* Content */}
-      <EditorContent editor={editor} />
+      <div ref={writingArea} style={{ position: "relative" }}>
+        <EditorContent editor={editor} />
+        <span ref={writingCursor} className="rich-writing-cursor" aria-hidden="true" />
+      </div>
+      {mention && <MentionSuggestions query={mention.query} onDismiss={() => { setMention(null); editor.commands.focus(); }} onPick={username => {
+        editor.chain().focus().insertContentAt({ from: mention.from, to: mention.to }, [
+          { type: "text", text: `@${username}`, marks: [{ type: "link", attrs: { href: profileMentionHref(username) } }] },
+          { type: "text", text: " " },
+        ]).run();
+        setMention(null);
+      }} />}
 
       {/* Prose styles injected as a global style tag */}
       <style>{`
+        .rich-editor-content, .rich-editor-content * { caret-color: transparent; }
+        .rich-writing-cursor {
+          position: absolute;
+          height: 2px;
+          background: var(--magma-ash);
+          pointer-events: none;
+          animation: rich-writing-blink 1.2s step-end infinite;
+        }
+        @keyframes rich-writing-blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .rich-writing-cursor { animation: none; }
+        }
         .rich-editor-content h2 {
           font-family: var(--font-syne), sans-serif;
           font-size: 20px;
           font-weight: 800;
-          color: #e8e4dc;
+          color: #F2F4F8;
           margin: 20px 0 8px;
           line-height: 1.2;
         }
@@ -209,11 +288,11 @@ export function RichEditor({ value, onChange, minHeight = 320 }: Props) {
           font-family: var(--font-syne), sans-serif;
           font-size: 16px;
           font-weight: 700;
-          color: #e8e4dc;
+          color: #F2F4F8;
           margin: 16px 0 6px;
           line-height: 1.2;
         }
-        .rich-editor-content strong { color: #e8e4dc; font-weight: 700; }
+        .rich-editor-content strong { color: #F2F4F8; font-weight: 700; }
         .rich-editor-content em { color: #c0bdb5; }
         .rich-editor-content blockquote {
           border-left: 2px solid #7F77DD;

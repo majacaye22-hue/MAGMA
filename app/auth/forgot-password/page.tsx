@@ -3,24 +3,25 @@
 import { useState } from "react";
 import Link from "next/link";
 import { getSupabaseClient } from "@/lib/supabase";
+import { MagmaWordmark } from "@/app/components/MagmaWordmark";
 
 const supabase = getSupabaseClient();
 
 const inputStyle: React.CSSProperties = {
   backgroundColor: "#141412",
   border: "0.5px solid #2a2a28",
-  color: "#e8e4dc",
+  color: "#F2F4F8",
   fontFamily: "var(--font-space-mono), monospace",
-  fontSize: "13px",
+  fontSize: "var(--magma-text-body)",
   outline: "none",
   width: "100%",
   padding: "10px 12px",
 };
 
 const labelStyle: React.CSSProperties = {
-  color: "#5F5E5A",
+  color: "var(--magma-muted)",
   fontFamily: "var(--font-space-mono), monospace",
-  fontSize: "10px",
+  fontSize: "var(--magma-text-small)",
   textTransform: "uppercase",
   letterSpacing: "0.12em",
   display: "block",
@@ -28,20 +29,7 @@ const labelStyle: React.CSSProperties = {
 };
 
 function MagmaLogo() {
-  return (
-    <span
-      style={{ fontFamily: "var(--font-syne), sans-serif", fontWeight: 800 }}
-      className="text-3xl tracking-tight select-none"
-    >
-      {"MAGMA".split("").map((l, i) =>
-        l === "A" ? (
-          <span key={i} style={{ color: "#D85A30" }}>{l}</span>
-        ) : (
-          <span key={i} style={{ color: "#e8e4dc" }}>{l}</span>
-        )
-      )}
-    </span>
-  );
+  return <MagmaWordmark className="text-3xl" />;
 }
 
 export default function ForgotPasswordPage() {
@@ -79,9 +67,9 @@ export default function ForgotPasswordPage() {
           <div className="flex flex-col gap-4">
             <p
               style={{
-                color: "#e8e4dc",
+                color: "#F2F4F8",
                 fontFamily: "var(--font-space-mono), monospace",
-                fontSize: "12px",
+                fontSize: "var(--magma-text-small)",
                 lineHeight: "1.6",
               }}
             >
@@ -92,9 +80,9 @@ export default function ForgotPasswordPage() {
             <Link
               href="/auth/login"
               style={{
-                color: "#5F5E5A",
+                color: "var(--magma-muted)",
                 fontFamily: "var(--font-space-mono), monospace",
-                fontSize: "11px",
+                fontSize: "var(--magma-text-small)",
                 textDecoration: "underline",
               }}
             >
@@ -117,13 +105,13 @@ export default function ForgotPasswordPage() {
               />
             </div>
 
-            <button
+            <button data-magma-glow={/magma-(red|orange|hot)|#E12120|#7f77dd/i.test(String("var(--magma-red)"))}
               type="submit"
               disabled={loading}
               className="w-full py-3 text-xs tracking-widest uppercase cursor-pointer transition-opacity duration-150 hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
               style={{
-                backgroundColor: "#D85A30",
-                color: "#0c0c0b",
+                backgroundColor: "var(--magma-red)",
+                color: "var(--magma-ash)",
                 fontFamily: "var(--font-space-mono), monospace",
                 marginTop: "4px",
               }}
@@ -133,9 +121,9 @@ export default function ForgotPasswordPage() {
 
             <p
               className="text-center text-xs"
-              style={{ color: "#5F5E5A", fontFamily: "var(--font-space-mono), monospace" }}
+              style={{ color: "var(--magma-muted)", fontFamily: "var(--font-space-mono), monospace" }}
             >
-              <Link href="/auth/login" style={{ color: "#888780", textDecoration: "underline" }}>
+              <Link href="/auth/login" style={{ color: "var(--magma-muted)", textDecoration: "underline" }}>
                 volver al login
               </Link>
             </p>

@@ -65,8 +65,8 @@ export function PostActions({ postId, postAuthorId }: { postId: string; postAuth
         <Link
           href={`/post/${postId}/edit`}
           style={{
-            fontSize: "10px",
-            color: "#888780",
+            fontSize: "var(--magma-text-small)",
+            color: "var(--magma-muted)",
             fontFamily: mono,
             textDecoration: "none",
             textTransform: "uppercase",
@@ -84,8 +84,8 @@ export function PostActions({ postId, postAuthorId }: { postId: string; postAuth
             onClick={() => setConfirming(true)}
             className="cursor-pointer hover:opacity-70"
             style={{
-              fontSize: "10px",
-              color: "#5F5E5A",
+              fontSize: "var(--magma-text-small)",
+              color: "var(--magma-muted)",
               fontFamily: mono,
               textTransform: "uppercase",
               letterSpacing: "0.12em",
@@ -98,7 +98,7 @@ export function PostActions({ postId, postAuthorId }: { postId: string; postAuth
           </button>
         ) : (
           <div className="flex items-center gap-3">
-            <span style={{ fontSize: "10px", color: "#5F5E5A", fontFamily: mono }}>
+            <span style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono }}>
               ¿eliminar esta publicación?
             </span>
             <button
@@ -106,8 +106,8 @@ export function PostActions({ postId, postAuthorId }: { postId: string; postAuth
               disabled={deleting}
               className="cursor-pointer hover:opacity-70 disabled:opacity-40"
               style={{
-                fontSize: "10px",
-                color: "#D85A30",
+                fontSize: "var(--magma-text-small)",
+                color: "var(--magma-ash)",
                 fontFamily: mono,
                 textTransform: "uppercase",
                 letterSpacing: "0.12em",
@@ -122,8 +122,8 @@ export function PostActions({ postId, postAuthorId }: { postId: string; postAuth
               onClick={() => setConfirming(false)}
               className="cursor-pointer hover:opacity-70"
               style={{
-                fontSize: "10px",
-                color: "#444441",
+                fontSize: "var(--magma-text-small)",
+                color: "var(--magma-muted)",
                 fontFamily: mono,
                 textTransform: "uppercase",
                 letterSpacing: "0.12em",
@@ -139,7 +139,7 @@ export function PostActions({ postId, postAuthorId }: { postId: string; postAuth
       </div>
 
       {deleteError && (
-        <p style={{ fontSize: "10px", color: "#D85A30", fontFamily: mono, wordBreak: "break-all" }}>
+        <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-ash)", fontFamily: mono, wordBreak: "break-all" }}>
           error: {deleteError}
         </p>
       )}

@@ -28,7 +28,7 @@ BEGIN
 -- Skip if profiles already exist (register page inserts them)
 INSERT INTO profiles (id, username, display_name, bio, location, disciplines, avatar_color, is_moderator)
 VALUES
-  (u1, 'lunamar', 'Luna Mar', 'Artista visual basada en Tepito. Colores y contradicciones.', 'Tepito, CDMX', ARRAY['fotografía', 'arte'], '#5DCAA5', true),
+  (u1, 'lunamar', 'Luna Mar', 'Artista visual basada en Tepito. Colores y contradicciones.', 'Tepito, CDMX', ARRAY['fotografía', 'arte'], '#FF641F', true),
   (u2, 'ferxyz', 'Fernando XYZ', 'Músico y productor. Mezclo ruido con silencio.', 'Roma Norte, CDMX', ARRAY['música'], '#D85A30', false),
   (u3, 'ana_bautista', 'Ana Bautista', 'Diseñadora y zinemaker independiente.', 'Coyoacán, CDMX', ARRAY['arte', 'escrito'], '#7F77DD', false)
 ON CONFLICT (id) DO NOTHING;

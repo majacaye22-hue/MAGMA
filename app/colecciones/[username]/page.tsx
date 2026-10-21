@@ -49,18 +49,18 @@ export default async function ColeccionesPage({ params }: { params: Promise<{ us
           <Link
             href={`/profile/${username}`}
             className="text-xs tracking-widest uppercase"
-            style={{ color: "#5F5E5A", fontFamily: mono, textDecoration: "none" }}
+            style={{ color: "var(--magma-muted)", fontFamily: mono, textDecoration: "none" }}
           >
             ← @{username}
           </Link>
         </div>
 
-        <h1 style={{ fontSize: "24px", color: "#e8e4dc", fontFamily: syne, fontWeight: 800, marginBottom: "32px" }}>
+        <h1 className="magma-page-title" style={{ color: "#F2F4F8", fontFamily: syne, fontWeight: 800, marginBottom: "32px" }}>
           colecciones
         </h1>
 
         {cols.length === 0 ? (
-          <p className="text-xs tracking-widest uppercase" style={{ color: "#444441", fontFamily: mono }}>
+          <p className="text-xs tracking-widest uppercase" style={{ color: "var(--magma-muted)", fontFamily: mono }}>
             sin colecciones públicas
           </p>
         ) : (
@@ -99,10 +99,10 @@ export default async function ColeccionesPage({ params }: { params: Promise<{ us
                   </div>
                   {/* Name + count */}
                   <div style={{ padding: "14px 16px" }}>
-                    <p style={{ fontSize: "14px", color: "#e8e4dc", fontFamily: syne, fontWeight: 700, marginBottom: "4px" }}>
+                    <p style={{ fontSize: "var(--magma-text-body)", color: "#F2F4F8", fontFamily: syne, fontWeight: 700, marginBottom: "4px" }}>
                       {col.name}
                     </p>
-                    <p style={{ fontSize: "10px", color: "#5F5E5A", fontFamily: mono }}>
+                    <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono }}>
                       {col.collection_posts.length}{" "}
                       {col.collection_posts.length === 1 ? "obra" : "obras"}
                     </p>

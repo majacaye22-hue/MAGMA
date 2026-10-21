@@ -1,0 +1,31 @@
+.page { color: #ffffff; }
+.cardLink { min-width: 0; }
+.cardLink:focus-visible { outline: 2px solid var(--magma-red); outline-offset: 3px; }
+.cardLink:hover > div { border-color: var(--magma-red) !important; }
+.filters label > span {
+  color: #ffffff;
+  font-family: var(--font-space-mono), monospace;
+  font-size: 14px;
+}
+.filters input,
+.filters select {
+  border: 1px solid #49463f;
+  border-radius: 2px;
+  color: #fff;
+  background-color: var(--magma-obsidian);
+}
+.filters input::placeholder {
+  color: #fff;
+  opacity: 1;
+}
+.filters button {
+  border-radius: 2px;
+  border: 1px solid var(--magma-red);
+  background: transparent;
+  color: #ffffff;
+}
+.filters button:hover { background: var(--magma-red); }
+.filters :is(input, select, button):focus-visible {
+  outline: 1px solid var(--magma-red);
+  outline-offset: 3px;
+}
