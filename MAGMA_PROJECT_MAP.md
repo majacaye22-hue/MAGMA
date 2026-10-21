@@ -5,6 +5,10 @@
 
 Update this file whenever a role, route, major workflow, or product area is added, removed, or renamed.
 
+## Technical readiness checkpoint — October 14
+
+Visual identity development is handled separately; current engineering work prioritizes function, permissions and reliability. See `LAUNCH_TEST_CHECKLIST.md` for the evidence-based journey inventory, P0/P1 gates and acceptance-run format. Baseline: 53 automated tests pass, TypeScript passes, lint has 0 errors/15 warnings. These are partial regression checks, not live end-to-end or deployed-RLS certification. Production build, role-matrix rerun, browser/mobile journeys, migration rehearsal, backup/restore and monitoring verification remain pending. No production changes were made by this audit.
+
 ## Product center
 
 - Project `e7a09280-0000-4000-8000-000000000001` uses a vertical journal (640px maximum width, viewport-responsive image frames capped at 680px), retaining the larger project header. The horizontal notebook experiment was removed; multi-photo entries retain their photo carousel. Other projects are unchanged.
@@ -89,6 +93,7 @@ Magma is a CDMX-focused living archive for personal creative projects, unfinishe
 
 - Normally the author of an event post.
 - Controls related event interactions; live sala is deferred to a possible phase two.
+- Local, flag-gated event management adds author-managed organizer/participant links and cancellation/postponement notifications; linked people/entity owners can withdraw their own links. See the event lifecycle section below.
 
 ### Approved DJ
 
@@ -99,6 +104,8 @@ Magma is a CDMX-focused living archive for personal creative projects, unfinishe
 ## Current staff roles
 
 ### Moderator / cuidadorx
+
+- October 14 governance change: only the configured owner can permanently delete other people's posts/comments. Moderators retain review, hide, restore and resolve. Authors retain deletion of their own content. `supabase/owner_only_moderation_delete.sql` adds restrictive DELETE policies, guards the report RPC and prevents authenticated authorship reassignment to bypass self-deletion checks; applied to staging only. Moderation UI receives an owner check from the server. Equipo email verification is not required for these account permissions; email invitations remain separate.
 
 - Identified by `profiles.is_moderator = true`.
 - Uses an individual Magma account; staff credentials are never shared.
@@ -158,12 +165,41 @@ These should eventually live in a dedicated role/membership model rather than ad
 | `/` | Explorar / El archivo vivo | Active / navigation | General finite community stream. The first recent-feed page includes a compact “¿en qué andas?” entry bar with image and compartir links to the existing `/upload` workflow; moderation and sensitive-content controls remain there. |
 | `/explorar` | Explore compatibility route | Active / secondary | Backward-compatible alias for the homepage Explore experience; Explore controls use `/`. |
 | `/proyectos` | Proyectos | Active / navigation | Authenticated project directory with database-side title/description search, creator username filter, newest/oldest/title sorting, and stable 18-item pagination. The all/my-projects selector is removed; legacy vista parameters no longer restrict results. URL preserves filters across pages; filter submission resets pagination. Includes loading, empty and retry states. Category/status filters await explicit project metadata. |
+| `/colaboraciones` | Invitaciones y colaboraciones | Staging migrated / local preview enabled | Account-bound inbox for separate project-contributor and post-credit invitations. Reachable from project directory, collaboration panels and desktop/mobile account menus when `NEXT_PUBLIC_COLLABORATIONS_ENABLED=true`. Staging SQL permission tests passed; full browser acceptance and production deployment remain pending. |
 | `/eventos` | Cartelera | Active / navigation | Events and cultural activity around CDMX. Server-rendered poster data streams behind a loading placeholder using authenticated RLS, selecting preview fields and description for search, without profile payloads or a browser fetch waterfall. Uniform poster frames preserve natural proportions; first poster eager/high priority, others lazy. Shared request-time clock and CDMX dates avoid hydration differences. Live search and muro completo/archivo share a compact row above posters; date, colonia and access filters sit in a desktop sidebar and wrap on mobile. Active options are red without underlines. Search is accent-insensitive and combines with filters over fetched events; database pagination remains future scaling work. |
 | `/radio` | Radio | Deferred / hidden from navigation | Deferred beyond first launch while building the first 50 members. Removed from desktop and mobile navigation; code, data, and direct URL remain available. Test interest through a curated listening event before relaunching. |
 | `/colectivos` | Colectivos | Active / navigation | Discover listed creative groups with name/description search, created-by-me filter, newest/oldest/name sorting, and server-side pagination (18 per page). URL preserves filters; link-only groups remain excluded. Includes result counts, reset, empty and error states. |
 | `/upload` | Subir obra | Active / navigation | Create a post, optionally attach it to a project or colectivo, choose comments, mark sensitive content, and embed a SoundCloud track/set on music posts. Plain upload links open a lazy-loaded native dialog at desktop widths (1024px+), reusing `UploadForm`; mobile, direct URLs, modified clicks and links with project/colectivo parameters retain the full page. Modal locks background scrolling, confirms draft discard, blocks closing during submission and closes on successful publication. Arte/fotografía support 1–3 ordered photos with previews, removal, and carousel display in feed/detail; requires `supabase/post_carousel.sql` (applied to staging 2026-09-24; production pending). |
 
 ## Personal projects and profiles
+
+### Community questions — October 20, 2026
+
+Local pilot, disabled by default with `NEXT_PUBLIC_COMMUNITY_QUESTIONS_ENABLED`. General “¿qué traes?” adds pregunta → authenticated `/preguntar`. Public-to-Magma text questions enter Explorar as posts, with signed comments beneath `/post/[id]`. Signed questions link to profiles; anonymous posts have no public author ID and stay out of identity-based profiles/circle feeds. Private ownership supports deletion, rate limits, audited moderation and identity-safe question blocking. Existing report/moderation tools and private reply notifications apply. No drafts, edits or media in this pilot. Requires `supabase/community_questions.sql` and hosted privacy acceptance; see `supabase/COMMUNITY_QUESTIONS.md`. No remote migration/deployment performed.
+
+### Event invitations — October 15, 2026
+
+Implemented behind `NEXT_PUBLIC_EVENT_INVITATIONS_ENABLED=true` (default off). October 15: migration and rollback permission tests passed on `magma-staging`; local staging-backed preview enabled and mailbox section verified in-browser. No production or hosted deployment changes; full multi-account browser journey remains pending. Event creators select usernames on the event detail page; recipients receive invitation cards in a separate `/mensajes` section with event title, safe public artwork, CDMX date/time, venue/address and event link. Private responses are “voy”, “tal vez”, “no puedo”; hosts see them on the event page. Responses do not create public attendance, messages or group chats. Existing blocks, moderation and private-colectivo membership remain authoritative. Duplicate sends preserve the existing response. Only future approved events accept sends/responses. Requires `supabase/event_invitations.sql`; see `supabase/EVENT_INVITATIONS.md` for rollout, verification and initial limits.
+
+### Event people and lifecycle — October 20, 2026
+
+Local implementation behind `NEXT_PUBLIC_EVENT_MANAGEMENT_ENABLED=true` (default off); migration and hosted acceptance pending. `/post/[id]` displays organiza/participan links and author-only management controls; `/eventos` and invitation cards show cancellation/postponement. Associations are informational, not accepted post credits or project membership. The notification bell delivers status/date/location updates to eligible attendees/invitees and opens the event directly. Required schema, recipient eligibility, concurrency and two-account checks: `supabase/EVENT_MANAGEMENT.md`.
+
+### Shared journals and individual post credits — October 15, 2026
+
+Implemented behind `NEXT_PUBLIC_COLLABORATIONS_ENABLED=true` (default off). On October 15, applied `supabase/collaborations.sql` to staging after verifying colectivo privacy, passed the rollback SQL permission matrix, and enabled local `.env.local`. The localhost:3001 upload popup shows the collaborator invitation field. Complete multi-account browser acceptance before enabling for friends. Production and hosted environment flags remain unchanged.
+
+- **Project owner** invites exact usernames, cancels invitations, removes collaborators, edits the project, and unlinks entries. Only acceptance allows a collaborator to contribute their own new/existing public posts. Open collaboration calls do not grant access.
+- **Accepted project contributor** can link their own posts through the project page, upload project picker, or post editor. They retain authorship and edit/delete rights only on their own posts. Removing membership prevents future additions without touching existing entries. Authors can withdraw entries after removal; unlinking affects only the selected project, never the original post or its other links.
+- **Post author** separately invites shared-credit collaborators from upload, post detail, or edit. Accepted people appear as collaborators on the post and in an explicitly labeled “obras en colaboración” section under their profile’s publicaciones tab; original authorship remains visible. They can withdraw their credit, but gain no post-edit/delete rights and no project membership.
+- **Privacy** is unchanged: private colectivo posts cannot enter projects or the profile collaboration section. Private post invitations require existing colectivo membership; invitation acceptance never grants that membership. Hidden/pending posts remain governed by post RLS. Pending credits can be queued by an author, but cannot be accepted before approval.
+- **Upload collaborator search**: type at least two username characters (optional `@`), select matching public accounts, and remove selections before publishing. Excludes the current user and already-selected names; supports keyboard navigation, retry and up to 20 recipients. Selected usernames retain the existing draft/invitation flow; searching never sends an invitation.
+- **Persistence/security**: account-bound rows with client read-only privileges; owner/recipient RPC controls; per-resource locks serialize invitation changes and contributions; project-entry trigger checks original author, public audience, accepted membership and blocks. No changes to post-edit RLS. Errors are visible; attachment/invite failures after publication preserve the saved-post link and prevent duplicate publication.
+- **Verification**: local PostgreSQL/PGlite and the deployed staging database passed the rollback permission matrix. Local upload popup visibility verified in-browser. Full multi-account browser journeys remain pending. See `supabase/COLLABORATIONS.md`.
+
+Latest October 13 adjustment: no separate letras tab or subfilter. Written posts stay in publicaciones alongside other authored formats. The remaining publicaciones filters are todas/ecos; legacy `?tab=letras` opens publicaciones.
+
+October 13 navigation refinement: five primary tabs—publicaciones (default), proyectos, lo que comparto (staging availability rules), colectivos, agenda. Publicaciones contains todas/letras/ecos subfilters. The mixed “todo” view is removed; old `?tab=todo` and unknown filters fall back to publicaciones. Existing letras/ecos links remain valid with publicaciones highlighted. Guardados and owner-only borradores retain their existing profile URLs; their desktop/mobile account-menu shortcuts were removed October 20. Data and access rules are unchanged. This supersedes earlier references to a todo default or no drafts-menu shortcut.
 
 Profile activity-count summary (“huellas en magma”) is removed for now; posts and event data remain unchanged.
 
@@ -176,6 +212,38 @@ Profile activity-count summary (“huellas en magma”) is removed for now; post
 | `/post/[id]/edit` | Edit post | Active / secondary | Ordinary edits publish immediately; sensitive or previously rejected content requires review. Arte/fotografía can add, reorder, and remove gallery photos (up to 3; carousel migration required). |
 | `/colecciones/[username]` | Collections | Legacy / hidden | User-created saved groupings of posts. Not in the current primary product direction. |
 | `/colecciones/[username]/[id]` | Collection detail | Legacy / hidden | Individual saved collection. |
+
+### Portafolio (formerly “lo que comparto”) — staging pilot
+
+`supabase/portfolio_pdf.sql` applied successfully to staging on October 13, 2026. Production is unchanged.
+
+PDF upload fix (October 13): Next's default 10 MB proxy body buffer truncated otherwise-valid uploads before FormData parsing. `experimental.proxyClientMaxBodySize` is now 16 MB to accommodate the existing 15 MB file limit plus multipart overhead; the API file limit is unchanged. Portfolio upload errors preserve the server's message and appear beside Save as well as above the editor.
+
+October 13 PDF attachments: portfolio entries accept an optional PDF up to 15 MB, uploaded only on save via the authenticated upload endpoint with a staging-only `portfolio-pdf` purpose, MIME/extension/size and PDF-header checks. A separate “PDF ↗” button opens a native dialog and embedded browser PDF reader; closing restores the profile view. The reader fetches only this project's public PDF storage URLs, creates a temporary PDF blob (avoiding attachment-response downloads), and releases it on close. Browser-native zoom/mobile support varies; unsupported viewers show a fallback message, not an automatic download. Public-link visibility is disclosed in the editor. Removal unlinks the file without deleting storage. Requires `supabase/portfolio_pdf.sql`; no new route or permissions. Real-document cross-browser verification remains pending.
+
+October 13 naming update: the public tab, section heading and message reference label now say “portafolio”; the owner action is “+ añadir al portafolio”. Existing `?tab=comparto` URLs, entry IDs and stored data remain unchanged for compatibility. Proyectos remains a separate section for ongoing bodies of work. Multiple examples per portfolio entry remain future work; this update changes labels only.
+
+October 13 messaging context: “platiquemos” opens an empty composer with a removable offering reference. The offering is fetched under the recipient’s profile before attaching it. On send, a title/username/id snapshot is stored in `messages.offering_reference` and shown as a local link above the message for both participants; later replies do not automatically attach it. Links open and expand the original offering. Deleted offerings retain their historical message snapshot. No automatic messages or prewritten text. `supabase/message_offering_reference.sql` applied to staging only; existing message permissions remain in force, and production queries do not request the new field.
+
+Offerings now live exclusively in `/profile/[username]?tab=comparto`, labeled “lo que comparto” immediately after proyectos. The header no longer includes offerings. The tab is always available to the profile owner on staging; visitors see it when entries exist. Switching tabs preserves the offering editor state; deleting the final entry hides the tab from visitors only.
+
+Expanded offering details remain inside the teaser's single outer card border; the title is not repeated and the short preview is hidden while the full description is open.
+
+October 13 layout refinement: offerings use a responsive vertical card grid matching project/colectivo fine borders, dark background, 10px inset and bold titles. A distinct 4:3 visual area uses a white camera and viewfinder corners when no linked image is available; linked project covers or approved, non-hidden, non-sensitive community image posts provide thumbnails through authenticated queries. A two-line excerpt and crimson arrow invite opening details within the same card. Helper text appears only while adding/editing; saved offerings and permissions are unchanged.
+
+Profiles should connect who a person is, what they make, and what they can share with others. This is a personal, living portfolio rather than a résumé or storefront: existing posts and projects provide examples of their practice, while an optional “lo que comparto” section makes skills and offerings visible.
+
+- Examples grounded in CDMX: city walks/tours, photography sessions, and art workshops. Members describe offerings in their own words, with optional imagery and links to relevant existing posts or projects.
+- Make room for paid work, exchange, and collaboration without requiring anyone to monetize their practice. Helping people sustain their creative lives is welcome; earning money need not be hidden or become their entire identity.
+- A conversational “platiquemos” entry point could use existing messages. The initial direction is profile-based discovery, not a separate marketplace or booking/payment system.
+- Avoid ratings, sales rankings, paid visibility, and pressure to buy. Keep the personal work central rather than turning the profile into a catalog of services.
+- This can connect naturally to the future physical club through member-led walks, workshops, and gatherings.
+
+Status (October 11, 2026): first version implemented on profiles, enabled only for the staging Supabase project. Owners add/edit/remove text entries (80-character title, 600-character description), optionally choose paid work/exchange/collaboration, and link an existing post or project using a picker or local link. Empty sections are hidden from visitors. “Platiquemos” opens the existing direct-message workflow without sending a message. No new route, payments, booking, ranking, or email notifications.
+
+October 13 cover images: owners can choose an optional JPG/PNG/WEBP/GIF cover (up to 15 MB), preview its 4:3 crop, and upload on save through the authenticated upload endpoint. Custom covers take priority over linked-work thumbnails; removing a cover restores the linked-work/camera fallback. Images use public media storage; removing a cover unlinks it without deleting its stored object. `supabase/profile_offering_covers.sql` applied successfully to staging only; existing ownership RLS is unchanged. File validation has automated tests. Production remains disabled.
+
+`supabase/profile_offerings.sql` applied to staging only: authenticated read access and owner-only insert/update/delete with database validation. Linked work retains its existing access checks; an offering does not grant access to a private project/post. `supabase/test_profile_offerings.sql` passed live owner CRUD, ownership-transfer rejection, other-member write rejection, and validation checks; fixtures rolled back. Production not migrated. Local TypeScript and the 48-test suite passed; profile editor and visitor-empty state checked in the browser.
 
 ### Post mentions
 
@@ -229,6 +297,8 @@ Profile filters include “colectivos” alongside publications, writing, projec
 | `/mensajes/[conversationId]` | Conversation | Active / secondary | Direct route to a selected conversation. |
 
 ## Authentication and recovery
+
+October 13 navigation refinement: the empty `/circulo` directory’s “explorar la comunidad” link opens `/buscar` to find people; empty later pages still link back to `/circulo`.
 
 | Route | Name | Status | Purpose |
 |---|---|---|---|
@@ -364,6 +434,56 @@ The feed keeps its newest-first data order. Explorar and mi círculo use a natur
 
 # Change log
 
+## October 20, 2026 — Community questions (local, rollout disabled)
+
+- Added question composer with signed default and explicit anonymous opt-in, text cards in Explorar and a question detail view with signed replies. Reused report and moderation workflows.
+- Anonymous identities live in a protected mapping, never in public post authorship. Added transactional publication, retry keys, three-per-day limit, own deletion, private reply alerts, account-deletion cleanup and question-scoped blocking/reset. Identity lookup is moderator-only and audited.
+- Feature remains disabled pending staging migration and multi-account privacy/UI acceptance; rollout and test scope in `supabase/COMMUNITY_QUESTIONS.md`.
+
+## October 20, 2026 — Post invitations in the options menu
+
+- Post authors open “invitar colaboradores” from the shared three-dot menu (feed and detail), alongside editar. A compact native dialog contains the existing picker and invitation controls, with keyboard dismissal and focus containment. The standalone invitation form is hidden on post detail; existing credits and recipient acceptance/withdrawal actions remain visible. Project controls and invitation permissions are unchanged.
+
+## October 20, 2026 — Event organizers, participants and lifecycle (local, rollout disabled)
+
+- Event details now support separate organiza/participan links to profiles, listed colectivos and projects, managed by the author; linked people/entity owners may withdraw their links. Informational associations do not imply acceptance, coauthorship, project membership or editing rights.
+- Added author-only cancellation/postponement with required explanation, confirmation and optimistic version checks. Labels appear on event cards/details/invitations; unavailable events suppress ticket and RSVP controls, with database guards for writes.
+- Approved event status/date/location changes create transactional in-app bell notifications for eligible attendees and non-declined invitees, deduplicating overlaps and respecting current blocks, private audience access and moderation. No email or refunds.
+- Gated by `NEXT_PUBLIC_EVENT_MANAGEMENT_ENABLED` (default off), pending `supabase/event_management.sql` and hosted two-account acceptance. No remote changes. See `supabase/EVENT_MANAGEMENT.md` for rollout and local database test scope.
+
+## October 20, 2026 — Event details foundation (local, rollout disabled)
+
+- Added shared create/edit fields and draft persistence for category, end time, external tickets/registration, minimum age, registration requirement and accessibility. Detail pages show these facts and address-based directions; category filtering is additive.
+- New schema/UI are gated by `NEXT_PUBLIC_EVENT_DETAILS_ENABLED` (default off), pending `supabase/event_details.sql` on staging. No remote migration or deployment performed. See `supabase/EVENT_DETAILS.md`.
+- Corrected create/edit CDMX time handling and event completion: known end time, otherwise end of the start date's CDMX calendar day. No historical timestamp backfill.
+- Organizer/participant associations and cancellation/postponement notifications are covered by the later local event-management tranche above. Existing invitation future-start rules remain unchanged.
+
+## October 20, 2026 — Compact cartelera filters
+
+- Replaced the event-filter sidebar with an above-grid toolbar: search, icon-and-label date/colonia/access selects, and the existing wall/archive switch.
+- Mobile filters collapse under an accessible “filtros” toggle with an active-filter count. “limpiar filtros” resets search, all three filters, and the archive view.
+- The event wall now uses the full content width; existing filtering rules and data access are unchanged.
+
+## October 20, 2026 — Feed icon-rail trial
+
+- Explorar's desktop left menu now uses a 64px icon rail instead of 180px text navigation, with binoculars for explorar. Circle links remain separate from format filters; the redundant all-formats button is removed. Clicking an active format again clears it; no selected format means all posts. This toggle behavior also applies to the top filter layout. Icons have accessible names, hover/focus labels and red active indicators. The posting bar and right inset use the matching 88px offset, leaving more space for work.
+- Mobile retains visible labels inside its existing filter disclosure. Short desktop viewports let the rail scroll with the page so every control remains reachable. Top navigation is unchanged. Local design trial; no push.
+
+## October 20, 2026 — Invitations page styling
+
+- `/colaboraciones` now uses the “invitaciones” heading, the wider community-page layout, Magma-red accents and thin dividers. Pending and accepted entries are grouped separately, preserving their resource links and newest-first order within each group.
+- Added discovery links to the empty state, a retry link for load errors, and a pointer to event invitations in mensajes. Authentication, feature gate, queries and privacy rules are unchanged.
+
+## October 20, 2026 — Simplified account menus
+
+- Desktop and mobile account menus no longer include guardados or borradores. Existing profile URLs, saved content, drafts and their permissions remain unchanged. This supersedes the October 13 shortcut addition.
+- The `/colaboraciones` menu label is now “invitaciones”; the destination and feature flag are unchanged. Event invitations remain in mensajes.
+
+## October 20, 2026 — Consistent collaborator search
+
+- Project and individual-post collaboration panels reuse the same username picker as uploads and event invitations: search, select/remove accounts, then explicitly send. Owner-only invitation controls and acceptance/credit/privacy rules are unchanged.
+- Multiple selections use the existing single-account RPC sequentially; partial failure retains failed and unsent selections while reporting successful sends. No migration or push. Local tests cover panel wiring, multiple recipients and partial failures; multi-account staging acceptance remains pending.
+
 ## October 20, 2026 — Red signup email (staging accepted)
 
 - Signup confirmation and resend emails now use Magma red (`#E12120`), dark backgrounds and white button text. Live-text branding avoids remote image dependencies; both confirmation variables are preserved.
@@ -376,6 +496,16 @@ The feed keeps its newest-first data order. Explorar and mi círculo use a natur
 - Added owner-only `/staff/ingresos`, linked from `/staff`. Review changes neither membership nor moderation state.
 - New Auth accounts must originate from the server registration flow; a database trigger rejects direct public signup and prevents email confirmation before private answers exist. Existing accounts remain unchanged. Future OAuth or manual invitations must integrate this flow rather than bypass it.
 - Applied migration to `magma-staging` (`jbzkdzcaqmxsmmyrlwif`) and passed rollback-only live permission checks in `supabase/test_member_onboarding.sql`. Confirmed zero remaining synthetic accounts/profiles/answers, RLS enabled and signup guard enabled. Local PostgreSQL checks additionally cover cascade deletion. No email was sent, no existing member was modified, and production is unchanged. The local app uses staging; user confirmed staging acceptance October 20; hosted frontend deployment remains separate. See `supabase/MEMBER_ONBOARDING.md`.
+
+## October 9, 2026 — Hidden-post moderation tab
+
+- The moderator account-menu link shows a small crimson dot while any posts await approval. Realtime refresh, focus refresh and a 15-second polling fallback keep it current; successful local reviews refresh it immediately. It represents the outstanding queue, not an unread notification, and does not clear merely by opening the menu.
+
+- Moderator accounts now see a “moderación” link to `/mod` in desktop and mobile account menus. Visibility uses the signed-in profile's `is_moderator` flag; server authorization remains unchanged.
+
+- Added `/mod?tab=ocultos`, a moderator-only paginated inventory of posts with `is_hidden = true`, independent of report status or existence. Includes author, title, publication date, approval state and a link to inspect the post. No permission changes or migration needed.
+- Hidden posts have a confirmation-based restore action independent of reports. `supabase/restore_hidden_post.sql` adds a moderator-only atomic restore/audit function; it preserves approval status, audience and open reports. Existing report actions are unchanged.
+- Restore migration activated in staging on October 9, 2026; production untouched. Verified function availability; no real post was restored during implementation.
 
 ## October 7, 2026 — Moderator team and reliable review actions
 
