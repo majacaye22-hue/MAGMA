@@ -4,12 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { getSupabaseClient } from "@/lib/supabase";
 import { ReportModal } from "./ReportModal";
+import { COMMENT_REPLIES_ENABLED, commentThreads } from "@/lib/comment-threads";
 
 export interface Comment {
   id: string;
   body: string;
   created_at: string;
   author_id: string;
+  parent_id?: string | null;
+  is_hidden?: boolean;
   profiles: { username: string; display_name: string | null } | null;
 }
 
@@ -37,6 +40,7 @@ function CommentRow({
   postId,
   onSave,
   onDelete,
+  onReply,
 }: {
   comment: Comment;
   isOwn: boolean;
@@ -44,6 +48,7 @@ function CommentRow({
   postId: string;
   onSave: (id: string, newBody: string) => Promise<boolean>;
   onDelete: (id: string) => Promise<boolean>;
+  onReply?: () => void;
 }) {
   const [mode, setMode] = useState<"view" | "edit" | "confirm-delete">("view");
   const [editBody, setEditBody] = useState(comment.body);
@@ -124,10 +129,12 @@ function CommentRow({
 
         {/* Body — view, edit, or delete confirmation */}
         {mode === "view" && (
-          <p style={{ fontSize: "var(--magma-text-body)", color: "#F2F4F8", fontFamily: mono, lineHeight: 1.7 }}>
+          <p style={{ fontSize: "var(--magma-text-body)", color: "#F2F4F8", fontFamily: mono, lineHeight: 1.7, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
             {comment.body}
           </p>
         )}
+
+        {mode === "view" && onReply && <button type="button" onClick={onReply} className="self-start min-h-11 text-xs cursor-pointer hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400">responder</button>}
 
         {mode === "edit" && (
           <div className="flex flex-col gap-2">
@@ -235,6 +242,21 @@ export function CommentsSection({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const sectionRef = useRef<HTMLElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [replyTo, setReplyTo] = useState<Comment | null>(null);
+  const [replyAnchor, setReplyAnchor] = useState<Comment | null>(null);
+  const threads = commentThreads(comments);
+
+  function beginReply(comment: Comment, anchor = comment) {
+    if (submitting) return;
+    setReplyTo(comment);
+    setReplyAnchor(anchor);
+  }
+
+  // Focus after React has mounted the composer beneath the selected comment.
+  useEffect(() => {
+    if (replyTo) inputRef.current?.focus({ preventScroll: true });
+  }, [replyTo, replyAnchor]);
 
   // The discussion streams after the post, so Next's initial hash scroll may
   // run before #comments exists. Retry when this specific discussion mounts.
@@ -273,10 +295,13 @@ export function CommentsSection({
     const commentId = crypto.randomUUID();
     const { error: insertError } = await supabase
       .from("comments")
-      .insert({ id: commentId, post_id: postId, author_id: uid, body: trimmed });
+      .insert({ id: commentId, post_id: postId, author_id: uid, body: trimmed,
+        ...(COMMENT_REPLIES_ENABLED ? { parent_id: replyTo?.id ?? null } : {}) });
 
     if (insertError) {
-      setError(`${insertError.message} (code: ${insertError.code})`);
+      setError(insertError.message.includes("reply target unavailable")
+        ? "este comentario ya no está disponible para responder. tu texto sigue aquí; puedes cancelar la respuesta y comentar por separado."
+        : "no se pudo enviar el comentario; tu texto sigue aquí para reintentar");
       setSubmitting(false);
       return;
     }
@@ -288,10 +313,12 @@ export function CommentsSection({
         body: trimmed,
         created_at: new Date().toISOString(),
         author_id: uid,
+        parent_id: replyTo?.id ?? null,
         profiles: currentProfile,
       },
     ]);
     setBody("");
+    setReplyTo(null);
     } catch { setError("no se pudo enviar el comentario; tu texto sigue aquí para reintentar"); }
     finally { setSubmitting(false); }
   }
@@ -322,7 +349,8 @@ export function CommentsSection({
       .eq("id", id).eq("author_id", currentUserId ?? "").select("id");
 
     if (!error && data?.length) {
-      setComments((prev) => prev.filter((c) => c.id !== id));
+      setComments((prev) => prev.filter((c) => c.id !== id).map(c => c.parent_id === id ? { ...c, parent_id: null } : c));
+      if (replyTo?.id === id || replyAnchor?.id === id) setReplyTo(null);
       return true;
     }
     } catch { /* Keep the comment visible when deletion fails. */ }
@@ -330,45 +358,22 @@ export function CommentsSection({
     return false;
   }
 
-  return (
-    <section ref={sectionRef} id="comments" className="magma-notes flex min-w-0 flex-col" style={{ maxWidth: "600px", width: "100%", marginInline: "auto", marginTop: compact || tight ? "12px" : "48px", scrollMarginTop: "80px", borderTop: showDivider ? "1px solid #2a2a28" : undefined, paddingTop: "24px" }}>
-      <h2 className="shrink-0" style={{ fontSize: "24px", color: "var(--magma-ash)", fontFamily: syne, fontWeight: 700, marginBottom: "8px" }}>
-        {commentsEnabled ? "¿qué te mueve?" : "notas al margen"}
-      </h2>
-      {commentsEnabled && <p style={{ color: "var(--magma-muted)", fontFamily: mono, fontSize: "var(--magma-text-small)", lineHeight: 1.8, marginBottom: "24px", maxWidth: "440px" }}>una pregunta, una conexión, algo que te dejó pensando.</p>}
-
-      <div className="order-2 min-w-0" style={{ marginTop: comments.length ? "32px" : 0 }}>
-      {comments.length > 0 && (
-        <div className="flex flex-col" style={{ gap: "24px", marginBottom: "32px" }}>
-          {comments.map((c) => (
-            <CommentRow
-              key={c.id}
-              comment={c}
-              isOwn={c.author_id === currentUserId}
-              currentUserId={currentUserId}
-              postId={postId}
-              onSave={handleSave}
-              onDelete={handleDelete}
-            />
-          ))}
-        </div>
-      )}
-      </div>
-
-      {!commentsEnabled ? (
-        <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, lineHeight: 1.6 }}>
-          comentarios cerrados por la persona que publicó
-        </p>
-      ) : currentUserId ? (
-        <form onSubmit={handleSubmit} className="flex shrink-0 flex-col gap-3 pt-3">
+  const composer = commentsEnabled && currentUserId ? (
+        <form data-reply-to={replyTo ? replyAnchor?.id : undefined} onSubmit={handleSubmit} className="flex shrink-0 flex-col gap-3 rounded-2xl bg-white/[0.04] p-4 mt-2">
+          {replyTo && <div className="flex flex-wrap items-center justify-between gap-2 text-xs" role="status">
+            <span>respondiendo a @{replyAnchor?.profiles?.username ?? "anon"}</span>
+            <button type="button" disabled={submitting} onClick={() => setReplyTo(null)} className="min-h-11 underline">cancelar respuesta</button>
+          </div>}
           <label htmlFor={`note-${postId}`} style={{ fontFamily: mono, color: "var(--magma-muted)", fontSize: "var(--magma-text-small)" }}>
             {currentProfile ? `@${currentProfile.username}` : "tu nota"}
           </label>
           <textarea
+            ref={inputRef}
+            disabled={submitting}
             id={`note-${postId}`}
             aria-label="deja una nota"
-            rows={3}
-            placeholder="empieza por lo que te llamó la atención…"
+            rows={2}
+            placeholder="¿qué te hizo pensar?"
             value={body}
             onChange={(e) => setBody(e.target.value)}
             style={{
@@ -377,7 +382,7 @@ export function CommentsSection({
               fontFamily: mono,
               fontSize: "var(--magma-text-body)",
               width: "100%",
-              padding: "16px",
+              padding: "12px",
               resize: "vertical",
               lineHeight: 1.6,
             }}
@@ -394,13 +399,56 @@ export function CommentsSection({
             <button
               type="submit"
               disabled={submitting || !body.trim()}
-              className="note-send"
-              style={{ background: "transparent", fontFamily: mono }}
+              className="magma-soft-action text-sm"
+              style={{ fontFamily: mono }}
             >
-              {submitting ? "dejando tu nota…" : "dejar una nota →"}
+              {submitting ? "enviando…" : <>{replyTo ? "responder" : "comentar"} <span aria-hidden="true">→</span></>}
             </button>
           </div>
         </form>
+  ) : null;
+
+  return (
+    <section ref={sectionRef} id="comments" className="magma-notes flex min-w-0 flex-col" style={{ maxWidth: "600px", width: "100%", marginInline: "auto", marginTop: compact || tight ? "12px" : "48px", scrollMarginTop: "80px", borderTop: showDivider ? "1px solid #2a2a28" : undefined, paddingTop: "24px" }}>
+      <h2 className="shrink-0" style={{ fontSize: "24px", color: "var(--magma-ash)", fontFamily: syne, fontWeight: 700, marginBottom: "8px" }}>
+        conversación{comments.length > 0 ? ` · ${comments.length}` : ""}
+      </h2>
+
+      <div className="order-2 min-w-0" style={{ marginTop: comments.length ? "24px" : 0 }}>
+      {comments.length > 0 && (
+        <div className="flex flex-col" style={{ gap: "24px", marginBottom: "32px" }}>
+          {threads.map(({ root: c, replies }) => (
+            <div key={c.id}>
+            <CommentRow
+              key={c.id}
+              comment={c}
+              isOwn={c.author_id === currentUserId}
+              currentUserId={currentUserId}
+              postId={postId}
+              onSave={handleSave}
+              onDelete={handleDelete}
+              onReply={COMMENT_REPLIES_ENABLED && !c.is_hidden && !c.parent_id && commentsEnabled && currentUserId ? () => beginReply(c) : undefined}
+            />
+            {replyTo && replyAnchor?.id === c.id && composer}
+            {replies.length > 0 && <div className="ml-3 mt-3 space-y-5 border-l border-white/10 pl-4 sm:ml-5" aria-label="respuestas">
+              {replies.map(reply => <div key={reply.id}>
+                <CommentRow comment={reply} isOwn={reply.author_id === currentUserId} currentUserId={currentUserId} postId={postId} onSave={handleSave} onDelete={handleDelete}
+                onReply={COMMENT_REPLIES_ENABLED && !c.is_hidden && !reply.is_hidden && commentsEnabled && currentUserId ? () => beginReply(c, reply) : undefined} />
+                {replyTo && replyAnchor?.id === reply.id && composer}
+              </div>)}
+            </div>}
+            </div>
+          ))}
+        </div>
+      )}
+      </div>
+
+      {!commentsEnabled ? (
+        <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, lineHeight: 1.6 }}>
+          comentarios cerrados por la persona que publicó
+        </p>
+      ) : currentUserId ? (
+        !replyTo && composer
       ) : (
         <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono }}>
           <Link href="/auth/login" style={{ color: "var(--magma-muted)", textDecoration: "underline" }}>
@@ -410,13 +458,9 @@ export function CommentsSection({
         </p>
       )}
       <style jsx>{`
-        .note-input { border: 1px solid #363632; border-radius: 6px; outline: none; }
+        .note-input { border: 0; border-radius: 10px; outline: none; min-height: 80px; }
         .note-input::placeholder { color: var(--magma-muted); opacity: .8; }
         .note-input:focus { border-color: var(--magma-red); outline: 1px solid var(--magma-red); outline-offset: 2px; }
-        .note-send { color: var(--magma-red); border: 0; min-height: 44px; padding: 8px 0 8px 16px; cursor: pointer; font-size: var(--magma-text-small); }
-        .note-send:hover:not(:disabled) { text-decoration: underline; text-underline-offset: 5px; }
-        .note-send:focus-visible { outline: 1px solid var(--magma-red); outline-offset: 4px; }
-        .note-send:disabled { color: var(--magma-muted); opacity: .65; cursor: default; }
       `}</style>
     </section>
   );

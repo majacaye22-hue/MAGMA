@@ -1,5 +1,24 @@
 @import "tailwindcss";
 
+.magma-soft-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 12px;
+  background: #292827;
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+.magma-soft-action > span { color: #ff625b; }
+.magma-soft-action:hover:not(:disabled) { background: #3a3331; }
+.magma-soft-action:focus-visible { outline: 2px solid #ff625b; outline-offset: 3px; }
+.magma-soft-action:disabled { opacity: .4; cursor: not-allowed; }
+
 .magma-mention-menu { padding: 12px; margin-top: 8px; border: 1px solid #424242; background: #101112; color: #eee; border-radius: 8px; }
 .magma-mention-menu button { display: block; width: 100%; min-height: 40px; text-align: left; padding: 6px 8px; cursor: pointer; }
 .magma-mention-menu button:hover, .magma-mention-menu button:focus-visible { color: #ef5550; outline: 1px solid #ef5550; }

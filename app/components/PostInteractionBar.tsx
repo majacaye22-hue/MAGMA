@@ -38,6 +38,7 @@ export function PostInteractionBar({
   currentUserId,
   initialAppreciations,
   commentsEnabled,
+  commentCount,
   compact = false,
   light = false,
   showCommentAction = true,
@@ -51,6 +52,7 @@ export function PostInteractionBar({
   currentUserId: string | null;
   initialAppreciations: number;
   commentsEnabled: boolean;
+  commentCount?: number;
   compact?: boolean;
   light?: boolean;
   showCommentAction?: boolean;
@@ -206,8 +208,9 @@ export function PostInteractionBar({
 
           {showCommentAction && (
             commentsEnabled ? (
-              <Link href={`/post/${postId}#comments`} style={actionStyle} title="ver conversación">
+              <Link href={`/post/${postId}#comments`} style={actionStyle} title="ver conversación" aria-label={commentCount === undefined ? "ver conversación" : `${commentCount} comentarios · ver conversación`}>
                 <CommentIcon />
+                {commentCount !== undefined && commentCount > 0 && <span>{commentCount}</span>}
                 {!compact && <span>comentar</span>}
               </Link>
             ) : (

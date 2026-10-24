@@ -12,8 +12,8 @@ export function feedHref(href: string, circle: boolean) {
 // under the viewer's existing post and private-circle RLS policies.
 export function postsForFeed(db: SupabaseClient, circleOwner?: string) {
   let query = db.from("posts").select(circleOwner
-    ? "*, profiles!posts_author_id_fkey!inner(username, display_name, profile_circle!profile_circle_member_id_fkey!inner(owner_id))"
-    : "*, profiles!posts_author_id_fkey(username, display_name)", { count: "exact" })
+    ? "*, comments(count), profiles!posts_author_id_fkey!inner(username, display_name, profile_circle!profile_circle_member_id_fkey!inner(owner_id))"
+    : "*, comments(count), profiles!posts_author_id_fkey(username, display_name)", { count: "exact" })
     .is("audience_colectivo_id", null)
     .neq("type", "evento");
   if (circleOwner) query = query.eq("profiles.profile_circle.owner_id", circleOwner);

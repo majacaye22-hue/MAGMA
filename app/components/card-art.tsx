@@ -46,6 +46,7 @@ export interface Post extends EventDetails, EventManagement {
   open_collab: boolean | null;
   collab_description: string | null;
   comments_enabled: boolean | null;
+  comments?: { count: number }[];
   is_sensitive: boolean | null;
   moderation_status?: "pending" | "approved" | "rejected";
   moderation_note?: string | null;
@@ -427,6 +428,7 @@ function EscritoCardInner({ post, currentUserId, light = false }: { post: Post; 
         currentUserId={currentUserId ?? null}
         initialAppreciations={post.upvotes}
         commentsEnabled={post.comments_enabled !== false}
+        commentCount={post.comments?.[0]?.count}
         compact
         light={light}
         showDivider={false}
@@ -562,6 +564,7 @@ export function PostCard({ post, index, total, currentUserId, stream = true, edi
             currentUserId={currentUserId ?? null}
             initialAppreciations={post.upvotes}
             commentsEnabled={post.comments_enabled !== false}
+            commentCount={post.comments?.[0]?.count}
             showDivider={false}
             compact
             light

@@ -1,7 +1,7 @@
 # MAGMA — Roles and Product Map
 
 **Purpose:** Canonical running inventory of Magma's people, permissions, pages, and internal tools.
-**Last updated:** October 21, 2026
+**Last updated:** October 24, 2026
 
 Update this file whenever a role, route, major workflow, or product area is added, removed, or renamed.
 
@@ -560,3 +560,12 @@ The feed keeps its newest-first data order. Explorar and mi círculo use a natur
 - Added a consistent, low-pressure interaction system across the stream and post pages: appreciate, comment, save, share, and contextual moderation actions.
 - Reworked the main archive into a chronological editorial front page: one lead story, two supporting stories, and an alternating multi-column archive that returns to one column on mobile.
 - Evolved the archive into a hybrid editorial discovery layout: a continuous natural-height three-column masonry wall on desktop, two columns on tablets, and one column on phones.
+# Comment replies — staging rollout (2026-10-24)
+
+- Individual-post conversations support one-level threads through `comments.parent_id`; “responder” opens and focuses the composer directly beneath the clicked comment (including an existing reply). Switching targets preserves the draft; replies remain grouped beneath their root.
+- October 23–24: user confirmed inline replies and a second-account reply locally, then authorized hosted staging rollout. Feed icons show the RLS-visible comment total, including replies. Activation is scoped to the existing `codex/magma-preview` branch; production remains unchanged.
+- Existing ownership, reporting, private visibility and closed-comment rules remain in force. Deleted parents leave replies readable as standalone comments.
+- Apply `supabase/comment_replies.sql` before setting `NEXT_PUBLIC_COMMENT_REPLIES_ENABLED=true`. The migration validates same-post, visible, non-hidden root targets and prevents reparenting. Existing RLS is not replaced.
+- Local grouping and mocked UI tests cover thread targeting, cancellation, draft preservation, closed comments, hidden/unavailable parents and the disabled rollout. Two local PostgreSQL harnesses cover trigger behavior and the actual baseline RLS plus colectivo privacy policies, including cross-account writes, private audiences, membership removal and deletion of another user's parent comment without losing replies.
+- October 22: hardened the FK-cleanup exception so an RLS-invisible parent cannot be detached through a direct update. Added schema-cache reload and concise send-failure messages; hidden/unavailable parent threads do not offer an invalid reply action. Comment text preserves line breaks and wraps long words.
+- October 22: migration applied to staging only (`jbzkdzcaqmxsmmyrlwif`); parent column, deletion-preserving FK, trigger, index and RLS verified. Local staging-backed server has the process-only flag enabled. A labeled reply from `@majma` persisted under its root after reload, with the detail total increasing from 15 to 16. Fixture retained. Hosted preview activation and multi-account browser acceptance remain pending; production is unchanged. Reply-specific notifications are not part of this first pass. Rollout checklist: `supabase/COMMENT_REPLIES.md`.
