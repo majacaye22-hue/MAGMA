@@ -489,9 +489,9 @@ function UploadPageInner({ onPublished, onLeave, onDraftState }: UploadFormProps
                 className="flex flex-col items-center justify-center gap-3 cursor-pointer transition-colors duration-150"
                 style={{
                   minHeight: "112px",
-                  border: `1px dashed ${dragOver ? (activeOption?.accent ?? "#E12120") : "#a6afb0"}`,
-                  backgroundColor: dragOver ? "rgba(255,100,31,0.08)" : "transparent",
-                  borderRadius: "2px",
+                  border: `1px dashed ${dragOver ? (activeOption?.accent ?? "#E12120") : "#494743"}`,
+                  backgroundColor: dragOver ? "rgba(255,100,31,0.08)" : "rgba(255,255,255,0.035)",
+                  borderRadius: "14px",
                 }}
               >
                 {fileName ? (
@@ -754,9 +754,6 @@ function UploadPageInner({ onPublished, onLeave, onDraftState }: UploadFormProps
               <span style={{ fontSize: "var(--magma-text-small)", color: openCollab ? "var(--notebook-ink)" : "var(--notebook-muted)", fontFamily: "var(--font-space-mono), monospace", textTransform: "uppercase", letterSpacing: "0.12em" }}>
                 abierto a colaboración
               </span>
-              <span style={{ fontSize: "var(--magma-text-small)", color: "var(--notebook-muted)", fontFamily: "var(--font-space-mono), monospace", lineHeight: 1.5 }}>
-                invita a otros artistas a participar o comentar este proyecto
-              </span>
             </div>
           </button>
 
@@ -814,11 +811,6 @@ function UploadPageInner({ onPublished, onLeave, onDraftState }: UploadFormProps
               <span style={{ fontSize: "var(--magma-text-small)", color: commentsEnabled ? "var(--notebook-ink)" : "var(--notebook-muted)", fontFamily: "var(--font-space-mono), monospace", textTransform: "uppercase", letterSpacing: "0.12em" }}>
                 permitir comentarios
               </span>
-              <span style={{ fontSize: "var(--magma-text-small)", color: "var(--notebook-muted)", fontFamily: "var(--font-space-mono), monospace", lineHeight: 1.5 }}>
-                {commentsEnabled
-                  ? "otras personas pueden responder a esta publicación"
-                  : "la conversación queda cerrada; los comentarios existentes seguirán visibles"}
-              </span>
             </div>
           </button>
 
@@ -854,9 +846,7 @@ function UploadPageInner({ onPublished, onLeave, onDraftState }: UploadFormProps
                 contenido sensible
               </span>
               <span style={{ fontSize: "var(--magma-text-small)", color: "var(--notebook-muted)", fontFamily: "var(--font-space-mono), monospace", lineHeight: 1.5 }}>
-                {isSensitive
-                  ? "la publicación quedará oculta hasta que cada persona elija verla"
-                  : "actívalo para desnudez, sexualidad, violencia gráfica u otro material que merezca una advertencia"}
+                desnudez, sexualidad o violencia gráfica
               </span>
             </div>
           </button>
@@ -864,11 +854,15 @@ function UploadPageInner({ onPublished, onLeave, onDraftState }: UploadFormProps
 
 
           {/* Agregar a proyecto */}
-          {COLLABORATIONS_ENABLED && <div>
-            <label style={labelStyle} htmlFor="post-collaborators">invitar colaboradores a esta publicación — opcional</label>
+          {COLLABORATIONS_ENABLED && <details>
+            <summary className="cursor-pointer py-2">añadir colaboradores</summary>
+            <label className="sr-only" htmlFor="post-collaborators">buscar colaboradores</label>
             <CollaboratorPicker id="post-collaborators" inputStyle={inputStyle} value={collaboratorUsernames} onChange={setCollaboratorUsernames} userId={userId} />
-            <p className="mt-2 text-xs">Compartirán crédito al aceptar, sin permisos de edición ni acceso al proyecto. Las invitaciones se envían al publicar y aparecen cuando la obra esté aprobada. En un colectivo privado, solo puedes invitar a sus miembros.</p>
-          </div>}
+            <details className="mt-2 text-xs">
+              <summary className="cursor-pointer py-2">cómo funciona</summary>
+              <p>Compartirán crédito al aceptar, sin permisos de edición ni acceso al proyecto. Las invitaciones se envían al publicar y aparecen cuando la obra esté aprobada. En un colectivo privado, solo puedes invitar a sus miembros.</p>
+            </details>
+          </details>}
           {(userProjects.length > 0 || Boolean(selectedProject)) && (
             <div>
               <label style={labelStyle}>{isProjectEntry ? "cuaderno del proyecto" : "guardar en un proyecto"} <span style={{ color: "var(--notebook-muted)" }}>{isProjectEntry ? "" : "— opcional"}</span></label>
@@ -910,16 +904,14 @@ function UploadPageInner({ onPublished, onLeave, onDraftState }: UploadFormProps
           <button
             type="submit"
             disabled={savingDraft || submitting || !!publishedId || !isSubmittable()}
-            className="self-start px-8 py-3 text-sm cursor-pointer transition-opacity duration-150 hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="magma-soft-action self-start text-sm"
             style={{
-              backgroundColor: "var(--magma-red)",
-              borderRadius: "2px",
               color: "#fff",
               fontFamily: "var(--font-space-mono), monospace",
               marginTop: "4px",
             }}
           >
-            {submitting ? "publicando..." : "publicar →"}
+            {submitting ? "publicando..." : <>publicar <span aria-hidden="true">→</span></>}
           </button>
           </div>
         </form>

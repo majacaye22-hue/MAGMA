@@ -34,7 +34,7 @@ export function SensitiveContentGate({
     <div
       className="relative overflow-hidden"
       data-sensitive-post={postId}
-      style={{ minHeight: compact ? "220px" : "70vh", backgroundColor: "#0c0c0b" }}
+      style={{ minHeight: revealed ? undefined : compact ? "220px" : "70vh", backgroundColor: revealed ? "transparent" : "#0c0c0b" }}
     >
       <div
         aria-hidden={!revealed}

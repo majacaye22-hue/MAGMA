@@ -100,13 +100,14 @@ export function Feed({
             flexShrink: active === "video" ? 0 : undefined,
           }}
         >
-            <header className={archiveStyles.label}>
+          <PostCard post={post} index={index} total={items.length} currentUserId={currentUserId} stream editorialSize={size} fitMedia={active === "video"} onVideoAspectRatio={setVideoRatio} mediaCaption={
+            <div className={archiveStyles.label}>
               <div className={archiveStyles.byline}>
                 {post.type === 'pregunta' && !post.author_id ? <span>anónimo</span> : <Link href={`/profile/${post.profiles?.username ?? "anon"}`}>@{post.profiles?.username ?? "anon"}</Link>}
                 <time dateTime={post.created_at}>{new Date(post.created_at).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "America/Mexico_City" })}</time>
               </div>
-            </header>
-          <PostCard post={post} index={index} total={items.length} currentUserId={currentUserId} stream editorialSize={size} fitMedia={active === "video"} onVideoAspectRatio={setVideoRatio} />
+            </div>
+          } />
         </article>
       );
     }
@@ -200,7 +201,8 @@ export function Feed({
       <nav aria-label="publicaciones de" className="flex flex-col">
         {[{ label: "explorar", circle: false }, { label: "mi círculo", circle: true }].map(item => (
           <Link key={item.label} href={feedHref(archiveNav.view === "reciente" ? "/" : `/?vista=${archiveNav.view}&fecha=${archiveNav.selectedDate}`, item.circle)}
-            aria-current={Boolean(archiveNav.circle) === item.circle ? "page" : undefined}
+            onClick={() => setActive("todo")}
+            aria-current={Boolean(archiveNav.circle) === item.circle && active === "todo" ? "page" : undefined}
             aria-label={item.label}
             className="magma-feed-menu-item">
             <FeedMenuIcon name={item.circle ? 'mi círculo' : 'explorar'} /><span className="magma-feed-tooltip">{item.label}</span>

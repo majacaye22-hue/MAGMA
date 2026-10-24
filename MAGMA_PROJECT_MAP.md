@@ -562,6 +562,8 @@ The feed keeps its newest-first data order. Explorar and mi círculo use a natur
 - Evolved the archive into a hybrid editorial discovery layout: a continuous natural-height three-column masonry wall on desktop, two columns on tablets, and one column on phones.
 # Comment replies — staging rollout (2026-10-24)
 
+- Hosted rollout: `3831df6` is Ready on the existing staging alias, with the replies flag scoped only to Preview / `codex/magma-preview`. Exact deployment snapshot passed 119 tests, TypeScript and the RLS harness. Hosted signed-in interaction awaits user confirmation; unrelated design work remains local.
+
 - Individual-post conversations support one-level threads through `comments.parent_id`; “responder” opens and focuses the composer directly beneath the clicked comment (including an existing reply). Switching targets preserves the draft; replies remain grouped beneath their root.
 - October 23–24: user confirmed inline replies and a second-account reply locally, then authorized hosted staging rollout. Feed icons show the RLS-visible comment total, including replies. Activation is scoped to the existing `codex/magma-preview` branch; production remains unchanged.
 - Existing ownership, reporting, private visibility and closed-comment rules remain in force. Deleted parents leave replies readable as standalone comments.

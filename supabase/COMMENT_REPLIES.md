@@ -2,6 +2,8 @@
 
 ## Current status
 
+October 24 deployment: commit `3831df6` reached Ready on Vercel preview `BEVf3cwWStw9dmVEEcK89LJiVDAu`, assigned to the existing staging alias. `NEXT_PUBLIC_COMMENT_REPLIES_ENABLED=true` was saved for Preview / `codex/magma-preview` only. The exact staged snapshot passed 119 tests, TypeScript and the RLS harness. Hosted signed-in interaction still needs confirmation: the inspection browser was signed out. Unrelated feed/upload/profile design edits were not deployed.
+
 Implemented behind `NEXT_PUBLIC_COMMENT_REPLIES_ENABLED=true` (default off). On October 22, applied `supabase/comment_replies.sql` to staging project `jbzkdzcaqmxsmmyrlwif` only. Verified the UUID parent column, self-FK with `ON DELETE SET NULL`, enabled validation trigger, parent index and existing RLS. Production is unchanged.
 
 On October 23, the user confirmed both the inline composer and a reply from a second account worked locally against staging. On October 24, the hosted preview rollout was authorized. The flag is scoped only to `codex/magma-preview`; production remains disabled. The additional browser acceptance scenarios below remain a checklist, not a claim that every scenario was manually tested.

@@ -319,6 +319,12 @@ export function ProfileView({
 }) {
   const router = useRouter();
   const profileParams = useSearchParams();
+  function switchTab(tab: typeof PROFILE_FILTERS[number]) {
+    const params = new URLSearchParams(profileParams.toString());
+    params.set("tab", tab);
+    // These tabs only select client-rendered panels; do not refetch the server page.
+    window.history.replaceState(null, "", `/profile/${encodeURIComponent(profile.username)}?${params}`);
+  }
   // Legacy writing-only links now open the complete publications feed.
   const requestedFilter = profileParams.get("tab") === "letras" ? "publicaciones" : profileParams.get("tab");
   const [offeringAvailability, setOfferingAvailability] = useState<{ profileId: string; hasItems: boolean } | null>(null);
@@ -570,7 +576,7 @@ export function ProfileView({
           <nav aria-label="filtrar perfil" className="mb-2 flex gap-2 overflow-x-auto sm:gap-4" style={{ fontFamily: mono }}>
             {MAIN_PROFILE_TABS.filter(filter => filter !== "comparto" || sharingVisible).map((filter) => (
               <button key={filter} type="button" aria-pressed={activeMainTab === filter}
-                onClick={() => router.replace(`/profile/${encodeURIComponent(profile.username)}?tab=${filter}`, { scroll: false })}
+                onClick={() => switchTab(filter)}
                 className="min-h-12 shrink-0 cursor-pointer border-0 px-2 py-3 text-base sm:text-lg hover:!text-[var(--magma-red)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--magma-red)]"
                 style={{ background: "transparent", color: activeMainTab === filter ? "var(--magma-red)" : "#fff", fontWeight: 700 }}>
                 {filter === "comparto" ? "portafolio" : filter}
@@ -578,7 +584,7 @@ export function ProfileView({
             ))}
           </nav>
           {publicationsActive && <nav aria-label="tipo de publicación" className="mb-4 flex gap-3 px-2">
-            {([['publicaciones', 'todas'], ['ecos', 'ecos']] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={profileFilter === value} className="min-h-11 text-xs focus-visible:outline-2 focus-visible:outline-[var(--magma-red)]" style={{ color: profileFilter === value ? 'var(--magma-red)' : '#fff' }} onClick={() => router.replace(`/profile/${encodeURIComponent(profile.username)}?tab=${value}`, { scroll: false })}>{label}</button>)}
+            {([['publicaciones', 'todas'], ['ecos', 'ecos']] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={profileFilter === value} className="min-h-11 text-xs focus-visible:outline-2 focus-visible:outline-[var(--magma-red)]" style={{ color: profileFilter === value ? 'var(--magma-red)' : '#fff' }} onClick={() => switchTab(value)}>{label}</button>)}
           </nav>}
           {PROFILE_OFFERINGS_ENABLED && <div hidden={profileFilter !== "comparto"}>
             <Offerings key={profile.id} profileId={profile.id} own={isOwnProfile} onMessage={handleMessage} messaging={messagingLoading} onAvailability={setOfferingAvailability} workOptions={isOwnProfile ? [...projects.map(project => ({ path: `/proyecto/${project.id}`, title: project.title })), ...posts.map(post => ({ path: `/post/${post.id}`, title: post.title }))] : []} />

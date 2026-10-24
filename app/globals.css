@@ -81,8 +81,9 @@
   gap: 8px;
   min-height: 112px;
   padding: 16px;
-  border: 1px dashed #686660;
-  border-radius: 2px;
+  border: 1px dashed #494743;
+  border-radius: 14px;
+  background: rgba(255,255,255,.035);
   cursor: pointer;
 }
 .notebook-photo-picker:hover { border-color: var(--magma-red); }

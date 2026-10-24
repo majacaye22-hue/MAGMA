@@ -1,15 +1,15 @@
 /* Shared analog archive framing. Artwork is never filtered or textured. */
 .card {
-  background: #10100f !important;
-  border: 1px solid #49463f !important;
-  border-radius: 2px !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 10px !important;
   box-shadow: none !important;
   padding: 10px !important;
   color: #ffffff;
 }
 
 .label {
-  padding: 3px 3px 12px;
+  padding: 12px 3px 0;
   font-family: var(--font-space-mono), monospace;
   font-size: 11px;
   line-height: 1.6;
@@ -34,22 +34,27 @@
 .byline {
   font-size: 13px;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   flex-wrap: wrap;
   gap: 4px 12px;
 }
 
-.byline time { color: #ffffff; }
+.byline time { color: #a39e95; }
 .byline a:hover { color: var(--magma-red); }
 .byline a:focus-visible { outline: 1px solid var(--magma-red); outline-offset: 3px; }
 
 .card :global(.magma-vein-card) {
   border: 0 !important;
-  border-radius: 0 !important;
+  border-radius: 10px !important;
   background: transparent !important;
 }
 
 .card :global(.magma-vein-card)::after { display: none; }
+
+.card :global(.magma-card-media) {
+  border-radius: 10px;
+  overflow: hidden;
+}
 
 .card :global(.magma-editorial-actions) {
   padding: 0 3px !important;

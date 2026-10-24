@@ -4,21 +4,25 @@ import { ProfileView, type ProfileData } from "./ProfileView";
 import type { Post } from "@/app/components/card-art";
 import { CreditedWorks } from '@/app/components/CreditedWorks';
 import { COLLABORATIONS_ENABLED } from '@/lib/collaborations';
+import { Suspense } from 'react';
 
 export default async function ProfilePage({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params;
   const supabase = await createClient();
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) notFound();
-
   // Use select("*") so the query never fails due to missing optional columns
   // (bio, disciplines, avatar_color may not exist if migration hasn't run yet)
-  const { data: profileData, error: profileError } = await supabase
+  const [authResult, profileResult] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase
     .from("profiles")
     .select("*")
     .eq("username", username)
-    .maybeSingle();
+    .maybeSingle(),
+  ]);
+  const { data: { user }, error: authError } = authResult;
+  if (authError || !user) notFound();
+  const { data: profileData, error: profileError } = profileResult;
 
   if (profileError) throw new Error(`No se pudo cargar el perfil: ${profileError.message}`);
   if (!profileData) notFound();
@@ -46,7 +50,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
         posts={posts}
         isOwnProfile={isOwnProfile}
         currentUserId={currentUserId}
-        creditedWorks={COLLABORATIONS_ENABLED ? <CreditedWorks profileId={profile.id} userId={currentUserId} /> : undefined}
+        creditedWorks={COLLABORATIONS_ENABLED ? <Suspense fallback={<p role="status" className="py-4 text-sm">cargando colaboraciones…</p>}><CreditedWorks profileId={profile.id} userId={currentUserId} /></Suspense> : undefined}
       />
     </div>
   );

@@ -82,11 +82,11 @@ export default async function ExplorarPage({ searchParams }: { searchParams: Pro
         <div className="pt-3 md:pt-7 lg:pr-[88px]">
           {view === "reciente" && page === 1 && (
             <div className="mb-3 md:ml-[88px]">
-            <nav aria-label="compartir en magma" className="mx-auto flex w-full max-w-[680px] min-w-0 items-center gap-1 rounded-[2px] border border-[#49463f] bg-transparent p-1">
-              <Link href="/upload" className="flex min-h-11 min-w-0 flex-1 flex-col justify-center gap-1 rounded-[2px] px-3 py-2 text-white transition-colors hover:bg-white/5 focus-visible:outline-2 focus-visible:outline-[var(--magma-red)]">
+            <nav aria-label="compartir en magma" className="mx-auto flex w-full max-w-[680px] min-w-0 items-center gap-1 rounded-2xl bg-white/[0.04] p-1">
+              <Link href="/upload" className="flex min-h-11 min-w-0 flex-1 flex-col justify-center gap-1 rounded-xl px-3 py-2 text-white transition-colors hover:bg-white/5 focus-visible:outline-2 focus-visible:outline-[var(--magma-red)]">
                 <span className="text-sm">¿qué traes hoy?</span>
               </Link>
-              <Link href="/upload" className="flex min-h-11 shrink-0 items-center gap-2 rounded-[2px] border border-[var(--magma-red)] bg-[var(--magma-red)] px-3 text-sm text-white transition-opacity hover:opacity-85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--magma-red)]">compartir <span aria-hidden="true">→</span></Link>
+              <Link href="/upload" className="magma-soft-action shrink-0 text-sm">compartir <span aria-hidden="true">→</span></Link>
             </nav>
             </div>
           )}

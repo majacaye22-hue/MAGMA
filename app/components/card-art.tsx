@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { EventDetails } from "@/lib/event-details";
 import type { EventManagement } from "@/lib/event-management";
 import { PostImage } from "./PostImage";
@@ -367,7 +367,7 @@ function EscritoCardInner({ post, currentUserId, light = false }: { post: Post; 
 
   return (
     <div className="magma-vein-card relative overflow-hidden" style={{ borderRadius: light ? "10px" : "8px" }}>
-    <div className="relative">
+    <div className="relative overflow-hidden" style={{ borderRadius: light ? "10px" : "8px" }}>
       <Link href={`/post/${post.id}`} aria-label={`abrir ${post.title || "letra"}`} className="absolute inset-0 z-10" />
       <div
         className="group relative cursor-pointer flex flex-col gap-3"
@@ -420,7 +420,7 @@ function EscritoCardInner({ post, currentUserId, light = false }: { post: Post; 
         <span style={{ fontFamily: "var(--font-space-mono), monospace", fontSize: "12px", color: "#a12620", marginTop: "8px" }}>seguir leyendo →</span>
       </div>
     </div>
-    <div className="magma-editorial-actions" style={{ backgroundColor: "#111110", padding: "0 16px" }}>
+    <div className="magma-editorial-actions" style={{ backgroundColor: "transparent", padding: "0 16px" }}>
       <PostInteractionBar
         echoAllowed={post.audience_colectivo_id === null && post.moderation_status === "approved"}
         postId={post.id}
@@ -438,7 +438,7 @@ function EscritoCardInner({ post, currentUserId, light = false }: { post: Post; 
   );
 }
 
-export function PostCard({ post, index, total, currentUserId, stream = true, editorialSize = "archive", fitEvent = false, fitMedia = false, onVideoAspectRatio }: { post: Post; index: number; total: number; currentUserId?: string | null; stream?: boolean; editorialSize?: "lead" | "support" | "archive"; fitEvent?: boolean; fitMedia?: boolean; onVideoAspectRatio?: (ratio: number) => void }) {
+export function PostCard({ post, index, total, currentUserId, stream = true, editorialSize = "archive", fitEvent = false, fitMedia = false, onVideoAspectRatio, mediaCaption }: { post: Post; index: number; total: number; currentUserId?: string | null; stream?: boolean; editorialSize?: "lead" | "support" | "archive"; fitEvent?: boolean; fitMedia?: boolean; onVideoAspectRatio?: (ratio: number) => void; mediaCaption?: ReactNode }) {
   const [reporting, setReporting] = useState(false);
   const images = postImages(post);
   const mediaSrc = post.media_url ?? post.media_base64 ?? null;
@@ -506,6 +506,7 @@ export function PostCard({ post, index, total, currentUserId, stream = true, edi
         className="absolute inset-0 z-[15]"
       />
       {/* Media layer */}
+      <div className="magma-card-media">
       {hasSoundCloud ? (
         <SoundCloudEmbed url={post.soundcloud_url!} compact={compactEditorial} />
       ) : isAudio && mediaSrc ? (
@@ -515,7 +516,7 @@ export function PostCard({ post, index, total, currentUserId, stream = true, edi
           <FeedVideo key={mediaSrc} src={mediaSrc} fitScreen={fitMedia} onAspectRatio={onVideoAspectRatio} />
         </div>
       ) : images.length > 1 ? (
-        <PhotoCarousel key={images.join("|")} images={images} title={post.title ?? ""} href={`/post/${post.id}`} eager={index === 0} fitScreen={fitMedia} />
+        <PhotoCarousel key={images.join("|")} images={images} title={post.title ?? ""} href={`/post/${post.id}`} eager={index < 3} fitScreen={fitMedia} />
       ) : showImage ? (
         fitMedia ? <PostImage src={mediaSrc!} alt={post.title ?? ""} mediaType={post.media_type} /> : isEvento ? (
           <div style={{ position: "relative", width: "100%", overflow: "hidden" }}>
@@ -524,7 +525,7 @@ export function PostCard({ post, index, total, currentUserId, stream = true, edi
               alt={post.title ?? ""}
               style={{ display: "block", width: fitEvent ? "auto" : "100%", height: "auto", maxWidth: "100%", maxHeight: fitEvent ? "max(200px, calc(100svh - 220px))" : undefined, objectFit: "contain" }}
               mediaType={post.media_type}
-              loading={index === 0 ? "eager" : "lazy"}
+              loading={index < 3 ? "eager" : "lazy"}
               fetchPriority={index === 0 ? "high" : "auto"}
             />
           </div>
@@ -536,7 +537,7 @@ export function PostCard({ post, index, total, currentUserId, stream = true, edi
               style={{ width: "100%", height: "auto", objectFit: "contain", display: "block" }}
               mediaType={post.media_type}
               sizes={compactEditorial || !stream ? undefined : "(max-width: 767px) 100vw, 800px"}
-              loading={index === 0 ? "eager" : "lazy"}
+              loading={index < 3 ? "eager" : "lazy"}
               fetchPriority={index === 0 ? "high" : "auto"}
             />
           </div>
@@ -546,17 +547,36 @@ export function PostCard({ post, index, total, currentUserId, stream = true, edi
           <PostCardArt post={post} cardType={cardType} />
         </div>
       )}
+      </div>
+
+      {mediaCaption && <div className="relative z-20">{mediaCaption}</div>}
 
       {stream && (showImage || isVideoMedia) && post.title && (
-        <div style={{ padding: "18px 16px 8px", position: "relative", zIndex: 20 }}>
+        <div style={{ padding: "12px 3px 8px", position: "relative", zIndex: 20 }}>
           <h2 style={{ color: "var(--magma-ash)", fontFamily: "var(--font-syne), sans-serif", fontSize: "16px", fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.3, margin: 0, overflowWrap: "anywhere" }}>
             {post.title}
           </h2>
         </div>
       )}
 
+      {stream && caption && (
+        <div style={{ padding: "8px 3px 10px", position: "relative", zIndex: 20 }}>
+          <p style={{ color: "var(--magma-muted)", fontFamily: "var(--font-space-mono), monospace", fontSize: "var(--magma-text-small)", lineHeight: 1.65, margin: 0 }}>
+            {!mediaCaption && <Link href={`/profile/${post.profiles?.username ?? "anon"}`} style={{ color: "var(--magma-ash)", fontWeight: 700, marginRight: "7px", textDecoration: "none" }}>
+              @{post.profiles?.username ?? "anon"}
+            </Link>}
+            <span style={{ display: "-webkit-inline-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 3, overflow: "hidden", verticalAlign: "top" }}>
+              <MentionText text={caption} />
+            </span>
+            <Link href={`/post/${post.id}`} style={{ display: "block", color: "var(--magma-red)", fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap" }}>
+              ver más
+            </Link>
+          </p>
+        </div>
+      )}
+
       {stream && (
-        <div className="magma-editorial-actions" style={{ padding: "0 12px", position: "relative", zIndex: 30 }}>
+        <div className="magma-editorial-actions" style={{ padding: "0 3px", position: "relative", zIndex: 30 }}>
           <PostInteractionBar
             echoAllowed={post.audience_colectivo_id === null && post.moderation_status === "approved"}
             postId={post.id}
@@ -569,22 +589,6 @@ export function PostCard({ post, index, total, currentUserId, stream = true, edi
             compact
             light
           />
-        </div>
-      )}
-
-      {stream && caption && (
-        <div style={{ padding: "8px 14px 14px", position: "relative", zIndex: 20 }}>
-          <p style={{ color: "var(--magma-muted)", fontFamily: "var(--font-space-mono), monospace", fontSize: "var(--magma-text-small)", lineHeight: 1.65, margin: 0 }}>
-            <Link href={`/profile/${post.profiles?.username ?? "anon"}`} style={{ color: "var(--magma-ash)", fontWeight: 700, marginRight: "7px", textDecoration: "none" }}>
-              @{post.profiles?.username ?? "anon"}
-            </Link>
-            <span style={{ display: "-webkit-inline-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 3, overflow: "hidden", verticalAlign: "top" }}>
-              <MentionText text={caption} />
-            </span>
-            <Link href={`/post/${post.id}`} style={{ color: "var(--magma-red)", fontWeight: 700, marginLeft: "7px", textDecoration: "none", whiteSpace: "nowrap" }}>
-              ver más
-            </Link>
-          </p>
         </div>
       )}
 
