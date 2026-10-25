@@ -1,4 +1,5 @@
 "use client";
+import { eventMedia } from '@/lib/event-media';
 import { CircleButton } from "@/app/components/CircleButton";
 import { Echoes } from "./Echoes";
 import Offerings from "./Offerings";
@@ -490,14 +491,14 @@ export function ProfileView({
       </h2>
       <div className="grid grid-cols-2 items-start gap-x-5 gap-y-9 md:grid-cols-3 lg:grid-cols-4">
         {attendingEvents.map((event) => {
-          const image = event.media_url ?? event.media_base64;
+          const { poster: image, video } = eventMedia(event);
           return (
             <Link key={event.id} href={`/post/${event.id}`} className="group block min-w-0 self-start" style={{ textDecoration: "none" }}>
               <div className="relative flex aspect-[4/5] items-center justify-center overflow-hidden" style={{ backgroundColor: "var(--magma-rock)" }}>
               {image ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={image} alt={event.title ?? "cartel del evento"} loading="lazy" className="block h-full w-full object-contain" />
-              ) : <span className="p-5 text-sm" style={{ color: "var(--magma-ash)" }}>{event.title}</span>}
+              ) : video ? <video src={video} muted playsInline preload="metadata" aria-label="video del evento" className="h-full w-full object-contain" /> : <span className="p-5 text-sm" style={{ color: "var(--magma-ash)" }}>{event.title}</span>}
               </div>
               <div className="mt-3 border-t pt-3" style={{ borderColor: "var(--magma-border)" }}>
                 <p className="text-base leading-snug group-hover:underline" style={{ color: "var(--magma-ash)", fontFamily: syne, overflowWrap: "anywhere" }}>{event.title}</p>

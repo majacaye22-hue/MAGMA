@@ -10,10 +10,16 @@ Applied to staging (`jbzkdzcaqmxsmmyrlwif`) on 2026-09-24. Verified
 `image_urls` exists as an array column and requested the PostgREST schema reload.
 Production has not been changed.
 
-Manual staging checks:
-- Publish 1, 2, and 3 photos; confirm order after reload in feed and detail.
+October 24: the application now accepts 10 images. Apply
+`post_carousel_ten_images.sql` after the original migration to expand the database
+constraint from 3 to 10. Applied to staging (`jbzkdzcaqmxsmmyrlwif`) on October 24,
+2026; verified the saved constraint uses `cardinality(image_urls) <= 10` and
+preserves the existing type, cover, and nonempty-URL checks. Production is unchanged.
+
+Manual staging checks after applying the follow-up:
+- Publish 1, 3, and 10 photos; confirm order after reload in feed and detail.
 - Reorder/remove photos in the editor and save; check the cover changes too.
-- Confirm 4 photos, unsupported formats, and files over 15 MB are rejected.
+- Confirm 11 photos, unsupported formats, and files over 15 MB are rejected.
 - Test touch swipe and compact white arrows, including first/last boundaries.
 - Confirm clicking an arrow does not open the post; tapping the photo does.
 - Confirm event posters, music, video, and old single-photo posts are unchanged.

@@ -43,12 +43,13 @@ export default async function ProyectosPage({ searchParams }: { searchParams: Pr
   return (
     <main className={`${styles.page} min-h-screen w-full`} style={{ background: "var(--magma-obsidian)" }}>
       <div className="mx-auto max-w-7xl px-5 pb-20 sm:px-8">
-        <header className="grid gap-2 py-5 md:py-6">
+        <header className={styles.hero}>
           <div>
 
-            <h1 className="magma-page-title" style={{ color: "var(--magma-ash)", fontFamily: syne, fontWeight: 800, letterSpacing: "0.02em", }}>proyectos</h1>
-            {COLLABORATIONS_ENABLED && <Link className="inline-block py-3 text-sm underline" href="/colaboraciones">mis invitaciones y colaboraciones →</Link>}
+            <h1 style={{ color: "var(--magma-ash)", fontFamily: syne, fontWeight: 800 }}>ideas tomando forma.</h1>
+            <p className={styles.intro}>proyectos · procesos, pruebas y cosas por descubrir.</p>
           </div>
+          {COLLABORATIONS_ENABLED && <Link className={styles.heroAction} href="/colaboraciones">mis colaboraciones ↗</Link>}
         </header>
 
         <form action="/proyectos" className="flex flex-wrap items-end gap-3 rounded-xl bg-white/[0.03] p-3 text-sm" aria-label="filtrar proyectos">
@@ -61,8 +62,8 @@ export default async function ProyectosPage({ searchParams }: { searchParams: Pr
         <section className="py-5" aria-label="resultados de proyectos">
           {error ? <div role="alert"><p>no se pudieron cargar los proyectos.</p><Link href={href(page)} className="underline">reintentar</Link></div> : <>
           {projects.length > 0 ? (
-            <div className={`${styles.cards} grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4`}>
-              {projects.map((project) => <ProjectCard key={project.id} project={project} portrait />)}
+            <div className={styles.discoveryGrid}>
+              {projects.map((project) => <ProjectCard key={project.id} project={project} discovery />)}
             </div>
           ) : (
             <div style={{ color: "#fff", fontFamily: mono, fontSize: "var(--magma-text-small)", padding: "40px 24px", textAlign: "center" }}>

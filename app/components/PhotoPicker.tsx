@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { validatePhotos } from "@/lib/post-images";
+import { MAX_POST_IMAGES, validatePhotos } from "@/lib/post-images";
 import { PHOTO_ACCEPT, isHeic } from "@/lib/photo-format";
 
 function Preview({ item }: { item: File | string }) {
@@ -33,8 +33,9 @@ export function PhotoPicker({ items, onChange, disabled, notebook = false }: { i
     onChange(next);
   }
   return <fieldset disabled={disabled} className="space-y-3 text-sm text-white" onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); add(Array.from(event.dataTransfer.files)); }}>
-    <legend>{notebook ? "suelta aquí tu obra" : "fotos · hasta 3"}</legend>
-    <p className={notebook ? "notebook-note" : undefined}>{notebook ? "hasta 3 imágenes · la primera será la portada" : "la primera será la portada. puedes cambiar el orden antes de publicar."}</p>
+    <legend>{notebook ? "suelta aquí tu obra" : `fotos · hasta ${MAX_POST_IMAGES}`}</legend>
+    <p className={notebook ? "notebook-note" : undefined}>{`hasta ${MAX_POST_IMAGES} imágenes · la primera será la portada`}</p>
+    <p className="text-xs" aria-live="polite">{items.length} / {MAX_POST_IMAGES} imágenes</p>
     <ol className="flex flex-wrap gap-4">
       {items.map((item, index) => <li key={typeof item === "string" ? item : `${item.name}-${item.lastModified}-${index}`} className="w-40 space-y-2">
         <Preview item={item} />
@@ -48,7 +49,7 @@ export function PhotoPicker({ items, onChange, disabled, notebook = false }: { i
     </ol>
     <label className={notebook ? "notebook-photo-picker" : "block"}>
       {notebook ? <><span>{items.length ? "+ agregar otra foto" : "+ elegir fotos"}</span><span className="notebook-note">también puedes arrastrarlas aquí</span></> : "agregar fotos"}
-      <input aria-label="agregar fotos" type="file" multiple accept={PHOTO_ACCEPT} disabled={disabled || items.length >= 3} className={notebook ? "notebook-photo-input" : "mt-2 block w-full"} onChange={event => { add(Array.from(event.target.files ?? [])); event.target.value = ""; }} />
+      <input aria-label="agregar fotos" type="file" multiple accept={PHOTO_ACCEPT} disabled={disabled || items.length >= MAX_POST_IMAGES} className={notebook ? "notebook-photo-input" : "mt-2 block w-full"} onChange={event => { add(Array.from(event.target.files ?? [])); event.target.value = ""; }} />
     </label>
     {error && <p role="alert">{error}</p>}
   </fieldset>;

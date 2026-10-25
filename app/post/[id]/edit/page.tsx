@@ -1,4 +1,6 @@
 "use client";
+import { EVENT_MEDIA_ACCEPT, eventMediaError } from '@/lib/event-media';
+import { isHeic } from '@/lib/photo-format';
 import { EventDetailsFields } from "@/app/components/EventDetailsFields";
 import { EVENT_DETAILS_ENABLED, emptyEventDetails, eventDetailsPayload, eventTimestamp, eventLocalParts, restoreEventDetails, type EventDetails } from "@/lib/event-details";
 
@@ -47,7 +49,7 @@ const labelStyle: React.CSSProperties = {
   marginBottom: "6px",
 };
 
-type PostType = "arte" | "música" | "fotografía" | "evento" | "escrito";
+type PostType = "arte" | "música" | "fotografía" | "evento" | "escrito" | "video";
 
 interface PostData {
   audience_colectivo_id?: string | null;
@@ -186,6 +188,7 @@ export default function EditPostPage() {
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
+    if (f && postType === 'evento' && eventMediaError(f)) { setError(eventMediaError(f)); return; }
     if (f) { setNewFile(f); setNewFileName(f.name); }
   }
 
@@ -193,6 +196,7 @@ export default function EditPostPage() {
     e.preventDefault();
     setDragOver(false);
     const f = e.dataTransfer.files[0];
+    if (f && postType === 'evento' && eventMediaError(f)) { setError(eventMediaError(f)); return; }
     if (f) { setNewFile(f); setNewFileName(f.name); }
   }
 
@@ -218,6 +222,7 @@ export default function EditPostPage() {
 
       // Upload new file if one was selected
       if (newFile && !supportsCarousel(postType)) {
+        if (postType === 'evento' && eventMediaError(newFile)) throw new Error(eventMediaError(newFile)!);
         const formData = new FormData();
         formData.append("file", newFile);
         if (colectivoId) formData.append("colectivo_id", colectivoId);
@@ -238,6 +243,7 @@ export default function EditPostPage() {
         body: postType !== "escrito" ? (description.trim() || null) : null,
         content: postType === "escrito" ? sanitizeHtml(richContentRef.current) : null,
         media_url: mediaUrl,
+        ...(newFile && !supportsCarousel(postType) ? { media_type: isHeic(newFile) ? 'image/jpeg' : newFile.type } : {}),
         ...(supportsCarousel(postType) ? { image_urls: imageUrls } : {}),
         soundcloud_url: normalizedSoundCloudUrl,
         tags: tags ? tags.split(",").map((t) => t.trim()).filter(Boolean) : null,
@@ -300,7 +306,7 @@ export default function EditPostPage() {
 
   const isEscrito = postType === "escrito";
   const isEvento  = postType === "evento";
-  const acceptFile = postType === "música" ? "audio/*" : "image/*";
+  const acceptFile = postType === 'evento' ? EVENT_MEDIA_ACCEPT : postType === 'video' ? 'video/mp4,video/quicktime,video/webm' : postType === "música" ? "audio/*" : "image/*";
 
   if (loading) {
     return (

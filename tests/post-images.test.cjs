@@ -21,13 +21,18 @@ test('only art and photography use a gallery; legacy posts keep their image', ()
   assert.equal(supportsCarousel('evento'), false);
   assert.equal(postImages({ type: 'arte', media_url: 'legacy' })[0], 'legacy');
   assert.equal(postImages({ type: 'arte', media_base64: 'legacy-data' })[0], 'legacy-data');
-  assert.equal(postImages({ type: 'arte', image_urls: ['a', 'b', 'c', 'd'] }).join(','), 'a,b,c');
+  assert.equal(postImages({ type: 'arte', image_urls: ['a', 'b', 'c', 'd'] }).join(','), 'a,b,c,d');
+  const ten = Array.from({ length: 10 }, (_, i) => `photo-${i}`);
+  assert.equal(postImages({ type: 'fotografía', image_urls: ten }).join(','), ten.join(','));
   assert.equal(postImages({ type: 'evento', image_urls: ['a', 'b'], media_url: 'poster' }).join(','), 'poster');
 });
 test('photo selection enforces count, formats, and size before uploading', () => {
   const photo = { type: 'image/jpeg', size: 100 };
   assert.equal(validatePhotos([photo, photo, photo], 0), null);
-  assert.ok(validatePhotos([photo, photo], 2));
+  assert.equal(validatePhotos(Array(10).fill(photo), 0), null);
+  assert.equal(validatePhotos([photo, photo], 8), null);
+  assert.ok(validatePhotos([photo, photo], 9));
+  assert.ok(validatePhotos(Array(11).fill(photo), 0));
   assert.equal(validatePhotos([{ type: 'image/heic', size: 100 }], 0), null);
   assert.equal(validatePhotos([{ type: '', name: 'IMG_100.HEIC', size: 100 }], 0), null);
   assert.equal(validatePhotos([{ type: 'image/heif', size: 100 }], 0), null);
@@ -40,4 +45,9 @@ test('uploads retain existing images and preserve ordering; errors stop publicat
   assert.deepEqual(uploads, ['photo.jpg']);
   fail = true;
   await assert.rejects(uploadPhotos([photo]), /no se pudo subir/);
+});
+test('over-limit restored drafts fail before uploading any files', async () => {
+  const before = uploads.length;
+  await assert.rejects(() => uploadPhotos(Array(11).fill('existing')), /hasta 10/);
+  assert.equal(uploads.length, before);
 });

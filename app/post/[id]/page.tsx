@@ -152,7 +152,6 @@ function PostDetailShell({
 function EventoView({ post, conversation, currentUserId }: {
   post: Post; conversation: ReactNode; currentUserId: string | null;
 }) {
-  const eventImage = post.media_url ?? post.media_base64;
   const admission = post.is_free ? "entrada libre" : post.price ? `$${post.price}` : "entrada por confirmar";
   // The event page is force-dynamic, so this server-rendered boundary is recalculated per request.
   // eslint-disable-next-line react-hooks/purity
@@ -172,11 +171,7 @@ function EventoView({ post, conversation, currentUserId }: {
 
       <figure className="event-gallery">
         <SensitiveContentGate enabled={post.is_sensitive === true} postId={post.id} compact>
-        {eventImage ? (
-          <PostImage src={eventImage} alt={post.title ?? "cartel del evento"} mediaType={post.media_type} />
-        ) : (
-          <div className="py-20 text-center" style={{ color: "var(--magma-muted)" }}>sin cartel</div>
-        )}
+        <EventMediaGallery post={post} />
         </SensitiveContentGate>
         <figcaption className="event-gallery-caption">
           <h1 className="magma-page-title " style={{ color: "var(--magma-ash)", fontFamily: syne, fontWeight: 800 }}>{post.title}</h1>
@@ -459,3 +454,4 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
     </div>
   );
 }
+import { EventMediaGallery } from '@/app/components/EventMediaGallery';

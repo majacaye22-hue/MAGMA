@@ -88,7 +88,7 @@ export function EventInvitations({ userId, eventId, unavailable = false }: { use
         const ended = inactive || !event.event_date || Date.parse(event.event_date) <= Date.now();
         return <article key={row.id} className="space-y-2 rounded border border-current/20 p-3">
           {!eventId && <>
-            {event.media_url && !event.is_sensitive && !event.audience_colectivo_id && <div className="max-w-48"><PostImage src={event.media_url} alt={event.title || 'cartel del evento'} mediaType={event.media_type} /></div>}
+            {event.media_url && !event.media_type?.startsWith('video/') && !event.is_sensitive && !event.audience_colectivo_id && <div className="max-w-48"><PostImage src={event.media_url} alt={event.title || 'cartel del evento'} mediaType={event.media_type} /></div>}
             <Link className="block font-semibold underline" href={`/post/${row.event_id}`}>{event.title || 'evento'} ↗</Link>
             <p>{event.event_date ? new Date(event.event_date).toLocaleString('es-MX', { timeZone: 'America/Mexico_City', dateStyle: 'medium', timeStyle: 'short' }) + ' · CDMX' : 'fecha por confirmar'}</p>
             <p>{event.venue || 'lugar por confirmar'}{event.address ? ` · ${event.address}` : ''}</p>

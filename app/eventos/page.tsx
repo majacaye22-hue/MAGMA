@@ -22,9 +22,9 @@ async function EventWall() {
 function EventWallLoading() {
   return <div role="status" className="py-4">
     <p className="mb-4 text-sm text-white">cargando cartelera…</p>
-    <div aria-hidden="true" className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+    <div aria-hidden="true" className="grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {[0, 1, 2, 3, 4].map(i => (
-        <div key={i} className="rounded-[2px] border border-[#49463f] bg-[#10100f] p-[10px]">
+        <div key={i}>
           <div className="aspect-[3/4] bg-[#090909]" />
           <div className="mt-3 h-4 w-2/3 bg-white/5" />
           <div className="mt-2 h-3 w-1/2 bg-white/5" />
@@ -38,9 +38,10 @@ export default async function EventosPage() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--magma-obsidian)" }}>
       <main className="max-w-[1800px] mx-auto px-5 sm:px-8 pb-24">
-        <div className="flex flex-wrap items-center justify-between gap-4 py-5 md:py-6">
+        <div className="flex flex-wrap items-center justify-between gap-6 pb-8 pt-10 md:pb-10 md:pt-14">
           <div>
-          <h1 className="magma-page-title"
+          <p className="mb-4 text-[10px] tracking-[0.2em] text-[var(--magma-muted)]">CDMX · CULTURA EN VIVO</p>
+          <h1 className="text-[clamp(44px,7vw,88px)] leading-none"
             style={{
 
               color: "var(--magma-ash)",
@@ -52,8 +53,9 @@ export default async function EventosPage() {
           >
             cartelera
           </h1>
+          <p className="mt-4 text-sm text-[var(--magma-muted)]">nos vemos afuera.</p>
           </div>
-          <Link href="/upload?type=evento" className="inline-flex min-h-11 items-center border border-[var(--magma-red)] px-4 py-2 text-sm text-[var(--magma-ash)] transition-colors hover:bg-[var(--magma-red)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--magma-red)]">
+          <Link href="/upload?type=evento" className="inline-flex min-h-11 items-center rounded-xl bg-[#292827] px-5 py-3 text-sm text-[var(--magma-ash)] transition-colors hover:bg-[#3a3331] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--magma-red)]">
             + agregar evento
           </Link>
         </div>

@@ -15,6 +15,7 @@ import { PhotoCarousel } from "./PhotoCarousel";
 import { postImages } from "@/lib/post-images";
 import { FeedImage } from "./FeedImage";
 import { FeedVideo } from "./FeedVideo";
+import { EventMediaGallery } from './EventMediaGallery';
 
 export type CardType = "arte" | "música" | "foto" | "evento" | "video";
 
@@ -507,7 +508,9 @@ export function PostCard({ post, index, total, currentUserId, stream = true, edi
       />
       {/* Media layer */}
       <div className="magma-card-media">
-      {hasSoundCloud ? (
+      {isEvento ? (
+        <EventMediaGallery key={`${post.media_url}|${post.cover_url}`} post={post} href={`/post/${post.id}`} />
+      ) : hasSoundCloud ? (
         <SoundCloudEmbed url={post.soundcloud_url!} compact={compactEditorial} />
       ) : isAudio && mediaSrc ? (
         <MusicPostSurface post={post} audioSrc={mediaSrc} />

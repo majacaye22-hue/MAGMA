@@ -1,5 +1,8 @@
 "use client";
 
+import Link from "next/link";
+import styles from "../proyectos/proyectos.module.css";
+
 const mono = "var(--font-space-mono), monospace";
 const syne = "var(--font-syne), sans-serif";
 
@@ -45,8 +48,42 @@ function SoundCloudIcon() {
   );
 }
 
-export function ProjectCard({ project, portrait = false }: { project: Project; portrait?: boolean }) {
+export function ProjectCard({ project, portrait = false, discovery = false }: { project: Project; portrait?: boolean; discovery?: boolean }) {
   const links = project.links ?? {};
+
+  if (discovery) {
+    return (
+      <article className={styles.discoveryCard}>
+        <Link href={`/proyecto/${project.id}`} className={styles.projectLink}>
+          <div className={styles.cover}>
+            {project.cover_image_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={project.cover_image_url} alt={project.title} loading="lazy" />
+            ) : (
+              <div className={styles.coverFallback} aria-hidden="true">
+                <span>{project.title.slice(0, 1).toUpperCase()}</span>
+              </div>
+            )}
+            <span className={styles.coverBadge}>proyecto · cdmx</span>
+          </div>
+          <div className={styles.cardBody}>
+            <h2>{project.title}</h2>
+            {project.creator && <p className={styles.creator}>por @{project.creator.username}</p>}
+            {project.description && <p className={styles.description}>{project.description}</p>}
+            <span className={styles.explore}>explorar proyecto <span aria-hidden="true">↗</span></span>
+          </div>
+        </Link>
+        {(links.spotify || links.soundcloud || links.instagram || links.website) && (
+          <div className={styles.socialLinks}>
+            {links.spotify && <a href={links.spotify} target="_blank" rel="noopener noreferrer" aria-label="Spotify"><SpotifyIcon /></a>}
+            {links.soundcloud && <a href={links.soundcloud} target="_blank" rel="noopener noreferrer" aria-label="SoundCloud"><SoundCloudIcon /></a>}
+            {links.instagram && <a href={links.instagram} target="_blank" rel="noopener noreferrer" aria-label="Instagram"><InstagramIcon /></a>}
+            {links.website && <a href={links.website} target="_blank" rel="noopener noreferrer" aria-label="sitio web"><WebIcon /></a>}
+          </div>
+        )}
+      </article>
+    );
+  }
 
   function navigate() {
     window.location.href = "/proyecto/" + project.id;

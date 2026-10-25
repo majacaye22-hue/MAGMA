@@ -20,63 +20,34 @@ type Colectivo = {
 
 function ColectivoCard({ col }: { col: Colectivo }) {
   const memberCount = col.colectivo_members?.[0]?.count ?? 0;
+  const postCount = col.colectivo_posts?.[0]?.count ?? 0;
 
   return (
-    <Link href={`/colectivos/${col.slug}`} className={styles.cardLink} style={{ textDecoration: "none", display: "block" }}>
-      <div
-        style={{
-          backgroundColor: "#10100f",
-          border: "1px solid #49463f",
-          borderRadius: "2px",
-          padding: "10px",
-          height: "100%",
-          overflow: "hidden",
-          transition: "border-color 0.15s ease",
-        }}
-        className="group hover:border-[#FF641F]"
-      >
-        {/* Cover image or solid color fallback */}
-        <div style={{ aspectRatio: "4 / 5", position: "relative", overflow: "hidden", backgroundColor: col.avatar_color }}>
+    <Link href={`/colectivos/${col.slug}`} className={styles.cardLink}>
+      <article className={styles.card}>
+        <div className={styles.cover} style={{ backgroundColor: col.avatar_color || "#352a2c" }}>
           {col.cover_image_url ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={col.cover_image_url}
-              alt=""
-              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-              loading="lazy"
-            />
+            <img src={col.cover_image_url} alt="" loading="lazy" />
           ) : (
-            <div style={{
-              position: "absolute", inset: 0,
-              background: "radial-gradient(circle at 65% 35%, rgba(255,100,31,0.7), transparent 32%), linear-gradient(135deg, var(--magma-cobalt), var(--magma-red))",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <span style={{ fontSize: "48px", color: "var(--magma-ash)", fontFamily: syne, fontWeight: 800, opacity: 0.65, lineHeight: 1 }}>
-                {col.name.slice(0, 1).toUpperCase()}
-              </span>
+            <div className={styles.coverFallback} aria-hidden="true">
+              <span>{col.name.slice(0, 1).toUpperCase()}</span>
+              <span className={styles.coverNote}>un punto de encuentro</span>
             </div>
           )}
+          <span className={styles.coverBadge}>colectivo · cdmx</span>
         </div>
-
-        {/* Info row */}
-        <div style={{ padding: "12px 2px 2px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "8px" }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-              <p style={{ fontSize: "16px", color: "#ffffff", fontFamily: syne, fontWeight: 700, lineHeight: 1.2, overflowWrap: "anywhere" }}>
-                {col.name}
-              </p>
-            </div>
-            {col.description && (
-              <p style={{ fontSize: "var(--magma-text-small)", color: "var(--magma-muted)", fontFamily: mono, lineHeight: 1.5, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
-                {col.description}
-              </p>
-            )}
-            <p style={{ fontSize: "11px", color: "#ffffff", fontFamily: mono, marginTop: "10px", paddingTop: "8px", letterSpacing: ".06em" }}>
-              {memberCount} {memberCount === 1 ? "miembro" : "miembros"}
-            </p>
-          </div>
+        <div className={styles.cardBody}>
+          <h2>{col.name}</h2>
+          <p className={styles.description}>{col.description || "Un espacio para compartir lo que te mueve."}</p>
+          <p className={styles.community}>
+            {memberCount} {memberCount === 1 ? "miembro" : "miembros"}
+            <span aria-hidden="true"> · </span>
+            {postCount} {postCount === 1 ? "publicación" : "publicaciones"}
+          </p>
+          <span className={styles.explore}>explorar colectivo <span aria-hidden="true">↗</span></span>
         </div>
-      </div>
+      </article>
     </Link>
   );
 }
@@ -118,12 +89,13 @@ export default async function ColectivosPage({ searchParams }: { searchParams: P
       }}
     >
       <div className="max-w-6xl mx-auto px-6 pb-24">
-        <header className="grid gap-4 py-5 md:py-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+        <header className={styles.hero}>
           <div>
 
             <h1 className="magma-page-title" style={{ color: "var(--magma-ash)", fontFamily: syne, fontWeight: 800, letterSpacing: "-0.055em", marginBottom: "8px" }}>
-              colectivos
+              encuentra a tu gente.
             </h1>
+            <p className={styles.intro}>colectivos · ideas que se encuentran, cosas que pasan juntas.</p>
           </div>
           <div className="flex flex-col items-start gap-4 md:items-end">
             <Link
@@ -174,7 +146,7 @@ export default async function ColectivosPage({ searchParams }: { searchParams: P
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-2 py-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className={styles.grid}>
             {colectivos.map((col) => <ColectivoCard key={col.id} col={col} />)}
           </div>
         )}

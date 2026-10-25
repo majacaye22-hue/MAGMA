@@ -3,6 +3,14 @@
 **Purpose:** Canonical running inventory of Magma's people, permissions, pages, and internal tools.
 **Last updated:** October 24, 2026
 
+Cartelera visual refresh (local review): oversized editorial heading, quieter neutral filters/actions, result count and underlined wall/archive navigation. Borderless poster cards retain sharp image corners and uniform 3:4 frames, with compact captions below and a four-column desktop wall. Cards stretch to equal height within each row, with admission and event links aligned at the bottom. Filtering, archive/date logic, video support and public-only queries are unchanged.
+
+Image posts (local code): art/photography uploads and editing accept up to 10 ordered images, with first-image cover, per-file 15 MB validation and existing swipe/arrow navigation. Restored drafts are revalidated before upload. Database follow-up `supabase/post_carousel_ten_images.sql` applied and constraint verified on staging (`jbzkdzcaqmxsmmyrlwif`) October 24. Hosted UI deployment and manual ten-file publishing check remain pending; production unchanged.
+
+Event media (local review): uploads support poster-only, video-only, or poster then video with arrow navigation in the feed and event detail. Existing media_url/media_type store the video and cover_url stores its optional poster; no schema change. Both files survive saved drafts. MP4/MOV/WebM use the existing authenticated 15 MB-per-file upload endpoint and private-colectivo handling. Videos require user playback, never autoplay. Cartelera and attendance previews handle videos without treating them as images.
+
+Colectivos and proyectos discovery redesign (local review): image-led, borderless cards with rounded landscape covers, short descriptions and explicit explore affordances. Responsive three/two/one-column layouts and softer filters. Colectivos retains real member/publication counts; proyectos retains creator attribution and external links, with a matching loading skeleton. Existing queries, creator filters, pagination and privacy rules are unchanged; no fabricated member faces or activity. Project cards on profiles are unchanged.
+
 Update this file whenever a role, route, major workflow, or product area is added, removed, or renamed.
 
 ## Staging feature activation — October 21

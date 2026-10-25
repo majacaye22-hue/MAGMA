@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Post } from "./card-art";
+import { eventMedia } from '@/lib/event-media';
 
 const mono = "var(--font-space-mono), monospace";
 
@@ -46,12 +47,12 @@ export function HomeFlyers() {
   }, []);
 
   if (posts === null) return <p style={{ color: "var(--magma-muted)", fontFamily: mono, fontSize: "var(--magma-text-small)", padding: "30px 0" }}>pegando carteles...</p>;
-  const flyers = posts.filter((post) => post.type === "evento" && Boolean(post.media_url ?? post.media_base64));
+  const flyers = posts.filter((post) => post.type === "evento" && Boolean(eventMedia(post).poster));
   const currentFlyers = flyers.filter((post) => salaIsOpen(post) || isFutureEvent(post));
   const totalSignals = flyers.reduce((sum, post) => sum + post.upvotes + (commentCounts.get(post.id) ?? 0), 0);
   const sortedFlyers = [...flyers].sort(totalSignals >= 6 ? (a, b) => (b.upvotes + (commentCounts.get(b.id) ?? 0)) - (a.upvotes + (commentCounts.get(a.id) ?? 0)) || sortEvents(a, b) : sortEvents);
   const posters = [...currentFlyers, ...sortedFlyers.filter((post) => !currentFlyers.some((current) => current.id === post.id))].slice(0, 6);
 
   if (posters.length === 0) return <p style={{ color: "var(--magma-muted)", fontFamily: mono, fontSize: "var(--magma-text-small)", padding: "30px 0" }}>la barda todavía espera su primer cartel</p>;
-  return <div className="grid gap-3 sm:grid-cols-3">{posters.map((post, index) => <Link key={post.id} href={`/post/${post.id}`} className="group block" style={{ color: "inherit", textDecoration: "none", transform: `rotate(${[-0.5, 0.35, -0.2][index]}deg)` }}><article style={{ background: "#141412", border: "0.5px solid #2a2a28", overflow: "hidden", height: "100%" }}><img src={(post.media_url ?? post.media_base64)!} alt={post.title ?? "Cartel de evento"} style={{ display: "block", width: "100%", aspectRatio: "0.76", objectFit: "cover" }} /><div style={{ padding: "12px" }}>{salaIsOpen(post) && <p style={{ color: "var(--magma-ash)", fontFamily: mono, fontSize: "var(--magma-text-small)", letterSpacing: "0.12em", marginBottom: "7px", textTransform: "uppercase" }}>● sala abierta</p>}<h3 style={{ color: "#F2F4F8", fontFamily: "var(--font-syne), sans-serif", fontSize: "17px", fontWeight: 800, lineHeight: 1.05, marginBottom: "7px" }}>{post.title ?? "sin título"}</h3><p style={{ color: "var(--magma-muted)", fontFamily: mono, fontSize: "var(--magma-text-small)", lineHeight: 1.5 }}>{formatEventDate(post.event_date)}</p>{totalSignals >= 6 && <p style={{ color: "var(--magma-muted)", fontFamily: mono, fontSize: "var(--magma-text-small)", marginTop: "7px" }}>↑ {post.upvotes + (commentCounts.get(post.id) ?? 0)} señales</p>}</div></article></Link>)}</div>;
+  return <div className="grid gap-3 sm:grid-cols-3">{posters.map((post, index) => <Link key={post.id} href={`/post/${post.id}`} className="group block" style={{ color: "inherit", textDecoration: "none", transform: `rotate(${[-0.5, 0.35, -0.2][index]}deg)` }}><article style={{ background: "#141412", border: "0.5px solid #2a2a28", overflow: "hidden", height: "100%" }}><img src={eventMedia(post).poster!} alt={post.title ?? "Cartel de evento"} style={{ display: "block", width: "100%", aspectRatio: "0.76", objectFit: "cover" }} /><div style={{ padding: "12px" }}>{salaIsOpen(post) && <p style={{ color: "var(--magma-ash)", fontFamily: mono, fontSize: "var(--magma-text-small)", letterSpacing: "0.12em", marginBottom: "7px", textTransform: "uppercase" }}>● sala abierta</p>}<h3 style={{ color: "#F2F4F8", fontFamily: "var(--font-syne), sans-serif", fontSize: "17px", fontWeight: 800, lineHeight: 1.05, marginBottom: "7px" }}>{post.title ?? "sin título"}</h3><p style={{ color: "var(--magma-muted)", fontFamily: mono, fontSize: "var(--magma-text-small)", lineHeight: 1.5 }}>{formatEventDate(post.event_date)}</p>{totalSignals >= 6 && <p style={{ color: "var(--magma-muted)", fontFamily: mono, fontSize: "var(--magma-text-small)", marginTop: "7px" }}>↑ {post.upvotes + (commentCounts.get(post.id) ?? 0)} señales</p>}</div></article></Link>)}</div>;
 }

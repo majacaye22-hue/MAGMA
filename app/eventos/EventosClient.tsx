@@ -15,9 +15,9 @@ function FilterIcon({ kind }: { kind: "date" | "place" | "access" | "filters" })
 }
 
 function FilterSelect({ label, kind, value, onChange, children }: { label: string; kind: "date" | "place" | "access"; value: string; onChange: (value: string) => void; children: React.ReactNode }) {
-  return <label className="flex min-h-11 min-w-0 items-center gap-2 border border-[#49463f] px-3 text-sm" style={{ color: value === "todo" ? "var(--magma-ash)" : "var(--magma-red)", fontFamily: mono }}>
+  return <label className="flex min-h-11 min-w-0 items-center gap-2 rounded-xl bg-[#181817] px-3 text-xs" style={{ color: value === "todo" ? "var(--magma-muted)" : "#ff625b", fontFamily: mono }}>
     <FilterIcon kind={kind} /><span>{label}</span>
-    <select value={value} onChange={event => onChange(event.target.value)} className="min-h-11 min-w-0 flex-1 bg-[var(--magma-obsidian)] focus-visible:outline-2 focus-visible:outline-[var(--magma-red)]">
+    <select value={value} onChange={event => onChange(event.target.value)} className="min-h-11 min-w-0 flex-1 bg-[#181817] text-white focus-visible:outline-2 focus-visible:outline-[var(--magma-red)]">
       {children}
     </select>
   </label>;
@@ -87,7 +87,8 @@ function WallButton({ active, children, onClick }: { active: boolean; children: 
       style={{
         borderRadius: 0,
         background: "transparent",
-        color: active ? "var(--magma-red)" : "var(--magma-muted)",
+        color: active ? "var(--magma-ash)" : "var(--magma-muted)",
+        borderBottom: active ? '2px solid #ff625b' : '2px solid transparent',
         cursor: "pointer",
         fontFamily: mono,
         fontSize: "var(--magma-text-small)",
@@ -135,12 +136,12 @@ export function EventosClient({ eventos, now }: { eventos: (Post & { body?: stri
   return (
     <section className="pt-3 md:pt-4">
       <div className="min-w-0">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <div role="search" className="flex min-h-11 w-full items-center rounded-[2px] border border-[#49463f] sm:w-64 focus-within:border-[var(--magma-red)]">
-          <input type="search" aria-label="buscar eventos" placeholder="buscar eventos…" value={search} onChange={event => setSearch(event.target.value)} className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-white placeholder:text-white focus:outline-none" />
+        <div className="mb-5 flex flex-wrap items-center gap-3">
+        <div role="search" className="flex min-h-11 w-full items-center rounded-xl bg-[#181817] sm:w-64 focus-within:outline-2 focus-within:outline-[var(--magma-red)]">
+          <input type="search" aria-label="buscar eventos" placeholder="buscar eventos…" value={search} onChange={event => setSearch(event.target.value)} className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-white placeholder:text-[#a39e95] focus:outline-none" />
           {search && <button type="button" aria-label="limpiar búsqueda" onClick={() => setSearch("")} className="h-11 w-11 shrink-0 text-white focus-visible:outline-2 focus-visible:outline-[var(--magma-red)]">×</button>}
         </div>
-        <button type="button" aria-expanded={filtersOpen} aria-controls="event-filters" onClick={() => setFiltersOpen(!filtersOpen)} className="flex min-h-11 items-center gap-2 border border-[#49463f] px-3 text-sm text-white md:hidden">
+        <button type="button" aria-expanded={filtersOpen} aria-controls="event-filters" onClick={() => setFiltersOpen(!filtersOpen)} className="flex min-h-11 items-center gap-2 rounded-xl bg-[#292827] px-3 text-sm text-white md:hidden">
           <FilterIcon kind="filters" /> filtros{activeFilters > 0 ? ` (${activeFilters})` : ""}
         </button>
         <div id="event-filters" role="region" aria-label="filtros de cartelera" className={`${filtersOpen ? "flex" : "hidden"} w-full flex-col gap-2 md:flex md:w-auto md:flex-row md:flex-wrap`}>
@@ -158,17 +159,20 @@ export function EventosClient({ eventos, now }: { eventos: (Post & { body?: stri
           </FilterSelect>}
         </div>
         {hasFilters && <button type="button" onClick={clearFilters} className="min-h-11 text-sm text-[var(--magma-red)] underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-[var(--magma-red)]">limpiar filtros</button>}
-        <div role="group" aria-label="vista de cartelera" className="ml-auto flex flex-wrap items-center gap-x-6 gap-y-0">
+        </div>
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-white/10">
+        <div role="group" aria-label="vista de cartelera" className="flex flex-wrap items-center gap-x-6 gap-y-0">
           <WallButton active={wall === "muro"} onClick={() => setWall("muro")}>muro completo</WallButton>
           <WallButton active={wall === "archivo"} onClick={() => setWall("archivo")}>archivo</WallButton>
         </div>
+        <p role="status" className="text-xs text-[var(--magma-muted)]">{visible.length} {visible.length === 1 ? 'evento' : 'eventos'}</p>
         </div>
       {visible.length === 0 ? (
-        <div className="rounded-[2px]" style={{ background: "transparent", border: "1px solid #49463f", color: "var(--magma-muted)", fontFamily: mono, fontSize: "var(--magma-text-small)", padding: "40px 24px", textAlign: "center" }}>
+        <div style={{ color: "var(--magma-muted)", fontFamily: mono, fontSize: "var(--magma-text-small)", padding: "60px 24px", textAlign: "center" }}>
           no encontramos carteles con esos filtros
         </div>
       ) : (
-        <div className="grid min-w-0 grid-cols-1 items-start gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+        <div className="grid min-w-0 grid-cols-1 items-stretch gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {visible.map((post, index) => (
             <div
               key={post.id}

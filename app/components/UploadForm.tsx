@@ -11,6 +11,8 @@ import { draftOperation, uploadDraftKey, type UploadDraft } from "@/lib/upload-d
 import { supportsCarousel, uploadPhotos } from "@/lib/post-images";
 import { EventTimeInput } from "@/app/components/EventTimeInput";
 import { QUESTIONS_ENABLED } from '@/lib/community-questions';
+import { EVENT_MEDIA_ACCEPT, EVENT_VIDEO_ACCEPT, eventMediaError } from '@/lib/event-media';
+import { isHeic } from '@/lib/photo-format';
 
 import { useState, useRef, useEffect, Suspense } from "react";
 import dynamic from "next/dynamic";
@@ -207,10 +209,19 @@ function UploadPageInner({ onPublished, onLeave, onDraftState }: UploadFormProps
   const isProjectEntry = Boolean(selectedProject);
   const isEscrito = selectedType === "escrito";
   const isVideo = selectedType === "video";
+  const isEventVideo = selectedType === "evento" && Boolean(file?.type.startsWith("video/"));
 
   // ── File handling ─────────────────────────────────────────────────────────
 
   function handleFile(f: File) {
+    if (selectedType === "evento") {
+      const error = eventMediaError(f);
+      if (error) { setError(error); return; }
+      if (f.type.startsWith('video/') && file && (file.type.startsWith('image/') || isHeic(file))) {
+        setCoverFile(file);
+        setCoverFileName(file.name);
+      }
+    }
     setError(null);
     setFile(f);
     setFileName(f.name);
@@ -229,6 +240,9 @@ function UploadPageInner({ onPublished, onLeave, onDraftState }: UploadFormProps
   }
 
   function handleCoverFile(f: File) {
+    if (selectedType === 'evento' && (!f.type.startsWith('image/') && !isHeic(f) || eventMediaError(f))) {
+      setError('elige una imagen de hasta 15 MB para el cartel.'); return;
+    }
     setError(null);
     setCoverFile(f);
     setCoverFileName(f.name);
@@ -263,6 +277,7 @@ function UploadPageInner({ onPublished, onLeave, onDraftState }: UploadFormProps
 
     try {
       if (selectedType === "evento") {
+        if (file && eventMediaError(file)) throw new Error(eventMediaError(file)!);
         const start = eventTimestamp(eventDate, eventTime);
         if (EVENT_DETAILS_ENABLED) eventDetailsPayload(eventDetails, start);
       }
@@ -309,7 +324,8 @@ function UploadPageInner({ onPublished, onLeave, onDraftState }: UploadFormProps
         mediaUrl = json.url
       }
 
-      if (coverFile) {
+      if (coverFile && (selectedType === 'música' || isEventVideo)) {
+        if (isEventVideo && ((!coverFile.type.startsWith('image/') && !isHeic(coverFile)) || eventMediaError(coverFile))) throw new Error('elige una imagen de hasta 15 MB para el cartel.');
         if (isDev) console.log('[upload] uploading cover:', coverFile.name, `${(coverFile.size / 1024 / 1024).toFixed(2)} MB`)
         const formData = new FormData()
         formData.append('file', coverFile)
@@ -333,6 +349,7 @@ function UploadPageInner({ onPublished, onLeave, onDraftState }: UploadFormProps
           content: isEscrito ? sanitizeHtml(richContent) : null,
           type: selectedType,
           media_url: mediaUrl,
+          ...(!supportsCarousel(selectedType) ? { media_type: file ? (isHeic(file) ? 'image/jpeg' : file.type) : null } : {}),
           ...(imageUrls ? { image_urls: imageUrls, media_type: typeof photos[0] === "string" ? null : photos[0]?.type } : {}),
           soundcloud_url: normalizedSoundCloudUrl,
           cover_url: coverUrl,
@@ -470,11 +487,11 @@ function UploadPageInner({ onPublished, onLeave, onDraftState }: UploadFormProps
           {!isEscrito && !supportsCarousel(selectedType) && (
             <div>
               <label style={labelStyle}>
-                suelta aquí tu obra
+                {selectedType === 'evento' ? 'cartel o video del evento' : 'suelta aquí tu obra'}
                 {selectedType && (
                   <span style={{ color: "var(--notebook-muted)" }}>
                     {" "}—{" "}
-                    {activeOption?.accept === "audio/*" ? "audio (mp3, wav, flac)" : isVideo ? "video (mp4, mov, webm)" : "imagen (jpg, png, gif, webp)"}
+                    {selectedType === 'evento' ? 'imagen o video · hasta 15 MB por archivo' : activeOption?.accept === "audio/*" ? "audio (mp3, wav, flac)" : isVideo ? "video (mp4, mov, webm)" : "imagen (jpg, png, gif, webp)"}
                   </span>
                 )}
               </label>
@@ -517,7 +534,7 @@ function UploadPageInner({ onPublished, onLeave, onDraftState }: UploadFormProps
               <input
                 ref={fileInputRef}
                 type="file"
-                accept={isVideo ? "video/mp4,video/quicktime,video/webm" : (activeOption?.accept ?? "image/*,audio/*")}
+                accept={selectedType === 'evento' ? EVENT_MEDIA_ACCEPT : isVideo ? EVENT_VIDEO_ACCEPT : (activeOption?.accept ?? "image/*,audio/*")}
                 onChange={handleFileChange}
                 className="hidden"
                 aria-hidden
@@ -525,11 +542,17 @@ function UploadPageInner({ onPublished, onLeave, onDraftState }: UploadFormProps
             </div>
           )}
 
-          {/* Cover image — música only */}
-          {selectedType === "música" && (
+          {selectedType === 'evento' && !isEventVideo && <label className="text-sm">
+            + añadir video — opcional
+            <input type="file" accept={EVENT_VIDEO_ACCEPT} disabled={submitting} className="mt-2 block max-w-full text-xs" onChange={handleFileChange} />
+          </label>}
+          {isEventVideo && <button type="button" className="self-start text-xs underline" onClick={() => { setFile(coverFile); setFileName(coverFileName); setCoverFile(null); setCoverFileName(null); }}>quitar video</button>}
+
+          {/* A video event keeps its poster in the existing cover field. */}
+          {(selectedType === "música" || isEventVideo) && (
             <div>
               <label style={labelStyle}>
-                Imagen de portada <span style={{ color: "var(--notebook-muted)" }}>— opcional</span>
+                {isEventVideo ? 'cartel · aparece antes del video' : 'Imagen de portada'} <span style={{ color: "var(--notebook-muted)" }}>— opcional</span>
               </label>
               <div
                 role="button"
@@ -562,7 +585,7 @@ function UploadPageInner({ onPublished, onLeave, onDraftState }: UploadFormProps
                       <path d="M3 14V16.5H17V14" stroke="#444441" strokeWidth="1.2" strokeLinecap="square" />
                     </svg>
                     <span style={{ fontSize: "var(--magma-text-small)", color: "var(--notebook-muted)", fontFamily: "var(--font-space-mono), monospace" }}>
-                      portada del track (jpg, png, webp)
+                      {isEventVideo ? 'añadir cartel (jpg, png, webp)' : 'portada del track (jpg, png, webp)'}
                     </span>
                   </>
                 )}
@@ -577,6 +600,8 @@ function UploadPageInner({ onPublished, onLeave, onDraftState }: UploadFormProps
               />
             </div>
           )}
+
+          {isEventVideo && coverFile && <button type="button" disabled={submitting} className="self-start text-xs underline" onClick={() => { setCoverFile(null); setCoverFileName(null); }}>quitar cartel · dejar solo video</button>}
 
           {/* Título */}
           <div>
